@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/local/seed/cthulhu_seed.dart';
+import '../../app/providers.dart';
 import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
@@ -12,6 +12,7 @@ import '../../design_system/components/qb_select.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../../domain/models/universe_config.dart';
 import 'providers/character_creation_provider.dart';
 import 'widgets/characteristic_roll_dialog.dart';
 
@@ -37,15 +38,12 @@ class _CharacterCreationScreenState
   }
 
   Future<void> _rollStat(String key, String label) async {
-    final state = ref.read(characterCreationProvider);
-    final isEducation = key == 'EDU';
-    final bonus = isEducation && state.occupation != null ? 5 : 0;
+    final notifier = ref.read(characterCreationProvider.notifier);
     await CharacteristicRollDialog.show(
       context,
       characteristicKey: key,
       characteristicLabel: label,
-      bonus: bonus,
-      bonusLabel: bonus > 0 ? '${state.occupation} +$bonus' : null,
+      bonusLabel: notifier.occupationBonusLabelFor(key),
     );
   }
 
@@ -58,6 +56,8 @@ class _CharacterCreationScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(characterCreationProvider);
+    final config = ref.watch(universeConfigProvider);
+    final sheet = config.characterSheet;
 
     return QBPageBackground(
       child: SafeArea(
@@ -98,7 +98,7 @@ class _CharacterCreationScreenState
                   QBSelect(
                     label: 'Occupation',
                     value: state.occupation,
-                    options: CthulhuSeed.occupationSuggestions,
+                    options: [for (final o in sheet.occupations) o.name],
                     onChanged: ref
                         .read(characterCreationProvider.notifier)
                         .setOccupation,
@@ -148,15 +148,15 @@ class _CharacterCreationScreenState
                     alignment: WrapAlignment.center,
                     runSpacing: 10,
                     children: [
-                      for (final c in CthulhuSeed.primaryCharacteristics)
+                      for (final c in sheet.rollableCharacteristics)
                         _StatPreviewCircle(
-                          label: c.label,
+                          label: c.name,
                           value: state.characteristics[c.key],
-                          onTap: () => _rollStat(c.key, c.label),
+                          onTap: () => _rollStat(c.key, c.name),
                         ),
-                      for (final d in CthulhuSeed.derivedCharacteristics)
+                      for (final d in sheet.derivedCharacteristics)
                         _StatPreviewCircle(
-                          label: d.label,
+                          label: d.name,
                           value: state.allCharacteristicsRolled
                               ? _derivedValue(state, d.key)
                               : null,
@@ -195,7 +195,7 @@ class _CharacterCreationScreenState
                     ),
                   ),
                   const SizedBox(height: QBSpace.s3),
-                  for (final skill in CthulhuSeed.skillCatalog)
+                  for (final skill in sheet.skills)
                     _SkillAllocationRow(skill: skill),
                 ],
               ),
@@ -304,7 +304,7 @@ class _StatPreviewCircle extends StatelessWidget {
 class _SkillAllocationRow extends ConsumerWidget {
   const _SkillAllocationRow({required this.skill});
 
-  final CthulhuSkillDef skill;
+  final SkillConfig skill;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -325,7 +325,7 @@ class _SkillAllocationRow extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  skill.label,
+                  skill.name,
                   style: QBType.body()
                       .copyWith(fontSize: QBType.sm, color: QBColors.ink900),
                 ),

@@ -17,20 +17,17 @@ class CharacteristicRollDialog extends ConsumerStatefulWidget {
     super.key,
     required this.characteristicKey,
     required this.characteristicLabel,
-    this.bonus = 0,
     this.bonusLabel,
   });
 
   final String characteristicKey;
   final String characteristicLabel;
-  final int bonus;
   final String? bonusLabel;
 
   static Future<void> show(
     BuildContext context, {
     required String characteristicKey,
     required String characteristicLabel,
-    int bonus = 0,
     String? bonusLabel,
   }) {
     return showQBDialog(
@@ -40,7 +37,6 @@ class CharacteristicRollDialog extends ConsumerStatefulWidget {
       builder: (context) => CharacteristicRollDialog(
         characteristicKey: characteristicKey,
         characteristicLabel: characteristicLabel,
-        bonus: bonus,
         bonusLabel: bonusLabel,
       ),
     );
@@ -58,7 +54,7 @@ class _CharacteristicRollDialogState
   void _performRoll() {
     final roll = ref
         .read(characterCreationProvider.notifier)
-        .rollCharacteristic(widget.characteristicKey, bonus: widget.bonus);
+        .rollCharacteristic(widget.characteristicKey);
     setState(() => _roll = roll);
   }
 

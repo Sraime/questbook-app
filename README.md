@@ -10,6 +10,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Arborescence](#arborescence)
   - [Couches applicatives](#couches-applicatives)
   - [Modèle de données](#modèle-de-données)
+  - [Configuration par univers (`assets/universes/*.json`)](#configuration-par-univers-assetsuniversesjson)
   - [Extensibilité multi-système](#extensibilité-multi-système)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
@@ -55,6 +56,8 @@ Le projet suit une architecture en couches façon *clean architecture* simplifi�
 ### Arborescence
 
 ```
+assets/
+└── universes/                  # Un fichier JSON par système de jeu (cthulhu-v7.json…)
 lib/
 ├── app/                       # Bootstrap : router, thème, providers racine
 │   ├── router.dart            # Déclaration des routes go_router
@@ -62,14 +65,17 @@ lib/
 │   └── theme.dart             # ThemeData Material basé sur les tokens du design system
 ├── domain/                    # Cœur métier, indépendant de Flutter/Drift
 │   ├── models/                # Character, CharacterStat, CharacterResource,
-│   │                          # GameSystem, GameTable, InventoryItem, Tone (freezed)
+│   │                          # GameSystem, GameTable, InventoryItem, Tone,
+│   │                          # UniverseConfig (parsing des configs d'univers)
 │   ├── repositories/          # Interfaces abstraites (Character/GameSystem/Table)
-│   └── rules/                 # RulesEngine (interface) + CthulhuRulesEngine (implémentation v7)
+│   └── rules/                 # RulesEngine (interface) + ConfigRulesEngine
+│                               # (implémentation générique) + FormulaEvaluator
 ├── data/
+│   ├── universe/               # Chargement des configs d'univers (assets JSON)
 │   └── local/
 │       ├── database.dart      # Schéma Drift (tables SQLite) + AppDatabase
 │       ├── local_*_repository.dart  # Implémentations locales des repositories
-│       └── seed/               # Données de départ (catalogue Cthulhu) + seedDatabase()
+│       └── seed/               # seedDatabase() — insère le GameSystem actif
 ├── design_system/
 │   ├── tokens/                # colors, spacing, typography, effects (constantes de design)
 │   └── components/            # Widgets réutilisables préfixés qb_ (bouton, carte, dés, etc.)
@@ -87,8 +93,8 @@ lib/
 ### Couches applicatives
 
 1. **`domain`** définit *quoi* (modèles + contrats de repository) et *comment calculer* (interface `RulesEngine`), sans savoir comment c'est stocké ni affiché.
-2. **`data/local`** persiste ces modèles dans SQLite via Drift (`AppDatabase`), et traduit entre les lignes Drift générées (`*Row`) et les modèles `domain` dans les `Local*Repository`.
-3. **`app/providers.dart`** est le point de câblage (DI) : il expose `appDatabaseProvider`, un provider par repository, et `rulesEngineProvider`. C'est le seul endroit à modifier pour brancher un futur backend distant (`Remote*Repository`) à la place du local.
+2. **`data/local`** persiste ces modèles dans SQLite via Drift (`AppDatabase`), et traduit entre les lignes Drift générées (`*Row`) et les modèles `domain` dans les `Local*Repository`. **`data/universe`** charge et parse le fichier JSON du système de jeu actif (`assets/universes/<id>.json`) en `UniverseConfig`.
+3. **`app/providers.dart`** est le point de câblage (DI) : il expose `appDatabaseProvider`, `universeConfigProvider` (injecté depuis `main.dart` au démarrage), un provider par repository, et `rulesEngineProvider`. C'est le seul endroit à modifier pour brancher un futur backend distant (`Remote*Repository`) à la place du local.
 4. **`features/*`** contient un `Notifier`/`AsyncNotifier` Riverpod par écran (ex. `CharacterCreationNotifier`, `CharacterListProvider`) qui lit les repositories/le rules engine, et les widgets d'écran qui les consomment via `ConsumerWidget`/`ConsumerStatefulWidget`.
 5. **`design_system`** ne connaît ni Riverpod ni le domaine métier : ce sont des widgets purs paramétrés par variant/label/callback, réutilisés à l'identique entre les écrans.
 
@@ -103,7 +109,50 @@ Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu g
 - `InventoryItems` — objets possédés par un personnage.
 - `GameTables` — tables/campagnes, éventuellement rattachées à un système.
 
-Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul le catalogue (`CthulhuSeed`-like) et l'implémentation `RulesEngine` changent.
+Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul le fichier de config JSON de l'univers (voir ci-dessous) change.
+
+### Configuration par univers (`assets/universes/*.json`)
+
+Les caractéristiques, compétences, occupations (et leurs bonus), ressources (PV/SAN/PM) et formules de calcul de la fiche de personnage **ne sont pas codées en dur** : elles vivent dans un fichier JSON par univers/système de jeu, `assets/universes/<systemId>.json` (aujourd'hui : `cthulhu-v7.json`). C'est ce fichier qui pilote entièrement l'écran de création et la fiche de personnage.
+
+Forme résumée du fichier (voir `assets/universes/cthulhu-v7.json` pour l'exemple complet) :
+
+```jsonc
+{
+  "id": "cthulhu-v7",
+  "name": "L'Appel de Cthulhu",
+  "character_sheet": {
+    "skill_points_formula": "EDU * 4 + INT * 2",
+    "critical_success_max": 5,
+    "critical_failure_min": 96,
+    "characteristics": [
+      { "key": "FOR", "name": "Force", "calculation_method": "roll", "calculation_formula": "3D6*5" },
+      { "key": "ESQ", "name": "Esquive", "calculation_method": "derived", "calculation_formula": "DEX / 2" },
+      { "key": "MVT", "name": "Mouvement", "calculation_method": "derived",
+        "condition_table": [
+          { "condition": "FOR > TAI && DEX > TAI", "value": 9 },
+          { "condition": "true", "value": 8 }
+        ] }
+    ],
+    "skills": [
+      { "key": "bibliotheque", "name": "Bibliothèque", "base_value": 20 },
+      { "key": "esquive", "name": "Esquive", "base_formula": "DEX / 2" }
+    ],
+    "occupations": [
+      { "key": "medecin", "name": "Médecin",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "skills_bonus": [{ "skill": "medecine", "flat_bonus": 20 }] }
+    ],
+    "resources": [
+      { "key": "PV", "label": "PV", "formula": "(CON + TAI) / 10", "tone": "danger" }
+    ]
+  }
+}
+```
+
+Les chaînes `calculation_formula`/`condition_table[].condition`/`condition_table[].value`/`skill_points_formula`/`resources[].formula`/`skills[].base_formula` sont interprétées par un petit évaluateur (`lib/domain/rules/formula_evaluator.dart`) qui supporte les dés (`3D6`, `d6`), l'arithmétique (`+ - * /`, parenthèses, `Floor()`), et les conditions (`>= <= == != > <`, `&& ||`). C'est ce même évaluateur — pas de code Dart spécifique à Cthulhu — qui calcule les jets, les stats dérivées, le budget de points de compétence et les ressources.
+
+`main.dart` charge ce fichier une fois au démarrage (avant `runApp`) et l'injecte via `universeConfigProvider.overrideWithValue(...)` ; tout le reste de l'app le lit ensuite de façon synchrone via ce provider.
 
 ### Extensibilité multi-système
 
@@ -112,16 +161,18 @@ Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouvea
 ```dart
 abstract interface class RulesEngine {
   String get systemId;
-  CharacteristicRoll rollCharacteristic({int bonus = 0, Random? random});
+  CharacteristicRoll rollCharacteristic(String characteristicKey, {int bonus = 0, Random? random});
   Map<String, int> computeDerivedCharacteristics(Map<String, int> primary);
   SkillCheckResult rollSkillCheck(int targetValue, {Random? random});
 }
 ```
 
-`CthulhuRulesEngine` en est la seule implémentation aujourd'hui (jets 3d6×5, dérivées ESQ/MVT/COR/IMP, jets de compétence 1d100 avec critiques 01-05/96-100). Ajouter un système (D&D 5e, Vampire…) consiste à :
-1. écrire un nouveau catalogue de caractéristiques/compétences (à la manière de `CthulhuSeed`) ;
-2. écrire une nouvelle implémentation de `RulesEngine` ;
-3. faire de `rulesEngineProvider` une map `systemId -> RulesEngine` plutôt qu'une instance unique.
+`ConfigRulesEngine` (`lib/domain/rules/config_rules_engine.dart`) en est l'implémentation : générique, elle interprète n'importe quel `UniverseConfig` plutôt que de coder en dur les règles d'un seul système. Ajouter un système (D&D 5e, Vampire…) qui reste décrivable par le schéma JSON ci-dessus consiste simplement à :
+1. écrire un nouveau fichier `assets/universes/<systemId>.json` ;
+2. le déclarer dans `pubspec.yaml` (déjà fait pour tout le dossier `assets/universes/`) ;
+3. faire de `universeConfigProvider`/`rulesEngineProvider` une map `systemId -> UniverseConfig/RulesEngine` (chargée par le futur écran de choix d'univers) plutôt qu'un override unique injecté au démarrage.
+
+Seul un système avec une mécanique réellement inédite (non descriptible en dés/arithmétique/conditions) nécessiterait une nouvelle implémentation de `RulesEngine`.
 
 ## Prérequis
 
@@ -200,7 +251,9 @@ flutter test
 ```
 
 Tests actuellement présents (`test/`) :
-- `domain/rules/cthulhu_rules_engine_test.dart` — mécaniques de jet (caractéristiques, dérivées, jets de compétence).
+- `domain/rules/formula_evaluator_test.dart` — l'évaluateur de formules/dés/conditions lui-même.
+- `domain/rules/config_rules_engine_test.dart` — mécaniques de jet (caractéristiques, dérivées, jets de compétence) sur une config de test.
+- `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/cthulhu-v7.json` réellement embarqué.
 - `services/dice_service_test.dart` — primitives de lancer de dés.
 
 ## Workflow git (branches)
@@ -388,7 +441,8 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 
 ## Limitations connues
 
-- Un seul système de jeu est seedé (`cthulhu-v7`) : le catalogue de compétences/caractéristiques est actuellement importé statiquement (`CthulhuSeed`) plutôt que résolu dynamiquement par `systemId`.
+- Un seul univers est embarqué aujourd'hui (`assets/universes/cthulhu-v7.json`), chargé une fois au démarrage via un id codé en dur dans `main.dart` plutôt que choisi par l'utilisateur — voir [Extensibilité multi-système](#extensibilité-multi-système).
+- Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
 - Aucune synchronisation distante : tout est stocké en local via SQLite (Drift). Le remplacement par un backend distant se ferait en ajoutant des implémentations `Remote*Repository` et en modifiant uniquement `lib/app/providers.dart`.
 - L'écran « Tables » ne propose pas encore d'écran de détail : ouvrir une table existante est un no-op pour l'instant.

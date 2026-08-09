@@ -101,6 +101,32 @@ flutter build apk --release                                  # build release (si
   `adb exec-out ... > fichier` en PowerShell (corrompt le PNG binaire à
   cause de la traduction de fin de ligne).
 
+## Fiche de personnage pilotée par config JSON (`assets/universes/`)
+
+Les caractéristiques, compétences, occupations (+ bonus) et ressources
+(PV/SAN/PM) ne sont **pas** codées en dur : elles viennent de
+`assets/universes/<systemId>.json` (aujourd'hui `cthulhu-v7.json`), parsé en
+`UniverseConfig` (`lib/domain/models/universe_config.dart`) et interprété
+par `ConfigRulesEngine`/`FormulaEvaluator`
+(`lib/domain/rules/config_rules_engine.dart` et `formula_evaluator.dart`) —
+un petit interpréteur qui gère dés (`3D6`), arithmétique (`+ - * / Floor()`)
+et conditions (`>= <= && ||`) à partir de simples chaînes du JSON. Voir la
+section [Configuration par univers](README.md#configuration-par-univers-assetsuniversesjson)
+du README pour le détail.
+
+- Pour changer une règle de calcul (formule de caractéristique, seuil de
+  palier, bonus d'occupation…), éditer le JSON, **pas** le code Dart — sauf
+  mécanique réellement nouvelle que l'évaluateur ne sait pas exprimer.
+- `main.dart` charge ce fichier une fois avant `runApp` et l'injecte via
+  `universeConfigProvider.overrideWithValue(...)` : c'est pour ça que ce
+  provider lève une erreur s'il n'est jamais overridé (ne pas essayer de le
+  lire depuis un test sans lui fournir une valeur, cf.
+  `test/domain/rules/config_rules_engine_test.dart` pour construire un
+  `UniverseConfig` minimal à la main).
+- Les regex de `FormulaEvaluator` utilisent `matchAsPrefix(string, start)`
+  **sans** ancre `^` : en Dart, `^` vise le tout début de la chaîne, pas le
+  paramètre `start` — un piège déjà rencontré en écrivant ce fichier.
+
 ## Firebase (App Distribution uniquement, pas de SDK dans l'app)
 
 - Projet `questbook-48540`, app Android

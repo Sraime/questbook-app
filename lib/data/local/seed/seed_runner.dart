@@ -2,19 +2,20 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../../domain/models/universe_config.dart';
 import '../database.dart';
-import 'cthulhu_seed.dart';
 
-/// Inserts the Cthulhu v7 GameSystem row on first launch. Idempotent —
-/// safe to call on every app start. No demo characters/tables are seeded;
-/// Home/Tables start in their empty state.
-Future<void> seedDatabase(AppDatabase db) async {
+/// Inserts the active universe's GameSystem row on first launch, from the
+/// already-parsed [UniverseConfig] (see `data/universe/universe_config_loader.dart`).
+/// Idempotent — safe to call on every app start. No demo characters/tables
+/// are seeded; Home/Tables start in their empty state.
+Future<void> seedDatabase(AppDatabase db, UniverseConfig config) async {
   await db.into(db.gameSystems).insertOnConflictUpdate(
         GameSystemsCompanion.insert(
-          id: CthulhuSeed.systemId,
-          name: CthulhuSeed.systemName,
+          id: config.id,
+          name: config.name,
           occupationSuggestions: Value(
-            jsonEncode(CthulhuSeed.occupationSuggestions),
+            jsonEncode([for (final o in config.characterSheet.occupations) o.name]),
           ),
         ),
       );

@@ -34,9 +34,16 @@ class SkillCheckResult {
 abstract interface class RulesEngine {
   String get systemId;
 
-  CharacteristicRoll rollCharacteristic({int bonus = 0, Random? random});
+  /// Rolls the characteristic identified by [characteristicKey] (its short
+  /// code, e.g. `FOR`/`DEX`) using that stat's own dice formula, plus any
+  /// flat [bonus] (e.g. from a chosen occupation).
+  CharacteristicRoll rollCharacteristic(
+    String characteristicKey, {
+    int bonus = 0,
+    Random? random,
+  });
 
-  /// Given the primary characteristics keyed by their short code (FOR, DEX…),
+  /// Given the rolled characteristics keyed by their short code (FOR, DEX…),
   /// returns any characteristics this system derives automatically.
   Map<String, int> computeDerivedCharacteristics(Map<String, int> primary);
 

@@ -4,9 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'data/universe/universe_config_loader.dart';
 
-void main() {
-  runApp(const ProviderScope(child: QuestbookApp()));
+/// Only one universe is bundled today (Cthulhu v7) — its config is loaded
+/// once here and injected as a provider override, so the rest of the app
+/// can read `universeConfigProvider` synchronously. Once a second universe
+/// exists, this hardcoded id becomes a user choice (e.g. a "new table"
+/// screen) instead.
+const _defaultSystemId = 'cthulhu-v7';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final universeConfig = await loadUniverseConfig(_defaultSystemId);
+
+  runApp(
+    ProviderScope(
+      overrides: [universeConfigProvider.overrideWithValue(universeConfig)],
+      child: const QuestbookApp(),
+    ),
+  );
 }
 
 class QuestbookApp extends ConsumerWidget {

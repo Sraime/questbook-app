@@ -42,6 +42,31 @@ void main() {
     expect(config.creationModeDescription, isNotEmpty);
   });
 
+  test('characteristics keep the order declared in the Simplifié mode file', () {
+    expect(
+      config.characterSheet.characteristics.map((c) => c.key).toList(),
+      ['FOR', 'DEX', 'CON', 'POU', 'APP', 'EDU', 'INT', 'TAI', 'CHA', 'ESQ', 'MVT', 'COR', 'IMP'],
+    );
+  });
+
+  test('numeric choices pick up the mode file default, Chance has none', () {
+    final defaults = {
+      for (final c in config.characterSheet.numericChoiceCharacteristics)
+        c.key: c.defaultValue,
+    };
+    expect(defaults, {
+      'FOR': 40,
+      'DEX': 50,
+      'CON': 50,
+      'POU': 50,
+      'APP': 60,
+      'EDU': 60,
+      'INT': 70,
+      'TAI': 80,
+    });
+    expect(config.characterSheet.characteristicByKey('CHA').defaultValue, isNull);
+  });
+
   test('FOR/DEX/CON/POU/APP/EDU/INT/TAI are numeric choices, not rolled', () {
     final numericKeys =
         config.characterSheet.numericChoiceCharacteristics.map((c) => c.key).toSet();

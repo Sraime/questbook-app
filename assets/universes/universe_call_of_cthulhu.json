@@ -183,7 +183,7 @@
       { "key": "combat_distance_armes_poing", "name": "Combat à distance (armes de poing)", "description": "Utilisation des armes de poing (pistolets, revolvers).", "base_value": 20, "max": 100 },
       { "key": "combat_distance_fusils", "name": "Combat à distance (fusils)", "description": "Utilisation des fusils et carabines.", "base_value": 25, "max": 100 },
       { "key": "combat_rapproche", "name": "Combat rapproché (corps à corps)", "description": "Combat à mains nues ou avec une arme de mêlée.", "base_value": 25, "max": 100 },
-      { "key": "comptabilite", "name": "Comptabilité", "description": "Tenue de comptes et analyse financière.", "base_value": 5 },
+      { "key": "comptabilite", "name": "Comptabilité", "description": "Tenue de comptes et analyse financière.", "base_value": 5, "max": 100 },
       { "key": "conduite", "name": "Conduite", "description": "Conduire un véhicule à roues courant.", "base_value": 20, "max": 100 },
       { "key": "conduite_engin_lourd", "name": "Conduite engin lourd", "description": "Conduire un véhicule lourd ou spécialisé.", "base_value": 1, "max": 100 },
       { "key": "crochetage", "name": "Crochetage", "description": "Forcer une serrure sans clé.", "base_value": 1, "max": 100 },

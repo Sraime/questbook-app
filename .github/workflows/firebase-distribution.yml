@@ -1,16 +1,18 @@
 name: Build & distribute Android (Firebase App Distribution)
 
-# Runs on every push to main, and can also be triggered manually from the
-# Actions tab (with an optional custom set of release notes).
+# Deliberately NOT triggered on every push — only when a pull request into
+# `main` is actually merged (git-flow: `dev` is the working branch, `main`
+# is release-only), or manually from the Actions tab.
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
   workflow_dispatch:
     inputs:
       release_notes:
         description: "Release notes for this build"
         required: false
-        default: "Build automatique depuis GitHub Actions"
+        default: "Build manuel depuis GitHub Actions"
 
 env:
   FIREBASE_APP_ID: "1:56734402863:android:8f12f08f8eff13a8e2b9da"
@@ -19,9 +21,14 @@ env:
 jobs:
   build-and-distribute:
     runs-on: ubuntu-latest
+    # `pull_request: closed` fires on both merged AND declined/closed PRs —
+    # skip the whole job unless it was actually merged (manual runs always go).
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -65,7 +72,7 @@ jobs:
             --app "$FIREBASE_APP_ID" \
             --project "$FIREBASE_PROJECT_ID" \
             --groups "testeurs" \
-            --release-notes "${{ github.event.inputs.release_notes || format('Build auto depuis commit {0}', github.sha) }}" \
+            --release-notes "${{ github.event.inputs.release_notes || format('PR #{0} mergee : {1}', github.event.pull_request.number, github.event.pull_request.title) }}" \
             --token "$FIREBASE_TOKEN"
 
       - name: Clean up signing secrets from runner

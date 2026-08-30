@@ -1,0 +1,514 @@
+{
+  "id": "call_of_cthulhu",
+  "name": "Call of Cthulhu",
+  "description": "L'Appel de Cthulhu est un jeu de rôle d'horreur basé sur les récits de H. P. Lovecraft et le Mythe de Cthulhu. Publié par Chaosium, créé par Sandy Petersen, sorti en 1981 et aujourd'hui en 7e édition. Son système repose sur le Basic Role-Playing (BRP), avec des règles propres pour la santé mentale et la chance.",
+  "rulebook_pdf_url": "https://www.chaosium.com/wp-content/uploads/2023/04/Call-of-Cthulhu-7th-Edition-Rulebook.pdf",
+  "critical_success_max": 5,
+  "critical_failure_min": 96,
+  "creation_modes": [
+    {
+      "id": "call_of_cthulhu_simplifie",
+      "name": "Simplifié",
+      "description": "Affectez les valeurs 40, 50, 50, 50, 60, 60, 70 et 80 aux huit caractéristiques dans l'ordre de votre choix.",
+      "configuration_file": "call_of_cthulhu_simplifie.json"
+    },
+    {
+      "id": "call_of_cthulhu_classique",
+      "name": "Classique",
+      "description": "Lancez vos dés pour déterminer les valeurs de vos caractéristiques.",
+      "configuration_file": "call_of_cthulhu_classique.json"
+    }
+  ],
+  "general_configuration": {
+    "critical_success_max": 5,
+    "critical_failure_min": 96,
+    "global_attributes": [
+      { 
+        "key": "age", 
+        "name": "Âge",
+        "description": "Âge de l'investigateur.", 
+        "type": "integer",
+        "min": 5,
+        "max": 100
+      },
+      {
+        "key": "fortune",
+        "name": "Fortune",
+        "description": "Niveau de richesse et de statut social de l'investigateur, choisi par le joueur juste après l'occupation.",
+        "type": "choice",
+        "choices": ["Indigent", "Pauvre", "Moyen", "Aisé", "Riche", "Richissime"]
+      }
+    ],
+    "characteristics": [
+      {
+        "key": "FOR",
+        "name": "Force",
+        "description": "Puissance physique brute ; utilisée pour le combat au corps à corps et le port de charges.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "DEX",
+        "name": "Dextérité",
+        "description": "Agilité, réflexes et rapidité de mouvement.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "CON",
+        "name": "Constitution",
+        "description": "Endurance physique et résistance à la maladie ou aux blessures.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "POU",
+        "name": "Pouvoir",
+        "description": "Force de volonté et affinité avec le surnaturel ; base des points de magie.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "APP",
+        "name": "Apparence",
+        "description": "Attrait physique et charisme perçu par les autres.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "EDU",
+        "name": "Éducation",
+        "description": "Savoir formel et expérience scolaire ; conditionne les points de compétence.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "INT",
+        "name": "Intelligence",
+        "description": "Vivacité d'esprit, mémoire et capacité de déduction.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "TAI",
+        "name": "Taille",
+        "description": "Gabarit et masse corporelle ; influence les points de vie et la carrure.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "CHA",
+        "name": "Chance",
+        "description": "Bonne fortune ; peut être dépensée pour influencer certains jets.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "ESQ",
+        "name": "Esquive",
+        "description": "Capacité à éviter un coup ou un danger immédiat. Dérivée, égale à la moitié de la Dextérité.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "MVT",
+        "name": "Mouvement",
+        "description": "Distance parcourue par round de combat, en mètres. Dérivée de Force/Dextérité/Taille.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "COR",
+        "name": "Corpulence",
+        "description": "Palier de gabarit dérivé de Force + Taille ; modifie certains jets physiques.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "IMP",
+        "name": "Bonus aux dégâts",
+        "description": "Palier de dégâts bonus dérivé de Force + Taille, sur les mêmes seuils que la Corpulence. Simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés : palier 1 = +1D4, 2 = +1D6, 3 = +2D6, 4 = +3D6, 5 = +4D6, au-delà +1D6 supplémentaire tous les 80 points.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100
+      }
+    ],
+    "resources": [
+      {
+        "key": "PV",
+        "label": "PV",
+        "description": "Points de vie : (Constitution + Taille) / 10, arrondi au chiffre inférieur.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100,
+        "tone": "danger"
+      },
+      {
+        "key": "SAN",
+        "label": "SAN",
+        "description": "Santé mentale : égale au Pouvoir de départ.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100,
+        "tone": "info"
+      },
+      {
+        "key": "PM",
+        "label": "PM",
+        "description": "Points de magie : Pouvoir / 5, arrondi au chiffre inférieur.", 
+        "type": "integer",
+        "min": 0,
+        "max": 100,
+        "tone": "warning"
+      }
+    ],
+    "skills": [
+      { "key": "archeologie", "name": "Archéologie", "description": "Connaissance des méthodes et découvertes archéologiques.", "base_value": 1, "max": 100 },
+      { "key": "arts_et_metiers", "name": "Arts et métiers", "description": "Compétence dans un artisanat ou un art pratique donné.", "base_value": 5, "max": 100 },
+      { "key": "baratin", "name": "Baratin", "description": "Convaincre autrui par le bluff ou l'éloquence.", "base_value": 5, "max": 100 },
+      { "key": "bibliotheque", "name": "Bibliothèque", "description": "Trouver une information dans des ouvrages ou archives.", "base_value": 20, "max": 100 },
+      { "key": "charme", "name": "Charme", "description": "Séduire ou attendrir par la présence et l'attitude.", "base_value": 15, "max": 100 },
+      { "key": "combat_distance_armes_poing", "name": "Combat à distance (armes de poing)", "description": "Utilisation des armes de poing (pistolets, revolvers).", "base_value": 20, "max": 100 },
+      { "key": "combat_distance_fusils", "name": "Combat à distance (fusils)", "description": "Utilisation des fusils et carabines.", "base_value": 25, "max": 100 },
+      { "key": "combat_rapproche", "name": "Combat rapproché (corps à corps)", "description": "Combat à mains nues ou avec une arme de mêlée.", "base_value": 25, "max": 100 },
+      { "key": "comptabilite", "name": "Comptabilité", "description": "Tenue de comptes et analyse financière.", "base_value": 5 },
+      { "key": "conduite", "name": "Conduite", "description": "Conduire un véhicule à roues courant.", "base_value": 20, "max": 100 },
+      { "key": "conduite_engin_lourd", "name": "Conduite engin lourd", "description": "Conduire un véhicule lourd ou spécialisé.", "base_value": 1, "max": 100 },
+      { "key": "crochetage", "name": "Crochetage", "description": "Forcer une serrure sans clé.", "base_value": 1, "max": 100 },
+      { "key": "discretion", "name": "Discrétion", "description": "Se déplacer ou agir sans être remarqué.", "base_value": 20, "max": 100 },
+      { "key": "droit", "name": "Droit", "description": "Connaissance du système juridique et de la procédure.", "base_value": 5, "max": 100 },
+      { "key": "ecouter", "name": "Écouter", "description": "Percevoir et interpréter des sons.", "base_value": 20, "max": 100 },
+      { "key": "electricite", "name": "Électricité", "description": "Comprendre et réparer des installations électriques.", "base_value": 10, "max": 100 },
+      { "key": "equitation", "name": "Équitation", "description": "Monter et diriger un animal de selle.", "base_value": 5, "max": 100 },
+      { "key": "esquive", "name": "Esquive", "description": "Éviter un coup ou une attaque au dernier moment. Base dérivée : Dextérité / 2.", "base_formula": "DEX / 2", "max": 100 },
+      { "key": "estimation", "name": "Estimation", "description": "Évaluer la valeur d'un objet ou juger une situation d'un coup d'œil.", "base_value": 5, "max": 100 },
+      { "key": "grimper", "name": "Grimper", "description": "Escalader une paroi, un mur ou un obstacle.", "base_value": 20, "max": 100 },
+      { "key": "histoire", "name": "Histoire", "description": "Connaissance des évènements et périodes historiques.", "base_value": 5, "max": 100 },
+      { "key": "imposture", "name": "Imposture", "description": "Se faire passer pour quelqu'un d'autre de façon crédible.", "base_value": 5, "max": 100 },
+      { "key": "intimidation", "name": "Intimidation", "description": "Contraindre autrui par la menace ou la démonstration de force.", "base_value": 15, "max": 100 },
+      { "key": "lancer", "name": "Lancer", "description": "Lancer un objet avec précision.", "base_value": 20, "max": 100 },
+      { "key": "langue_maternelle", "name": "Langue maternelle", "description": "Maîtrise de la langue natale de l'investigateur. Base dérivée : Éducation.", "base_value": 50, "max": 100 },
+      { "key": "langues", "name": "Langues", "description": "Maîtrise d'une langue étrangère donnée.", "base_value": 1, "max": 100 },
+      { "key": "mecanique", "name": "Mécanique", "description": "Comprendre, réparer ou saboter un mécanisme.", "base_value": 10, "max": 100 },
+      { "key": "medecine", "name": "Médecine", "description": "Diagnostiquer et traiter blessures et maladies graves.", "base_value": 1, "max": 100 },
+      { "key": "nager", "name": "Nager", "description": "Se déplacer efficacement dans l'eau.", "base_value": 20, "max": 100 },
+      { "key": "naturalisme", "name": "Naturalisme", "description": "Identifier la faune, la flore et les milieux naturels.", "base_value": 10, "max": 100 },
+      { "key": "occultisme", "name": "Occultisme", "description": "Connaissance des pratiques et croyances occultes.", "base_value": 5, "max": 100 },
+      { "key": "orientation", "name": "Orientation", "description": "Se repérer et ne pas se perdre.", "base_value": 10, "max": 100 },
+      { "key": "persuasion", "name": "Persuasion", "description": "Convaincre autrui par un argumentaire sincère.", "base_value": 10, "max": 100 },
+      { "key": "pickpocket", "name": "Pickpocket", "description": "Dérober un objet sur quelqu'un sans être vu.", "base_value": 10, "max": 100 },
+      { "key": "pilotage", "name": "Pilotage", "description": "Piloter un aéronef ou une embarcation à moteur.", "base_value": 1, "max": 100 },
+      { "key": "pister", "name": "Pister", "description": "Suivre une piste ou des traces.", "base_value": 10, "max": 100 },
+      { "key": "plongee", "name": "Plongée", "description": "Évoluer et travailler sous l'eau en plongée.", "base_value": 1, "max": 100 },
+      { "key": "premiers_soins", "name": "Premiers soins", "description": "Stabiliser une blessure ou un état critique sur le terrain.", "base_value": 30, "max": 100 },
+      { "key": "psychanalyse", "name": "Psychanalyse", "description": "Traiter les troubles mentaux par la psychanalyse.", "base_value": 1, "max": 100 },
+      { "key": "psychologie", "name": "Psychologie", "description": "Évaluer l'état d'esprit ou les intentions d'autrui.", "base_value": 10, "max": 100 },
+      { "key": "sauter", "name": "Sauter", "description": "Sauter en longueur ou en hauteur.", "base_value": 20, "max": 100 },
+      { "key": "sciences", "name": "Sciences", "description": "Compétence dans un domaine scientifique donné.", "base_value": 1, "max": 100 },
+      { "key": "survie", "name": "Survie", "description": "Se maintenir en vie en milieu hostile.", "base_value": 10, "max": 100 },
+      { "key": "trouver_objet_cache", "name": "Trouver Objet Caché", "description": "Repérer un indice, un piège ou un objet dissimulé.", "base_value": 25, "max": 100 }
+    ],
+    "occupations": [
+      {
+        "key": "bibliothecaire",
+        "name": "Bibliothécaire",
+        "description": "Gardien du savoir d'une bibliothèque publique ou universitaire, habitué aux ouvrages rares.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["bibliotheque", "langues", "histoire", "langue_maternelle", "psychologie", "comptabilite"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "detective_prive",
+        "name": "Détective privé",
+        "description": "Enquêteur indépendant, habitué à traquer des indices et des personnes disparues.",
+        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["trouver_objet_cache", "discretion", "pister", "droit", "psychologie", "combat_distance_armes_poing"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "journaliste",
+        "name": "Journaliste",
+        "description": "Reporter en quête de vérité, prompt à suivre une affaire jusqu'à ses zones d'ombre.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["baratin", "langues", "bibliotheque", "histoire", "psychologie", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "antiquaire",
+        "name": "Antiquaire",
+        "description": "Marchand d'objets anciens, à l'œil affûté pour les pièces rares... et parfois maudites.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["estimation", "histoire", "occultisme", "bibliotheque", "langues", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "professeur_universite",
+        "name": "Professeur d'université",
+        "description": "Enseignant-chercheur reconnu dans sa discipline, habitué à la rigueur académique.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 10 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["sciences", "psychologie", "bibliotheque", "langues", "histoire", "langue_maternelle"],
+        "occupation_skill_choices": 2
+      },
+      {
+        "key": "medecin",
+        "name": "Médecin",
+        "description": "Praticien de la médecine, formé à soigner les blessures comme les maladies.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["medecine", "premiers_soins", "psychologie", "sciences", "bibliotheque", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "avocat",
+        "name": "Avocat",
+        "description": "Juriste plaidant, rompu à défendre ou attaquer un dossier devant un tribunal.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["droit", "baratin", "persuasion", "psychologie", "bibliotheque", "histoire"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "policier",
+        "name": "Policier",
+        "description": "Agent des forces de l'ordre, habitué au terrain et aux situations tendues.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["combat_rapproche", "intimidation", "droit", "trouver_objet_cache", "psychologie", "combat_distance_armes_poing"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "inspecteur_police",
+        "name": "Inspecteur de police",
+        "description": "Enquêteur assermenté chargé des affaires les plus sensibles du commissariat.",
+        "characteristics_bonus": [{ "characteristic": "INT", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["trouver_objet_cache", "droit", "psychologie", "intimidation", "discretion", "combat_distance_armes_poing"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "agent_federal",
+        "name": "Agent fédéral",
+        "description": "Représentant d'une agence gouvernementale, aux pouvoirs étendus mais aux comptes à rendre.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["droit", "combat_distance_armes_poing", "intimidation", "psychologie", "discretion", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "chasseur_de_primes",
+        "name": "Chasseur de primes",
+        "description": "Traqueur indépendant payé pour retrouver des fugitifs, mort ou vif si nécessaire.",
+        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["combat_distance_armes_poing", "intimidation", "pister", "discretion", "combat_rapproche", "survie"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "criminel",
+        "name": "Criminel",
+        "description": "Vit en marge de la loi, du cambriolage discret au grand banditisme.",
+        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(DEX, APP) * 2",
+        "occupation_skills": ["crochetage", "discretion", "pickpocket", "imposture", "intimidation", "mecanique"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "soldat",
+        "name": "Soldat",
+        "description": "Militaire de rang, formé au combat et à la discipline sous le feu.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["combat_distance_fusils", "combat_rapproche", "survie", "esquive", "mecanique", "orientation"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "chasseur_gros_gibier",
+        "name": "Chasseur de gros gibier",
+        "description": "Traqueur expérimenté des grands prédateurs, habitué aux contrées reculées.",
+        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
+        "occupation_skills": ["combat_distance_fusils", "pister", "survie", "naturalisme", "orientation", "equitation"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "marin",
+        "name": "Marin",
+        "description": "Homme ou femme de la mer, à l'aise sur un pont comme dans les vagues.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + Max(FOR, CON) * 2",
+        "occupation_skills": ["nager", "pilotage", "mecanique", "orientation", "survie", "combat_rapproche"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "pilote",
+        "name": "Pilote",
+        "description": "Aviateur professionnel, à l'aise aux commandes d'un aéronef.",
+        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + DEX * 2",
+        "occupation_skills": ["pilotage", "mecanique", "orientation", "electricite", "sciences", "langues"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "ingenieur",
+        "name": "Ingénieur",
+        "description": "Conçoit, construit et répare machines et structures complexes.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["mecanique", "electricite", "sciences", "arts_et_metiers", "comptabilite", "langue_maternelle"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "archeologue",
+        "name": "Archéologue",
+        "description": "Étudie les civilisations disparues sur le terrain, entre fouilles et bibliothèques.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["archeologie", "histoire", "naturalisme", "langues", "bibliotheque", "estimation"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "parapsychologue",
+        "name": "Parapsychologue",
+        "description": "Étudie sérieusement les phénomènes que la science refuse d'admettre.",
+        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["occultisme", "psychologie", "sciences", "bibliotheque", "histoire", "ecouter"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "membre_du_clerge",
+        "name": "Membre du clergé",
+        "description": "Guide spirituel d'une communauté, formé à l'écoute autant qu'à la doctrine.",
+        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["persuasion", "psychologie", "histoire", "baratin", "premiers_soins", "langue_maternelle"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "missionnaire",
+        "name": "Missionnaire",
+        "description": "Parti prêcher et soigner loin de chez soi, souvent en territoire hostile.",
+        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["persuasion", "langues", "premiers_soins", "psychologie", "naturalisme", "survie"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "infirmier",
+        "name": "Infirmier",
+        "description": "Soignant de terrain, souvent en première ligne face à la souffrance des patients.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["premiers_soins", "medecine", "psychologie", "sciences", "ecouter", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "ecrivain",
+        "name": "Écrivain",
+        "description": "Vit de sa plume, entre fiction et articles de circonstance.",
+        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["bibliotheque", "histoire", "persuasion", "langue_maternelle", "psychologie", "arts_et_metiers"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "artiste",
+        "name": "Artiste",
+        "description": "Peintre, sculpteur ou artisan d'art, vivant de sa sensibilité et de sa technique.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["arts_et_metiers", "histoire", "persuasion", "estimation", "baratin", "langue_maternelle"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "musicien",
+        "name": "Musicien",
+        "description": "Se produit sur scène ou compose, vivant au rythme des salles de concert.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["arts_et_metiers", "charme", "histoire", "ecouter", "baratin", "persuasion"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "artiste_de_scene",
+        "name": "Artiste de scène",
+        "description": "Comédien, magicien ou humoriste, habitué à captiver un public.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["charme", "baratin", "imposture", "arts_et_metiers", "ecouter", "psychologie"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "diplomate",
+        "name": "Diplomate",
+        "description": "Représentant officiel habitué aux salons feutrés et aux négociations délicates.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["persuasion", "langues", "baratin", "psychologie", "histoire", "charme"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "rentier",
+        "name": "Rentier",
+        "description": "Vit confortablement de sa fortune familiale, avec le temps libre que cela permet.",
+        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + APP * 2",
+        "occupation_skills": ["charme", "baratin", "equitation", "langues", "arts_et_metiers"],
+        "occupation_skill_choices": 2
+      },
+      {
+        "key": "athlete",
+        "name": "Athlète",
+        "description": "Sportif de haut niveau, entretenant un corps et des réflexes hors normes.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + DEX * 2",
+        "occupation_skills": ["sauter", "grimper", "nager", "esquive", "combat_rapproche", "lancer"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "fermier",
+        "name": "Fermier",
+        "description": "Travaille la terre et le bétail, habitué à l'effort physique et à la mécanique agricole.",
+        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + FOR * 2",
+        "occupation_skills": ["naturalisme", "conduite_engin_lourd", "mecanique", "survie", "equitation", "combat_distance_fusils"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "vagabond",
+        "name": "Vagabond",
+        "description": "Sans domicile fixe, survit grâce à sa débrouillardise et sa connaissance de la rue.",
+        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + CON * 2",
+        "occupation_skills": ["survie", "discretion", "trouver_objet_cache", "naturalisme", "pickpocket", "orientation"],
+        "occupation_skill_choices": 1
+      },
+      {
+        "key": "ouvrier",
+        "name": "Ouvrier",
+        "description": "Travailleur manuel qualifié, sur les chantiers ou en usine.",
+        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
+        "occupation_skill_points_formula": "EDU * 2 + FOR * 2",
+        "occupation_skills": ["mecanique", "conduite_engin_lourd", "combat_rapproche", "electricite", "arts_et_metiers", "conduite"],
+        "occupation_skill_choices": 1
+      }
+    ]
+  }
+}

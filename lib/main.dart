@@ -4,9 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'data/universe/universe_assets_loader.dart';
 
-void main() {
-  runApp(const ProviderScope(child: QuestbookApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final universes = await loadAllUniverseConfigs();
+  if (universes.isEmpty) {
+    throw StateError('No universe config found under assets/universes/universe_*.json.');
+  }
+  final creationModes = await loadAllCreationModeConfigs(universes);
+  if (creationModes.isEmpty) {
+    throw StateError('No creation mode config found under assets/universes/.');
+  }
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        availableCreationModesProvider.overrideWithValue(creationModes),
+        selectedCreationModeIdProvider.overrideWith(
+          () => SelectedCreationModeIdNotifier(creationModes.first.id),
+        ),
+        availableUniversesProvider.overrideWithValue(universes),
+      ],
+      child: const QuestbookApp(),
+    ),
+  );
 }
 
 class QuestbookApp extends ConsumerWidget {

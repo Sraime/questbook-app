@@ -35,6 +35,12 @@ abstract class Character with _$Character {
     return list;
   }
 
+  List<CharacterStat> get attributes {
+    final list = stats.where((s) => s.kind == StatKind.attribute).toList();
+    list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return list;
+  }
+
   CharacterResource? resourceByKey(String key) =>
       resources.cast<CharacterResource?>().firstWhere(
             (r) => r?.key == key,

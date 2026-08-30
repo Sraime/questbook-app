@@ -4,41 +4,49 @@
     "characteristics": [
       {
         "key": "FOR",
+        "default": 40,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "DEX",
+        "default": 50,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "CON",
+        "default": 50,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "POU",
+        "default": 50,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "APP",
+        "default": 60,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "EDU",
+        "default": 60,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "INT",
+        "default": 70,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },
       {
         "key": "TAI",
+        "default": 80,
         "calculation_method": "choice",
         "choices": ["40", "50", "60", "70", "80"]
       },

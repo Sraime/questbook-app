@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../tokens/colors.dart';
 import '../tokens/spacing.dart';
@@ -13,8 +14,10 @@ class QBInput extends StatelessWidget {
     this.error,
     this.placeholder = '…',
     this.controller,
+    this.focusNode,
     this.onChanged,
     this.keyboardType,
+    this.inputFormatters,
     this.readOnly = false,
     this.maxLines = 1,
   });
@@ -24,8 +27,10 @@ class QBInput extends StatelessWidget {
   final String? error;
   final String placeholder;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final bool readOnly;
   final int maxLines;
 
@@ -50,8 +55,10 @@ class QBInput extends StatelessWidget {
         ],
         TextField(
           controller: controller,
+          focusNode: focusNode,
           onChanged: onChanged,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           readOnly: readOnly,
           maxLines: maxLines,
           style: QBType.body().copyWith(

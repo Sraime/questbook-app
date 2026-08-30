@@ -66,11 +66,55 @@ void main() {
     expect(config.characterSheet.characteristics.map((c) => c.key), isNot(contains('FTN')));
   });
 
-  test('age is an integer global attribute', () {
+  test('age is an integer global attribute with a 5–100 range', () {
     final attributes = config.characterSheet.globalAttributes;
     expect(attributes.map((a) => a.key), contains('age'));
     final age = attributes.firstWhere((a) => a.key == 'age');
     expect(age.type, GlobalAttributeType.integer);
+    expect(age.min, 5);
+    expect(age.max, 100);
+  });
+
+  test('occupations are offered alphabetically, accents folded', () {
+    final names = config.characterSheet.occupationsAlphabetical.map((o) => o.name).toList();
+    expect(names.first, 'Agent fédéral');
+    expect(names, containsAll(['Antiquaire', 'Détective privé', 'Écrivain', 'Fermier']));
+    // "Écrivain" folds to "ecrivain" and sits with the Es, not after Z.
+    expect(names.indexOf('Diplomate'), lessThan(names.indexOf('Écrivain')));
+    expect(names.indexOf('Écrivain'), lessThan(names.indexOf('Fermier')));
+  });
+
+  test('every skill exposes a max total of 100', () {
+    expect(config.characterSheet.skills, isNotEmpty);
+    for (final skill in config.characterSheet.skills) {
+      expect(skill.max, 100, reason: '${skill.key} is missing max: 100');
+    }
+  });
+
+  test('a mode file that restates every characteristic keeps its own order', () {
+    final merged = CharacterSheetConfig.merge(
+      general: {
+        'personal_skill_points': '0',
+        'characteristics': [
+          {'key': 'A', 'name': 'A', 'calculation_method': 'roll'},
+          {'key': 'B', 'name': 'B', 'calculation_method': 'roll'},
+          {'key': 'C', 'name': 'C', 'calculation_method': 'roll'},
+        ],
+        'skills': <Map<String, dynamic>>[],
+        'occupations': <Map<String, dynamic>>[],
+        'resources': <Map<String, dynamic>>[],
+      },
+      overrides: {
+        'characteristics': [
+          {'key': 'C', 'calculation_method': 'choice', 'choices': ['1'], 'default': 1},
+          {'key': 'A', 'calculation_method': 'choice', 'choices': ['1']},
+          {'key': 'B', 'calculation_method': 'choice', 'choices': ['1']},
+        ],
+      },
+    );
+    expect(merged.characteristics.map((c) => c.key), ['C', 'A', 'B']);
+    expect(merged.characteristicByKey('C').defaultValue, 1);
+    expect(merged.characteristicByKey('A').defaultValue, isNull);
   });
 
   test('no skill is named "Crédit" anymore', () {

@@ -109,7 +109,7 @@
     "personal_skill_points": "INT * 2",
     "skills": [
       { "key": "baratin", "name": "Baratin", "description": "Convaincre autrui par le bluff ou l'éloquence.", "base_value": 10 },
-      { "key": "mythe_de_cthulhu", "name": "Mythe de Cthulhu", "description": "Connaissance interdite du Mythe ; sa hausse érode durablement la santé mentale.", "base_value": 0 },
+      { "key": "mythe_de_cthulhu", "name": "Mythe de Cthulhu", "description": "Connaissance interdite du Mythe ; sa hausse érode durablement la santé mentale.", "base_value": 0, "max": 100 },
       { "key": "langue_maternelle", "name": "Langue maternelle", "description": "Maîtrise de la langue natale de l'investigateur. Base dérivée : Éducation.", "base_formula": "EDU" }
     ],
     "occupations": [

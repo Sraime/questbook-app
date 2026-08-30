@@ -10,6 +10,7 @@ import '../../design_system/components/qb_input.dart';
 import '../../design_system/components/qb_inventory_row.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/components/qb_stat_dial.dart';
+import '../../design_system/components/qb_stat_grid.dart';
 import '../../design_system/components/qb_tabs.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
@@ -180,9 +181,11 @@ class _OverviewTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle('Caractéristiques'),
-        Wrap(
-          alignment: WrapAlignment.center,
-          runSpacing: 14,
+        // Four equal-width columns spanning the card: each dial is
+        // centered in its cell, so the grid itself is centered and a
+        // short last row stays aligned to the same columns (instead of
+        // drifting as a separately-centered Wrap run).
+        QBStatGrid(
           children: [
             // `stat.key` is already the short code (FOR, DEX…) — more
             // readable than the full name in this small circular dial.
@@ -192,22 +195,25 @@ class _OverviewTab extends ConsumerWidget {
         ),
         if (character.attributes.isNotEmpty) ...[
           const SizedBox(height: QBSpace.s3),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: QBSpace.s2,
-            runSpacing: QBSpace.s2,
-            children: [
-              // Global attributes (e.g. age, Fortune) aren't game-mechanical
-              // characteristics, so they're shown as plain text badges
-              // rather than dials — a choice attribute's stored value is
-              // an option index (mapped back to its label here), an
-              // integer attribute's is the raw number.
-              for (final stat in character.attributes)
-                QBBadge(
-                  label: '${stat.label} : ${_attributeValueLabel(globalAttributes[stat.key], stat.value)}',
-                  tone: QBTone.neutral,
-                ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: QBSpace.s2,
+              runSpacing: QBSpace.s2,
+              children: [
+                // Global attributes (e.g. age, Fortune) aren't game-mechanical
+                // characteristics, so they're shown as plain text badges
+                // rather than dials — a choice attribute's stored value is
+                // an option index (mapped back to its label here), an
+                // integer attribute's is the raw number.
+                for (final stat in character.attributes)
+                  QBBadge(
+                    label: '${stat.label} : ${_attributeValueLabel(globalAttributes[stat.key], stat.value)}',
+                    tone: QBTone.neutral,
+                  ),
+              ],
+            ),
           ),
         ],
         const SizedBox(height: QBSpace.s4),

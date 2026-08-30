@@ -201,30 +201,72 @@ class CharacterSheetConfig {
     }
     return null;
   }
+
+  SkillConfig skillByKey(String key) => skills.firstWhere(
+        (s) => s.key == key,
+        orElse: () => throw ArgumentError('Unknown skill "$key"'),
+      );
+
+  /// [occupations] sorted alphabetically by display name for pickers — the
+  /// catalogue's own declaration order stays whatever the config uses
+  /// (nothing else depends on it).
+  List<OccupationConfig> get occupationsAlphabetical {
+    final sorted = [...occupations];
+    sorted.sort((a, b) => _foldDiacritics(a.name).compareTo(_foldDiacritics(b.name)));
+    return sorted;
+  }
 }
 
+/// Minimal accent/case folding for French display-name sorting (so e.g.
+/// "Écrivain" sorts with the Es instead of after every unaccented letter,
+/// which is where its raw code point would otherwise put it) — good
+/// enough for the occupation/skill names in these configs, not a general
+/// Unicode normalization.
+String _foldDiacritics(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp('[àâä]'), 'a')
+    .replaceAll(RegExp('[éèêë]'), 'e')
+    .replaceAll(RegExp('[îï]'), 'i')
+    .replaceAll(RegExp('[ôö]'), 'o')
+    .replaceAll(RegExp('[ùûü]'), 'u')
+    .replaceAll('ç', 'c')
+    .replaceAll('œ', 'oe');
+
 /// Merges two `key`-identified lists of raw JSON objects — the building
-/// block of [CharacterSheetConfig.merge] — keeping [general]'s order for
-/// entries it defines, appending any [overrides]-only entries after.
+/// block of [CharacterSheetConfig.merge]. Field values still come from
+/// [overrides] when both sides define the same key. Order:
+/// - if [overrides] restates every key from [general] (a mode file that
+///   re-lists the full catalogue, e.g. Simplifié's characteristics), the
+///   mode file's own order wins;
+/// - otherwise [general]'s order is kept and any [overrides]-only entries
+///   are appended (so a partial override like Classique's three skill
+///   tweaks doesn't reshuffle the whole skill list).
 List<Map<String, dynamic>> _mergeEntriesByKey(
   List<dynamic>? general,
   List<dynamic>? overrides,
 ) {
   final merged = <String, Map<String, dynamic>>{};
-  final order = <String>[];
+  final generalKeys = <String>[];
+  final overrideKeys = <String>[];
   for (final entry in general ?? const []) {
     final map = entry as Map<String, dynamic>;
     final key = map['key'] as String;
     merged[key] = Map<String, dynamic>.from(map);
-    order.add(key);
+    generalKeys.add(key);
   }
   for (final entry in overrides ?? const []) {
     final map = entry as Map<String, dynamic>;
     final key = map['key'] as String;
     final existing = merged[key];
     merged[key] = existing == null ? Map<String, dynamic>.from(map) : {...existing, ...map};
-    if (existing == null) order.add(key);
+    overrideKeys.add(key);
   }
+  final generalKeySet = generalKeys.toSet();
+  final overrideRestatesAll =
+      overrideKeys.isNotEmpty && generalKeySet.every(overrideKeys.contains);
+  final order = overrideRestatesAll
+      ? overrideKeys
+      : [...generalKeys, ...overrideKeys.where((k) => !generalKeySet.contains(k))];
   return [for (final key in order) merged[key]!];
 }
 
@@ -244,6 +286,8 @@ class GlobalAttributeConfig {
     this.description = '',
     required this.type,
     this.choices = const [],
+    this.min,
+    this.max,
   });
 
   final String key;
@@ -255,6 +299,13 @@ class GlobalAttributeConfig {
   /// order — the persisted stat value is the index into this list, same
   /// convention as [CharacteristicConfig.choices].
   final List<String> choices;
+
+  /// Valid range for a [GlobalAttributeType.integer] attribute (CoC7's
+  /// age: 5-100) — null means that bound isn't enforced. Not meaningful
+  /// for a [GlobalAttributeType.choice] attribute, whose valid range is
+  /// implicitly `[0, choices.length - 1]`.
+  final int? min;
+  final int? max;
 
   factory GlobalAttributeConfig.fromJson(Map<String, dynamic> json) {
     return GlobalAttributeConfig(
@@ -268,6 +319,8 @@ class GlobalAttributeConfig {
       choices: (json['choices'] as List<dynamic>? ?? const [])
           .map((e) => e as String)
           .toList(),
+      min: json['min'] as int?,
+      max: json['max'] as int?,
     );
   }
 }
@@ -287,6 +340,7 @@ class CharacteristicConfig {
     this.calculationFormula,
     this.conditionTable,
     this.choices = const [],
+    this.defaultValue,
   });
 
   final String key;
@@ -301,6 +355,14 @@ class CharacteristicConfig {
   /// the index into this list; for a numeric choice (see [isNumericChoice]),
   /// it's the actual chosen number — see [choiceValueAt].
   final List<String> choices;
+
+  /// The value a [CalculationMethod.choice] characteristic should start
+  /// pre-filled with (e.g. Simplifié's FOR defaults to `40`), or null if
+  /// this characteristic has no configured default — in which case the
+  /// player must actively pick a value, same "tap the circle" flow as a
+  /// roll, rather than starting on an arbitrary pre-selected option. See
+  /// [defaultChoiceIndex].
+  final int? defaultValue;
 
   /// True when every [choices] option parses as a number — signals a
   /// "point-buy" primary characteristic (e.g. `["40", "50", "60", "70",
@@ -322,6 +384,15 @@ class CharacteristicConfig {
     return num.tryParse(choices[clamped]) ?? clamped;
   }
 
+  /// The index within [choices] matching [defaultValue], or null if this
+  /// characteristic has no configured default (or [defaultValue] doesn't
+  /// match any option) — see [defaultValue].
+  int? get defaultChoiceIndex {
+    if (defaultValue == null) return null;
+    final index = choices.indexOf(defaultValue.toString());
+    return index == -1 ? null : index;
+  }
+
   factory CharacteristicConfig.fromJson(Map<String, dynamic> json) {
     return CharacteristicConfig(
       key: json['key'] as String,
@@ -339,6 +410,7 @@ class CharacteristicConfig {
       choices: (json['choices'] as List<dynamic>? ?? const [])
           .map((e) => e as String)
           .toList(),
+      defaultValue: json['default'] as int?,
     );
   }
 }
@@ -370,6 +442,7 @@ class SkillConfig {
     required this.description,
     this.baseValue,
     this.baseFormula,
+    this.max,
   });
 
   final String key;
@@ -377,6 +450,11 @@ class SkillConfig {
   final String description;
   final int? baseValue;
   final String? baseFormula;
+
+  /// The highest total (base + occupation bonus + personal bonus) this
+  /// skill can reach at creation — null means uncapped. See
+  /// `CharacterCreationNotifier.incrementSkill`/`incrementOccupationSkill`.
+  final int? max;
 
   /// Short label for the "base X" hint under a skill row.
   String get baseDisplay => baseFormula ?? '${baseValue ?? 0} %';
@@ -388,6 +466,7 @@ class SkillConfig {
       description: json['description'] as String? ?? '',
       baseValue: json['base_value'] as int?,
       baseFormula: json['base_formula'] as String?,
+      max: json['max'] as int?,
     );
   }
 }

@@ -48,7 +48,7 @@ class CharacteristicChoiceDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(characterCreationProvider);
     final notifier = ref.read(characterCreationProvider.notifier);
-    final selectedIndex = state.choiceCharacteristics[characteristicKey] ?? 0;
+    final selectedIndex = state.choiceCharacteristics[characteristicKey];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -72,8 +72,9 @@ class CharacteristicChoiceDialog extends ConsumerWidget {
               QBButton(
                 label: choices[i],
                 size: QBButtonSize.sm,
-                variant:
-                    i == selectedIndex ? QBButtonVariant.primary : QBButtonVariant.ghost,
+                variant: selectedIndex != null && i == selectedIndex
+                    ? QBButtonVariant.primary
+                    : QBButtonVariant.ghost,
                 onPressed: () => notifier.setChoiceCharacteristic(characteristicKey, i),
               ),
           ],

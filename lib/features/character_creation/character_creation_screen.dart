@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_input.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/components/qb_select.dart';
+import '../../design_system/components/qb_stat_grid.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
@@ -31,6 +33,7 @@ class _CharacterCreationScreenState
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final Map<String, TextEditingController> _attributeControllers = {};
+  final Map<String, FocusNode> _attributeFocusNodes = {};
 
   /// Lazily creates (and remembers) the text controller for an integer
   /// [GlobalAttributeConfig] (e.g. age) — cleared alongside the name/
@@ -42,12 +45,32 @@ class _CharacterCreationScreenState
     );
   }
 
+  /// Lazily creates (and remembers) the focus node for an integer
+  /// [GlobalAttributeConfig] field — used only to re-sync the displayed
+  /// text with the clamped stored value once the player leaves the field,
+  /// so a number typed beyond `min`/`max` doesn't linger on screen after
+  /// being silently clamped in state (see `setGlobalAttributeValue`).
+  FocusNode _attributeFocusNode(String key) {
+    return _attributeFocusNodes.putIfAbsent(key, () {
+      final node = FocusNode();
+      node.addListener(() {
+        if (node.hasFocus) return;
+        final value = ref.read(characterCreationProvider).globalAttributeValues[key];
+        if (value != null) _attributeControllers[key]?.text = value.toString();
+      });
+      return node;
+    });
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     for (final controller in _attributeControllers.values) {
       controller.dispose();
+    }
+    for (final node in _attributeFocusNodes.values) {
+      node.dispose();
     }
     super.dispose();
   }
@@ -91,6 +114,10 @@ class _CharacterCreationScreenState
           controller.dispose();
         }
         _attributeControllers.clear();
+        for (final node in _attributeFocusNodes.values) {
+          node.dispose();
+        }
+        _attributeFocusNodes.clear();
       }
     });
 
@@ -202,7 +229,7 @@ class _CharacterCreationScreenState
                   QBSelect(
                     label: 'Occupation',
                     value: state.occupation,
-                    options: [for (final o in sheet.occupations) o.name],
+                    options: [for (final o in sheet.occupationsAlphabetical) o.name],
                     onChanged: ref
                         .read(characterCreationProvider.notifier)
                         .setOccupation,
@@ -228,11 +255,22 @@ class _CharacterCreationScreenState
                           a.key,
                           state.globalAttributeValues[a.key] ?? 0,
                         ),
+                        focusNode: _attributeFocusNode(a.key),
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          if (a.max != null) _MaxIntInputFormatter(a.max!),
+                        ],
+                        hint: a.min != null || a.max != null
+                            ? 'Entre ${a.min ?? '…'} et ${a.max ?? '…'}'
+                            : null,
                         onChanged: (value) {
+                          if (value.isEmpty) return;
+                          final parsed = int.tryParse(value);
+                          if (parsed == null) return;
                           ref
                               .read(characterCreationProvider.notifier)
-                              .setGlobalAttributeValue(a.key, int.tryParse(value) ?? 0);
+                              .setGlobalAttributeValue(a.key, parsed);
                         },
                       ),
                   ],
@@ -256,35 +294,47 @@ class _CharacterCreationScreenState
                       ),
                     ),
                   ),
-                  Wrap(
-                    alignment: WrapAlignment.center,
+                  // A single loop over `sheet.characteristics`, in the
+                  // config's own order, rather than one loop per
+                  // calculation method — so the circles line up the same
+                  // way the ruleset lists them (e.g. FOR..TAI before CHA)
+                  // instead of being regrouped by how each is assigned.
+                  QBStatGrid(
                     runSpacing: 10,
                     children: [
-                      for (final c in sheet.rollableCharacteristics)
-                        _StatPreviewCircle(
-                          label: c.key,
-                          value: state.characteristics[c.key],
-                          onTap: () => _rollStat(c.key, c.name),
-                        ),
-                      // Some modes assign primary characteristics by
-                      // picking from a fixed numeric list instead of
-                      // rolling dice (e.g. a "point-buy" mode) — same
-                      // tap-a-circle-to-open-a-popup style as a roll, just
-                      // a value picker inside instead of dice.
-                      for (final c in sheet.numericChoiceCharacteristics)
-                        _StatPreviewCircle(
-                          label: c.key,
-                          value: state.resolvedCharacteristics[c.key],
-                          onTap: () => _pickChoiceStat(c.key, c.name, c.choices),
-                        ),
-                      for (final d in sheet.derivedCharacteristics)
-                        _StatPreviewCircle(
-                          label: d.key,
-                          value: state.allCharacteristicsRolled
-                              ? _derivedValue(state, d.key)
-                              : null,
-                          isAuto: true,
-                        ),
+                      for (final c in sheet.characteristics)
+                        if (c.calculationMethod == CalculationMethod.roll)
+                          _StatPreviewCircle(
+                            label: c.key,
+                            value: state.characteristics[c.key],
+                            onTap: () => _rollStat(c.key, c.name),
+                          )
+                        else if (c.calculationMethod == CalculationMethod.choice &&
+                            c.isNumericChoice)
+                          // Some modes assign primary characteristics by
+                          // picking from a fixed numeric list instead of
+                          // rolling dice (e.g. a "point-buy" mode) — same
+                          // tap-a-circle-to-open-a-popup style as a roll,
+                          // just a value picker inside instead of dice.
+                          _StatPreviewCircle(
+                            label: c.key,
+                            value: state.choiceCharacteristics[c.key] == null
+                                ? null
+                                : state.resolvedCharacteristics[c.key],
+                            onTap: () => _pickChoiceStat(c.key, c.name, c.choices),
+                          )
+                        else if (c.calculationMethod == CalculationMethod.derived)
+                          _StatPreviewCircle(
+                            label: c.key,
+                            value: state.allCharacteristicsRolled
+                                ? _derivedValue(state, c.key)
+                                : null,
+                            isAuto: true,
+                          ),
+                      // Flavor/text choices (none left in CoC7 now that
+                      // Fortune is a global attribute) are deliberately
+                      // skipped here — they're display-only and belong
+                      // next to the occupation picker instead.
                     ],
                   ),
                 ],
@@ -571,7 +621,9 @@ class _SkillRow extends ConsumerWidget {
                   onDecrement: eligibleForOccupation && occAllocated > 0
                       ? () => notifier.decrementOccupationSkill(skill.key)
                       : null,
-                  onIncrement: eligibleForOccupation && state.occupationSkillPointsRemaining > 0
+                  onIncrement: eligibleForOccupation &&
+                          state.occupationSkillPointsRemaining > 0 &&
+                          (skill.max == null || total < skill.max!)
                       ? () => notifier.incrementOccupationSkill(skill.key)
                       : null,
                 ),
@@ -582,7 +634,8 @@ class _SkillRow extends ConsumerWidget {
                 gradientColors: const [QBColors.juicyBlueTop, QBColors.juicyBlueBottom],
                 onDecrement:
                     persoAllocated > 0 ? () => notifier.decrementSkill(skill.key) : null,
-                onIncrement: state.skillPointsRemaining > 0
+                onIncrement: state.skillPointsRemaining > 0 &&
+                        (skill.max == null || total < skill.max!)
                     ? () => notifier.incrementSkill(skill.key)
                     : null,
               ),
@@ -700,5 +753,26 @@ class _StepperButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Rejects a keystroke that would push the integer above [max] (so e.g.
+/// age can't be typed as 101 when the config says `max: 100`). Values
+/// below [GlobalAttributeConfig.min] are still allowed while typing —
+/// `setGlobalAttributeValue` clamps them once the field is committed.
+class _MaxIntInputFormatter extends TextInputFormatter {
+  const _MaxIntInputFormatter(this.max);
+
+  final int max;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+    final parsed = int.tryParse(newValue.text);
+    if (parsed == null || parsed > max) return oldValue;
+    return newValue;
   }
 }

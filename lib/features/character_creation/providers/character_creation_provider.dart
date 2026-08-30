@@ -43,15 +43,19 @@ class CharacterCreationState {
         skillAllocated: {
           for (final s in config.characterSheet.skills) s.key: 0,
         },
+        // Only pre-filled when the config gives this option an explicit
+        // `default` — otherwise it stays null (pending), same as a rolled
+        // characteristic before the dice are tapped, until the player
+        // actively picks a value. See `CharacteristicConfig.defaultValue`.
         choiceCharacteristics: {
           for (final c in config.characterSheet.choiceCharacteristics)
-            c.key: c.choices.isEmpty ? 0 : (c.choices.length - 1) ~/ 2,
+            c.key: c.defaultChoiceIndex,
         },
         globalAttributeValues: {
           for (final a in config.characterSheet.globalAttributes)
             a.key: a.type == GlobalAttributeType.choice
                 ? (a.choices.isEmpty ? 0 : (a.choices.length - 1) ~/ 2)
-                : 0,
+                : (a.min ?? 0),
         },
       );
 
@@ -62,11 +66,10 @@ class CharacterCreationState {
   final Map<String, int?> characteristics;
   final Map<String, int> skillAllocated;
 
-  /// Selected option index for each [CharacterSheetConfig.choiceCharacteristics]
-  /// (CoC7: Fortune), keyed by characteristic key. Pre-filled with a sensible
-  /// default (the middle option) so it never blocks anything — the player
-  /// can still change it right after picking an occupation.
-  final Map<String, int> choiceCharacteristics;
+  /// Selected option index for each [CharacterSheetConfig.choiceCharacteristics],
+  /// keyed by characteristic key — null until the player picks one, unless
+  /// the characteristic has a configured [CharacteristicConfig.defaultValue].
+  final Map<String, int?> choiceCharacteristics;
 
   /// Current value for each [CharacterSheetConfig.globalAttributes], keyed
   /// by attribute key — the raw number for
@@ -88,8 +91,15 @@ class CharacterCreationState {
 
   final bool isSubmitting;
 
+  /// True once every primary characteristic has a value, however it's
+  /// assigned — dice-rolled ([characteristics]) or, for a numeric choice
+  /// (point-buy) mode, actually picked by the player rather than just
+  /// sitting on a default. Gates the skill-point formulas, which need
+  /// every primary characteristic resolved first.
   bool get allCharacteristicsRolled =>
-      characteristics.values.every((v) => v != null);
+      characteristics.values.every((v) => v != null) &&
+      config.characterSheet.numericChoiceCharacteristics
+          .every((c) => choiceCharacteristics[c.key] != null);
 
   /// Every primary characteristic's current value, whichever way it's
   /// assigned: dice-rolled ([characteristics]) or picked from a numeric
@@ -97,21 +107,23 @@ class CharacterCreationState {
   /// [CharacterSheetConfig.numericChoiceCharacteristics]). Feeds every
   /// formula (derived characteristics, skill bases, resources, skill-point
   /// budgets) — text/flavor choices (Fortune) are deliberately excluded,
-  /// since nothing but display ever needs their value.
+  /// since nothing but display ever needs their value. Unpicked/unrolled
+  /// characteristics read as 0 here; callers needing to know whether that's
+  /// a "real" 0 should check [allCharacteristicsRolled] first.
   Map<String, int> get resolvedCharacteristics {
     final resolved = characteristics.map((k, v) => MapEntry(k, v ?? 0));
     for (final c in config.characterSheet.numericChoiceCharacteristics) {
-      final index = choiceCharacteristics[c.key] ?? 0;
-      resolved[c.key] = c.choiceValueAt(index).round();
+      final index = choiceCharacteristics[c.key];
+      resolved[c.key] = index == null ? 0 : c.choiceValueAt(index).round();
     }
     return resolved;
   }
 
   /// Display label for the player's current pick on a [choice]
-  /// characteristic (e.g. "Moyen" for Fortune).
+  /// characteristic (e.g. "Moyen" for Fortune), or '' if unset.
   String choiceLabel(CharacteristicConfig choice) {
-    final index = choiceCharacteristics[choice.key] ?? 0;
-    if (choice.choices.isEmpty) return '';
+    final index = choiceCharacteristics[choice.key];
+    if (choice.choices.isEmpty || index == null) return '';
     return choice.choices[index.clamp(0, choice.choices.length - 1)];
   }
 
@@ -202,7 +214,7 @@ class CharacterCreationState {
     Map<String, int>? skillAllocated,
     Map<String, int>? occupationSkillAllocated,
     List<String?>? occupationSkillChoiceSelections,
-    Map<String, int>? choiceCharacteristics,
+    Map<String, int?>? choiceCharacteristics,
     Map<String, int>? globalAttributeValues,
     bool? isSubmitting,
   }) {
@@ -249,17 +261,24 @@ class CharacterCreationNotifier extends Notifier<CharacterCreationState> {
   void setDescription(String value) => state = state.copyWith(description: value);
 
   /// Sets the player's pick (by option index) for a [CalculationMethod.choice]
-  /// characteristic, e.g. Fortune.
+  /// characteristic, e.g. a point-buy mode's FOR/DEX/….
   void setChoiceCharacteristic(String key, int index) {
-    final updated = Map<String, int>.from(state.choiceCharacteristics)..[key] = index;
+    final updated = Map<String, int?>.from(state.choiceCharacteristics)..[key] = index;
     state = state.copyWith(choiceCharacteristics: updated);
   }
 
   /// Sets the value of a [CharacterSheetConfig.globalAttributes] entry —
-  /// the raw number for an integer attribute (CoC7: age), or the picked
-  /// option's index for a choice attribute (CoC7: Fortune).
+  /// the raw number for an integer attribute (CoC7: age), clamped to its
+  /// configured [GlobalAttributeConfig.min]/[GlobalAttributeConfig.max] if
+  /// any, or the picked option's index for a choice attribute (CoC7:
+  /// Fortune).
   void setGlobalAttributeValue(String key, int value) {
-    final updated = Map<String, int>.from(state.globalAttributeValues)..[key] = value;
+    final attribute = state.config.characterSheet.globalAttributes
+        .firstWhere((a) => a.key == key, orElse: () => throw ArgumentError('Unknown global attribute "$key"'));
+    final resolved = attribute.type == GlobalAttributeType.integer
+        ? _clampToRange(value, attribute.min, attribute.max)
+        : value;
+    final updated = Map<String, int>.from(state.globalAttributeValues)..[key] = resolved;
     state = state.copyWith(globalAttributeValues: updated);
   }
 
@@ -295,6 +314,8 @@ class CharacterCreationNotifier extends Notifier<CharacterCreationState> {
 
   void incrementSkill(String key) {
     if (state.skillPointsRemaining <= 0) return;
+    final skill = state.config.characterSheet.skillByKey(key);
+    if (skill.max != null && state.valueFor(skill) >= skill.max!) return;
     final updated = Map<String, int>.from(state.skillAllocated);
     updated[key] = (updated[key] ?? 0) + 1;
     state = state.copyWith(skillAllocated: updated);
@@ -314,6 +335,8 @@ class CharacterCreationNotifier extends Notifier<CharacterCreationState> {
   void incrementOccupationSkill(String key) {
     if (!state.occupationEligibleSkillKeys.contains(key)) return;
     if (state.occupationSkillPointsRemaining <= 0) return;
+    final skill = state.config.characterSheet.skillByKey(key);
+    if (skill.max != null && state.valueFor(skill) >= skill.max!) return;
     final updated = Map<String, int>.from(state.occupationSkillAllocated);
     updated[key] = (updated[key] ?? 0) + 1;
     state = state.copyWith(occupationSkillAllocated: updated);
@@ -473,3 +496,11 @@ final characterCreationProvider =
     NotifierProvider<CharacterCreationNotifier, CharacterCreationState>(
   CharacterCreationNotifier.new,
 );
+
+/// Clamps [value] to `[min, max]`, either bound being a no-op when null.
+int _clampToRange(int value, int? min, int? max) {
+  var result = value;
+  if (min != null && result < min) result = min;
+  if (max != null && result > max) result = max;
+  return result;
+}

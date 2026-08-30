@@ -20,6 +20,12 @@ void main() {
       expect(FormulaEvaluator.evaluate('Floor((444 - 500) / 80)', const {}), -1);
     });
 
+    test('Max() returns the largest of its arguments', () {
+      expect(FormulaEvaluator.evaluate('Max(3, 7)', const {}), 7);
+      expect(FormulaEvaluator.evaluate('Max(FOR, DEX) * 2', {'FOR': 40, 'DEX': 65}), 130);
+      expect(FormulaEvaluator.evaluate('Max(1, 5, 3, 9, 2)', const {}), 9);
+    });
+
     test('throws on unknown identifiers', () {
       expect(
         () => FormulaEvaluator.evaluate('UNKNOWN + 1', const {}),

@@ -14,7 +14,9 @@ import '../../design_system/components/qb_tabs.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../../app/providers.dart';
 import '../../domain/models/character.dart';
+import '../../domain/models/creation_mode_config.dart';
 import '../../domain/models/tone.dart';
 import 'providers/character_detail_provider.dart';
 import 'widgets/resource_edit_dialog.dart';
@@ -158,13 +160,22 @@ class _Header extends StatelessWidget {
       };
 }
 
-class _OverviewTab extends StatelessWidget {
+class _OverviewTab extends ConsumerWidget {
   const _OverviewTab({required this.character});
 
   final Character character;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Looked up by the character's own `systemId` (not the creation flow's
+    // current selection) so a sheet keeps rendering correctly under its
+    // original ruleset even after the player picks a different one.
+    final config = ref.watch(creationModeByIdProvider(character.systemId));
+    final globalAttributes = {
+      for (final a in config?.characterSheet.globalAttributes ?? const [])
+        a.key: a,
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -173,10 +184,32 @@ class _OverviewTab extends StatelessWidget {
           alignment: WrapAlignment.center,
           runSpacing: 14,
           children: [
+            // `stat.key` is already the short code (FOR, DEX…) — more
+            // readable than the full name in this small circular dial.
             for (final stat in character.characteristics)
-              QBStatDial(label: stat.label, value: stat.value),
+              QBStatDial(label: stat.key, value: stat.value),
           ],
         ),
+        if (character.attributes.isNotEmpty) ...[
+          const SizedBox(height: QBSpace.s3),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: QBSpace.s2,
+            runSpacing: QBSpace.s2,
+            children: [
+              // Global attributes (e.g. age, Fortune) aren't game-mechanical
+              // characteristics, so they're shown as plain text badges
+              // rather than dials — a choice attribute's stored value is
+              // an option index (mapped back to its label here), an
+              // integer attribute's is the raw number.
+              for (final stat in character.attributes)
+                QBBadge(
+                  label: '${stat.label} : ${_attributeValueLabel(globalAttributes[stat.key], stat.value)}',
+                  tone: QBTone.neutral,
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: QBSpace.s4),
         _sectionTitle('Compétences'),
         QBCard(
@@ -224,6 +257,18 @@ class _OverviewTab extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// For a [GlobalAttributeType.choice] attribute, maps the stored option
+  /// index back to its label; for an integer attribute (or if [attribute]
+  /// is unknown — config missing/outdated), just shows the raw value.
+  String _attributeValueLabel(GlobalAttributeConfig? attribute, int value) {
+    if (attribute == null || attribute.type != GlobalAttributeType.choice) {
+      return '$value';
+    }
+    final choices = attribute.choices;
+    if (choices.isEmpty) return '$value';
+    return choices[value.clamp(0, choices.length - 1)];
   }
 
   Widget _sectionTitle(String title) => Padding(

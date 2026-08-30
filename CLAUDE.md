@@ -104,25 +104,137 @@ flutter build apk --release                                  # build release (si
 ## Fiche de personnage pilotée par config JSON (`assets/universes/`)
 
 Les caractéristiques, compétences, occupations (+ bonus) et ressources
-(PV/SAN/PM) ne sont **pas** codées en dur : elles viennent de
-`assets/universes/<systemId>.json` (aujourd'hui `cthulhu-v7.json`), parsé en
-`UniverseConfig` (`lib/domain/models/universe_config.dart`) et interprété
-par `ConfigRulesEngine`/`FormulaEvaluator`
+(PV/SAN/PM) ne sont **pas** codées en dur : elles viennent des fichiers
+`assets/universes/`, interprétés en `CreationModeConfig`
+(`lib/domain/models/creation_mode_config.dart`) par
+`ConfigRulesEngine`/`FormulaEvaluator`
 (`lib/domain/rules/config_rules_engine.dart` et `formula_evaluator.dart`) —
-un petit interpréteur qui gère dés (`3D6`), arithmétique (`+ - * / Floor()`)
-et conditions (`>= <= && ||`) à partir de simples chaînes du JSON. Voir la
-section [Configuration par univers](README.md#configuration-par-univers-assetsuniversesjson)
+un petit interpréteur qui gère dés (`3D6`), arithmétique
+(`+ - * / Floor() Max(a, b, ...)`) et conditions (`>= <= && ||`) à partir de
+simples chaînes du JSON. Voir la section
+[Univers et mode de création](README.md#univers-et-mode-de-création)
 du README pour le détail.
 
+- **Deux types de fichiers cohabitent** dans `assets/universes/`,
+ distingués par préfixe de nom : `universe_<id>.json` = un **univers**
+ (`UniverseConfig` — nom, description, url du pdf de règles, seuils de
+ critique, **et** un `general_configuration` : le tronc commun
+ characteristics/skills/occupations/resources/global_attributes partagé
+ par tous ses modes) ; tout le reste = un fichier de **surcharges** pour un
+ mode de création précis, référencé par le `configuration_file` de
+ l'entrée correspondante dans `creation_modes` de son univers — pas
+ d'`id`/`name`/`description` dans ce fichier, juste un `character_sheet`
+ qui ne porte que ce qui *diffère* du `general_configuration` (ex. le
+ `calculation_method` d'une caractéristique, alors que son `name`/
+ `description` restent hérités). `UniverseConfig.generalConfigurationJson`
+ reste volontairement **non parsé** (`Map<String, dynamic>` brut) — la
+ fusion doit se faire au niveau JSON, champ par champ, avant que
+ `CharacterSheetConfig.fromJson` ne s'exécute une seule fois sur le
+ résultat.
+- `CharacterSheetConfig.merge({general, overrides})`
+ (`lib/domain/models/creation_mode_config.dart`) fait cette fusion, liste
+ par liste, **par `key`** (`_mergeEntriesByKey`) : une entrée des deux
+ côtés est fusionnée champ par champ (`overrides` gagne) ; une entrée
+ seulement côté `overrides` est un ajout propre à ce mode (ex. la
+ compétence `mythe_de_cthulhu`, propre à "Classique") ; une entrée
+ seulement côté `general` est héritée sans y toucher. `buildCreationModeConfig`
+ (`lib/data/universe/universe_assets_loader.dart`) assemble ensuite
+ id/nom/description (venant de l'entrée `creation_modes` de l'univers,
+ **pas** du fichier de mode) + ce `character_sheet` fusionné — exposé
+ séparément du chargement `rootBundle` pour que les tests puissent
+ l'exercer directement sur les fichiers réels via `dart:io` (voir
+ `test/domain/models/creation_mode_config_test.dart`).
+ `loadAllUniverseConfigs()`/`loadAllCreationModeConfigs(universes)` (cette
+ dernière prend désormais la liste d'univers déjà chargée, pour résoudre
+ les `configuration_file` qu'ils indexent) restent basés sur
+ `AssetManifest` — pas de liste d'ids codée en dur — et sont exposés via
+ `availableUniversesProvider`/`availableCreationModesProvider`. Si tu
+ cherches encore `critical_success_max` dans un `character_sheet` (fichier
+ de mode ou `general_configuration`), c'est normal qu'il n'y soit lu que
+ depuis le **niveau univers** (top-level du fichier `universe_*.json`, pas
+ depuis `general_configuration` qui en porte une copie non lue/inerte) —
+ `ConfigRulesEngine` prend `(CreationModeConfig, UniverseConfig)` en
+ constructeur.
+- Le joueur choisit "Univers" puis (même carte, avec nom/description du
+ personnage) "Mode de création" en haut de l'écran de création
+ (`CharacterCreationScreen`), ce qui pilote
+ `selectedCreationModeIdProvider`/`selectedCreationModeProvider`/
+ `selectedUniverseProvider` — dont dépend tout le reste du formulaire.
+ Ajouter un mode de création (ex. un futur "Débutant") = un nouveau
+ fichier de surcharges + une entrée dans `creation_modes` de son univers,
+ aucun changement Dart. Chaque personnage garde son `systemId` d'origine
+ (`Character.systemId`) ; la fiche le relit via `creationModeByIdProvider`
+ plutôt que la sélection courante, pour rester correcte même si d'autres
+ modes sont ajoutés après.
+- Call of Cthulhu a deux modes, tous deux définis par surcharge du même
+ `general_configuration` : "Classique" (`call_of_cthulhu_classique.json`,
+ dés) et "Simplifié" (`call_of_cthulhu_simplifie.json`) où FOR/DEX/CON/
+ POU/APP/ÉDU/INT/TAI sont choisies dans `["40","50","60","70","80"]` au
+ lieu d'être lancées — leur `name`/`description` restent identiques dans
+ les deux (hérités), seul `calculation_method`/`calculation_formula`/
+ `choices` change. Ce sont des `calculation_method: "choice"`
+ **numériques** — voir `CharacteristicConfig.isNumericChoice`/
+ `choiceValueAt` et `CharacterSheetConfig.numericChoiceCharacteristics`. Un
+ choix numérique alimente `CharacterCreationState.resolvedCharacteristics`
+ avec sa **vraie valeur** (pas son index) : sinon `ConfigRulesEngine`
+ planterait sur les formules dérivées/compétences/ressources qui
+ référencent ces clés (`DEX / 2`, `(CON + TAI) / 10`…), puisque
+ `FormulaEvaluator` lève une erreur sur un identifiant inconnu.
 - Pour changer une règle de calcul (formule de caractéristique, seuil de
   palier, bonus d'occupation…), éditer le JSON, **pas** le code Dart — sauf
   mécanique réellement nouvelle que l'évaluateur ne sait pas exprimer.
-- `main.dart` charge ce fichier une fois avant `runApp` et l'injecte via
-  `universeConfigProvider.overrideWithValue(...)` : c'est pour ça que ce
-  provider lève une erreur s'il n'est jamais overridé (ne pas essayer de le
-  lire depuis un test sans lui fournir une valeur, cf.
+- Il y a **deux** budgets de points de compétence distincts, cumulables sur
+  une même compétence :
+  - `character_sheet.personal_skill_points` (une seule formule par univers,
+    ex. `"INT * 2"` pour CdC v7 —
+    `CharacterSheetConfig.personalSkillPointsFormula`,
+    `CharacterCreationState.skillPointsTotal`/`skillAllocated`) : dépensable
+    sur n'importe quelle compétence.
+  - `occupations[].occupation_skill_points_formula` (une formule par
+    occupation, ex. `"EDU * 4"` ou `"EDU * 2 + Max(FOR, DEX) * 2"` —
+    `OccupationConfig.occupationSkillPointsFormula`,
+    `CharacterCreationState.occupationSkillPointsTotal`/
+    `occupationSkillAllocated`) : dépensable **uniquement** sur
+    `occupations[].occupation_skills` (+ les créneaux
+    `occupation_skill_choices` où le joueur choisit lui-même une compétence
+    supplémentaire éligible — `occupationSkillChoiceSelections`,
+    `setOccupationSkillChoice`). Changer d'occupation réinitialise ce
+    budget (les compétences éligibles changent).
+  - Les deux sont distincts de `occupations[].skills_bonus`, un bonus fixe
+    et non réparti par le joueur que le schéma permet d'accorder
+    automatiquement à des compétences précises (même forme que
+    `characteristics_bonus`) — aucune occupation de CdC v7 ne s'en sert
+    plus depuis l'introduction des points d'occupation ci-dessus, mais le
+    champ reste dans le modèle (`OccupationConfig.skillsBonus`/
+    `skillBonusFor`) pour un futur système.
+- Les infos propres à un univers mais qui ne sont **jamais lues par une
+  formule** (juste enregistrées/affichées) vivent dans
+  `character_sheet.global_attributes`, pas dans `characteristics` — c'est
+  la différence avec une caractéristique à choix numérique ci-dessus.
+  `GlobalAttributeConfig` (`lib/domain/models/creation_mode_config.dart`)
+  a un `type` : `"integer"` (nombre libre, ex. l'âge) ou `"choice"` (liste
+  fixe `choices: [...]`, stockée comme l'index dans cette liste — CdC v7
+  s'en sert pour Fortune : "Indigent" → "Richissime", qui a remplacé
+  l'ancienne compétence Crédit). Voir
+  `CharacterCreationState.globalAttributeValues`/
+  `globalAttributeChoiceLabel`/`setGlobalAttributeValue` — les champs
+  apparaissent dans l'écran de création juste après le choix de
+  l'occupation (`QBSelect` pour `choice`, `QBInput` numérique pour
+  `integer`). Persisté comme `CharacterStat` avec `kind:
+  StatKind.attribute` (3e valeur de l'enum, à côté de
+  `characteristic`/`skill` — voir `Character.attributes`). Sur la fiche,
+  ces attributs sont affichés en badge texte (pas dans un `QBStatDial`,
+  pensé pour un nombre de caractéristique) — voir `_OverviewTab` dans
+  `character_sheet_screen.dart`. Ne pas confondre avec le nom/la
+  description du personnage : ceux-ci sont communs à tout univers et
+  restent hors de ce fichier de config.
+- `main.dart` charge tous ces fichiers une fois avant `runApp` et injecte la
+  liste via `availableCreationModesProvider.overrideWithValue(...)` (plus
+  un id par défaut pour `selectedCreationModeIdProvider`) : c'est pour ça
+  que ces providers lèvent une erreur s'ils ne sont jamais overridés (ne
+  pas essayer de les lire depuis un test sans leur fournir une valeur, cf.
   `test/domain/rules/config_rules_engine_test.dart` pour construire un
-  `UniverseConfig` minimal à la main).
+  `CreationModeConfig` minimal à la main).
 - Les regex de `FormulaEvaluator` utilisent `matchAsPrefix(string, start)`
   **sans** ancre `^` : en Dart, `^` vise le tout début de la chaîne, pas le
   paramètre `start` — un piège déjà rencontré en écrivant ce fichier.

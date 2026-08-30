@@ -4,73 +4,52 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:questbook/domain/models/universe_config.dart';
 
-/// Smoke-tests the shipped `assets/universes/cthulhu-v7.json` itself (read
-/// straight off disk — `flutter test`'s working directory is the project
-/// root), so a malformed edit to that file fails fast instead of only
-/// surfacing at runtime.
+/// Smoke-tests the shipped `assets/universes/universe_call_of_cthulhu.json`
+/// — the universe-level metadata/constants shared by every Call of Cthulhu
+/// creation mode (see `creation_mode_config_test.dart` and
+/// `call_of_cthulhu_simplifie_test.dart` for the modes themselves).
 void main() {
-  late UniverseConfig config;
+  late UniverseConfig universe;
 
   setUpAll(() {
-    final raw = File('assets/universes/cthulhu-v7.json').readAsStringSync();
-    config = UniverseConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    final raw =
+        File('assets/universes/universe_call_of_cthulhu.json').readAsStringSync();
+    universe = UniverseConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   });
 
-  test('parses top-level metadata', () {
-    expect(config.id, 'cthulhu-v7');
-    expect(config.name, isNotEmpty);
-    expect(config.rulebookPdfUrl, startsWith('https://'));
+  test('parses name/description/rulebook url', () {
+    expect(universe.id, 'call_of_cthulhu');
+    expect(universe.name, 'Call of Cthulhu');
+    expect(universe.description, isNotEmpty);
+    expect(universe.rulebookPdfUrl, startsWith('https://'));
   });
 
-  test('has the 8 rollable primary characteristics plus Chance', () {
-    final rollableKeys = config.characterSheet.rollableCharacteristics.map((c) => c.key);
-    expect(
-      rollableKeys,
-      containsAll(['FOR', 'DEX', 'CON', 'POU', 'APP', 'EDU', 'INT', 'TAI', 'CHA']),
-    );
+  test('has the standard 05/96 crit/fumble thresholds', () {
+    expect(universe.criticalSuccessMax, 5);
+    expect(universe.criticalFailureMin, 96);
   });
 
-  test('has the 4 derived characteristics', () {
-    final derivedKeys = config.characterSheet.derivedCharacteristics.map((c) => c.key);
-    expect(derivedKeys, containsAll(['ESQ', 'MVT', 'COR', 'IMP']));
-  });
-
-  test('every skill has either a base_value or a base_formula', () {
-    for (final skill in config.characterSheet.skills) {
+  test('indexes both creation modes with their override file', () {
+    expect(universe.creationModes, hasLength(2));
+    final ids = universe.creationModes.map((c) => c.id);
+    expect(ids, containsAll(['call_of_cthulhu_classique', 'call_of_cthulhu_simplifie']));
+    for (final mode in universe.creationModes) {
+      expect(mode.name, isNotEmpty);
+      expect(mode.configurationFile, endsWith('.json'));
       expect(
-        skill.baseValue != null || skill.baseFormula != null,
+        File('assets/universes/${mode.configurationFile}').existsSync(),
         isTrue,
-        reason: '${skill.key} has neither base_value nor base_formula',
-      );
-    }
-    expect(config.characterSheet.skills, isNotEmpty);
-  });
-
-  test('every occupation has a name and at least one bonus', () {
-    expect(config.characterSheet.occupations, isNotEmpty);
-    for (final occupation in config.characterSheet.occupations) {
-      expect(occupation.name, isNotEmpty);
-      expect(
-        occupation.characteristicsBonus.isNotEmpty || occupation.skillsBonus.isNotEmpty,
-        isTrue,
-        reason: '${occupation.key} grants no bonus at all',
+        reason: '${mode.configurationFile} referenced by "${mode.id}" is missing',
       );
     }
   });
 
-  test('occupationByName finds an occupation by its display name', () {
-    final medecin = config.characterSheet.occupationByName('Médecin');
-    expect(medecin, isNotNull);
-    expect(medecin!.skillBonusFor('medecine'), greaterThan(0));
-  });
-
-  test('has the 3 tracked resources (PV/SAN/PM)', () {
-    final keys = config.characterSheet.resources.map((r) => r.key);
-    expect(keys, containsAll(['PV', 'SAN', 'PM']));
-  });
-
-  test('skill_points_formula references EDU and INT', () {
-    expect(config.characterSheet.skillPointsFormula, contains('EDU'));
-    expect(config.characterSheet.skillPointsFormula, contains('INT'));
+  test('general_configuration holds the shared characteristics/skills/occupations catalogue', () {
+    final general = universe.generalConfigurationJson;
+    expect(general['characteristics'], isNotEmpty);
+    expect(general['skills'], isNotEmpty);
+    expect(general['occupations'], isNotEmpty);
+    expect(general['resources'], isNotEmpty);
+    expect(general['global_attributes'], isNotEmpty);
   });
 }

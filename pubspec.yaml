@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.12.2
@@ -73,9 +73,12 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Per-universe character sheet configs (characteristics/skills/occupations/
-  # resources + roll formulas) — see lib/data/universe/universe_config_loader.dart
-  # and lib/domain/models/universe_config.dart.
+  # One JSON file per creation mode (universe + ruleset): characteristics/
+  # skills/occupations/resources + roll formulas, plus one `universe_*.json`
+  # file per universe (name/description/rulebook url/crit thresholds) — see
+  # lib/data/universe/universe_assets_loader.dart,
+  # lib/domain/models/creation_mode_config.dart and
+  # lib/domain/models/universe_config.dart.
   assets:
     - assets/universes/
 

@@ -1,12 +1,13 @@
 import 'dart:math';
 
+import '../models/creation_mode_config.dart';
 import '../models/universe_config.dart';
 import 'formula_evaluator.dart';
 import 'rules_engine.dart';
 
-/// [RulesEngine] implementation that interprets a [UniverseConfig] instead
-/// of hardcoding one system's math. Any game system describable by the
-/// `assets/universes/*.json` shape — dice-rolled characteristics, and
+/// [RulesEngine] implementation that interprets a [CreationModeConfig]
+/// instead of hardcoding one system's math. Any game system describable by
+/// the `assets/universes/*.json` shape — dice-rolled characteristics, and
 /// derived stats via arithmetic or a `condition_table` — works through this
 /// single class; only a genuinely novel mechanic would need a bespoke
 /// [RulesEngine] implementation.
@@ -14,9 +15,14 @@ import 'rules_engine.dart';
 /// Division results are always rounded *down* (`.floor()`), matching Call
 /// of Cthulhu 7e's own rules for stats like Hit Points/Magic Points/Esquive.
 class ConfigRulesEngine implements RulesEngine {
-  const ConfigRulesEngine(this.config);
+  const ConfigRulesEngine(this.config, this.universe);
 
-  final UniverseConfig config;
+  final CreationModeConfig config;
+
+  /// Crit/fumble thresholds live at the universe level (shared by every
+  /// creation mode of that universe) rather than per-mode — see
+  /// `domain/models/universe_config.dart`.
+  final UniverseConfig universe;
 
   @override
   String get systemId => config.id;
@@ -89,9 +95,9 @@ class ConfigRulesEngine implements RulesEngine {
     final rng = random ?? Random();
     final roll = 1 + rng.nextInt(100);
     final CheckOutcome outcome;
-    if (roll <= config.characterSheet.criticalSuccessMax) {
+    if (roll <= universe.criticalSuccessMax) {
       outcome = CheckOutcome.criticalSuccess;
-    } else if (roll >= config.characterSheet.criticalFailureMin) {
+    } else if (roll >= universe.criticalFailureMin) {
       outcome = CheckOutcome.criticalFailure;
     } else if (roll <= targetValue) {
       outcome = CheckOutcome.success;

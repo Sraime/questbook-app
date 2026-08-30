@@ -4,22 +4,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
-import 'data/universe/universe_config_loader.dart';
-
-/// Only one universe is bundled today (Cthulhu v7) — its config is loaded
-/// once here and injected as a provider override, so the rest of the app
-/// can read `universeConfigProvider` synchronously. Once a second universe
-/// exists, this hardcoded id becomes a user choice (e.g. a "new table"
-/// screen) instead.
-const _defaultSystemId = 'cthulhu-v7';
+import 'data/universe/universe_assets_loader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final universeConfig = await loadUniverseConfig(_defaultSystemId);
+  final universes = await loadAllUniverseConfigs();
+  if (universes.isEmpty) {
+    throw StateError('No universe config found under assets/universes/universe_*.json.');
+  }
+  final creationModes = await loadAllCreationModeConfigs(universes);
+  if (creationModes.isEmpty) {
+    throw StateError('No creation mode config found under assets/universes/.');
+  }
 
   runApp(
     ProviderScope(
-      overrides: [universeConfigProvider.overrideWithValue(universeConfig)],
+      overrides: [
+        availableCreationModesProvider.overrideWithValue(creationModes),
+        selectedCreationModeIdProvider.overrideWith(
+          () => SelectedCreationModeIdNotifier(creationModes.first.id),
+        ),
+        availableUniversesProvider.overrideWithValue(universes),
+      ],
       child: const QuestbookApp(),
     ),
   );

@@ -59,23 +59,35 @@ class _CharacteristicRollDialogState
   }
 
   @override
-  void initState() {
-    super.initState();
-    // Defer the first roll until after this frame finishes building: the
-    // dialog's initState still runs as part of the widget tree build, and
-    // Riverpod forbids modifying provider state while building.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _performRoll();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final roll = _roll;
     if (roll == null) {
-      return const SizedBox(
-        height: 220,
-        child: Center(child: CircularProgressIndicator()),
+      // Nothing rolled yet — wait for the player to trigger it, rather than
+      // rolling automatically as soon as the dialog opens.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Lance 3d6 pour déterminer ta caractéristique.',
+            textAlign: TextAlign.center,
+            style: QBType.body().copyWith(
+              fontSize: QBType.sm,
+              color: QBColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s5),
+          if (widget.bonusLabel != null) ...[
+            QBBadge(label: widget.bonusLabel!, tone: QBTone.info),
+            const SizedBox(height: QBSpace.s5),
+          ],
+          QBButton(
+            label: 'Lancer le dé',
+            variant: QBButtonVariant.primary,
+            expand: true,
+            onPressed: _performRoll,
+          ),
+        ],
       );
     }
     return Column(

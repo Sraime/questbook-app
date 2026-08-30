@@ -1,0 +1,113 @@
+{
+  "character_sheet": {
+    "global_attributes": [],
+    "characteristics": [
+      {
+        "key": "FOR",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "DEX",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "CON",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "POU",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "APP",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "EDU",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "INT",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "TAI",
+        "calculation_method": "choice",
+        "choices": ["40", "50", "60", "70", "80"]
+      },
+      {
+        "key": "CHA",
+        "calculation_method": "roll",
+        "calculation_formula": "3D6*5"
+      },
+      {
+        "key": "ESQ",
+        "calculation_method": "derived",
+        "calculation_formula": "DEX / 2"
+      },
+      {
+        "key": "MVT",
+        "calculation_method": "derived",
+        "condition_table": [
+          { "condition": "FOR > TAI && DEX > TAI", "value": 9 },
+          { "condition": "FOR < TAI && DEX < TAI", "value": 7 },
+          { "condition": "true", "value": 8 }
+        ]
+      },
+      {
+        "key": "COR",
+        "calculation_method": "derived",
+        "condition_table": [
+          { "condition": "FOR + TAI <= 64", "value": -2 },
+          { "condition": "FOR + TAI <= 84", "value": -1 },
+          { "condition": "FOR + TAI <= 124", "value": 0 },
+          { "condition": "FOR + TAI <= 164", "value": 1 },
+          { "condition": "FOR + TAI <= 204", "value": 2 },
+          { "condition": "FOR + TAI <= 284", "value": 3 },
+          { "condition": "FOR + TAI <= 364", "value": 4 },
+          { "condition": "FOR + TAI <= 444", "value": 5 },
+          { "condition": "true", "value": "5 + Floor((FOR + TAI - 444) / 80)" }
+        ]
+      },
+      {
+        "key": "IMP",
+        "calculation_method": "derived",
+        "condition_table": [
+          { "condition": "FOR + TAI <= 64", "value": -2 },
+          { "condition": "FOR + TAI <= 84", "value": -1 },
+          { "condition": "FOR + TAI <= 124", "value": 0 },
+          { "condition": "FOR + TAI <= 164", "value": 1 },
+          { "condition": "FOR + TAI <= 204", "value": 2 },
+          { "condition": "FOR + TAI <= 284", "value": 3 },
+          { "condition": "FOR + TAI <= 364", "value": 4 },
+          { "condition": "FOR + TAI <= 444", "value": 5 },
+          { "condition": "true", "value": "5 + Floor((FOR + TAI - 444) / 80)" }
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "key": "PV",
+        "formula": "(CON + TAI) / 10"
+      },
+      {
+        "key": "SAN",
+        "formula": "POU"
+      },
+      {
+        "key": "PM",
+        "formula": "POU / 5"
+      }
+    ],
+    "personal_skill_points": "INT * 2",
+    "skills": [],
+    "occupations": []
+  }
+}

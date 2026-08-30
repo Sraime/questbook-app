@@ -14,7 +14,8 @@ import 'dart:math';
 /// add     := mul (('+'|'-') mul)*
 /// mul     := unary (('*'|'/') unary)*
 /// unary   := '-' unary | primary
-/// primary := number | dice | 'Floor(' or ')' | identifier | '(' or ')'
+/// primary := number | dice | 'Floor(' or ')' | 'Max(' or (',' or)* ')'
+///          | identifier | '(' or ')'
 /// ```
 /// Dice tokens look like `3D6`/`3d6`/`d6` (count defaults to 1). Each one
 /// rolls immediately against the supplied [Random] and is appended to
@@ -187,6 +188,22 @@ class FormulaEvaluator {
           throw FormatException('Expected ")" after Floor(...) in "$_expr"');
         }
         return value.floor();
+      }
+      _pos = savedPos;
+    }
+
+    if (_expr.startsWith('Max', _pos) || _expr.startsWith('max', _pos)) {
+      final savedPos = _pos;
+      _pos += 3;
+      if (_consume('(')) {
+        final values = <num>[_parseOr()];
+        while (_consume(',')) {
+          values.add(_parseOr());
+        }
+        if (!_consume(')')) {
+          throw FormatException('Expected ")" after Max(...) in "$_expr"');
+        }
+        return values.reduce((a, b) => a > b ? a : b);
       }
       _pos = savedPos;
     }

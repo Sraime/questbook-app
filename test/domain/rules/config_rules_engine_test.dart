@@ -1,14 +1,15 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:questbook/domain/models/creation_mode_config.dart';
 import 'package:questbook/domain/models/universe_config.dart';
 import 'package:questbook/domain/rules/config_rules_engine.dart';
 import 'package:questbook/domain/rules/rules_engine.dart';
 
-/// Minimal hand-built config mirroring the shipped Cthulhu v7 shape, kept
-/// small/deterministic on purpose — the real file is smoke-tested
-/// separately in `test/domain/models/universe_config_test.dart`.
-UniverseConfig _buildConfig() {
+/// Minimal hand-built config mirroring the shipped Call of Cthulhu "Classique"
+/// shape, kept small/deterministic on purpose — the real file is
+/// smoke-tested separately in `test/domain/models/creation_mode_config_test.dart`.
+CreationModeConfig _buildConfig() {
   const characteristics = [
     CharacteristicConfig(
       key: 'FOR',
@@ -62,26 +63,31 @@ UniverseConfig _buildConfig() {
     ),
   ];
 
-  return const UniverseConfig(
+  return const CreationModeConfig(
     id: 'test-system',
-    name: 'Test system',
-    description: '',
-    version: '',
-    rulebookPdfUrl: '',
+    universeName: 'Test universe',
+    creationModeName: 'Test mode',
     characterSheet: CharacterSheetConfig(
       characteristics: characteristics,
       skills: [],
       occupations: [],
       resources: [],
-      skillPointsFormula: 'EDU * 4',
-      criticalSuccessMax: 5,
-      criticalFailureMin: 96,
+      personalSkillPointsFormula: 'INT * 2',
     ),
   );
 }
 
+const _testUniverse = UniverseConfig(
+  id: 'test-universe',
+  name: 'Test universe',
+  description: '',
+  rulebookPdfUrl: '',
+  criticalSuccessMax: 5,
+  criticalFailureMin: 96,
+);
+
 void main() {
-  final engine = ConfigRulesEngine(_buildConfig());
+  final engine = ConfigRulesEngine(_buildConfig(), _testUniverse);
 
   group('rollCharacteristic', () {
     test('uses the characteristic\'s own formula, plus a flat bonus', () {

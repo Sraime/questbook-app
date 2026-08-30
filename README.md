@@ -10,7 +10,9 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Arborescence](#arborescence)
   - [Couches applicatives](#couches-applicatives)
   - [Modèle de données](#modèle-de-données)
-  - [Configuration par univers (`assets/universes/*.json`)](#configuration-par-univers-assetsuniversesjson)
+  - [Univers et mode de création](#univers-et-mode-de-création)
+  - [Configuration d'un univers (`assets/universes/universe_*.json`)](#configuration-dun-univers-assetsuniversesuniverse_json)
+  - [Configuration d'un mode de création (`assets/universes/*.json`)](#configuration-dun-mode-de-création-assetsuniversesjson)
   - [Extensibilité multi-système](#extensibilité-multi-système)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
@@ -30,7 +32,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 ## Aperçu fonctionnel
 
 - **Accueil (`/perso`)** : liste des personnages créés, avec un badge de points de vie et un accès rapide à la fiche.
-- **Création de personnage (`/perso/create`)** : nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7) individuellement ou en une fois, répartition des points de compétence.
+- **Création de personnage (`/perso/create`)** : choix de l'univers et du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des campagnes/tables de jeu, création d'une nouvelle table (titre + univers).
 
@@ -57,7 +59,10 @@ Le projet suit une architecture en couches façon *clean architecture* simplifi�
 
 ```
 assets/
-└── universes/                  # Un fichier JSON par système de jeu (cthulhu-v7.json…)
+└── universes/                  # Un fichier universe_<id>.json par univers (métadonnées +
+                                 # tronc commun general_configuration + index des modes)
+                                 # et un fichier de surcharges par mode de création qu'il
+                                 # référence (ex. call_of_cthulhu_classique.json…)
 lib/
 ├── app/                       # Bootstrap : router, thème, providers racine
 │   ├── router.dart            # Déclaration des routes go_router
@@ -66,16 +71,20 @@ lib/
 ├── domain/                    # Cœur métier, indépendant de Flutter/Drift
 │   ├── models/                # Character, CharacterStat, CharacterResource,
 │   │                          # GameSystem, GameTable, InventoryItem, Tone,
-│   │                          # UniverseConfig (parsing des configs d'univers)
+│   │                          # CreationModeConfig (parsing des configs de
+│   │                          # mode de création), UniverseConfig (parsing
+│   │                          # des métadonnées d'univers)
 │   ├── repositories/          # Interfaces abstraites (Character/GameSystem/Table)
 │   └── rules/                 # RulesEngine (interface) + ConfigRulesEngine
 │                               # (implémentation générique) + FormulaEvaluator
 ├── data/
-│   ├── universe/               # Chargement des configs d'univers (assets JSON)
+│   ├── universe/               # Découverte + chargement des configs de mode
+│   │                            # de création et d'univers (assets JSON)
 │   └── local/
 │       ├── database.dart      # Schéma Drift (tables SQLite) + AppDatabase
 │       ├── local_*_repository.dart  # Implémentations locales des repositories
-│       └── seed/               # seedDatabase() — insère le GameSystem actif
+│       └── seed/               # seedDatabase() — insère le GameSystem de
+│                                # chaque mode de création bundlé
 ├── design_system/
 │   ├── tokens/                # colors, spacing, typography, effects (constantes de design)
 │   └── components/            # Widgets réutilisables préfixés qb_ (bouton, carte, dés, etc.)
@@ -93,8 +102,8 @@ lib/
 ### Couches applicatives
 
 1. **`domain`** définit *quoi* (modèles + contrats de repository) et *comment calculer* (interface `RulesEngine`), sans savoir comment c'est stocké ni affiché.
-2. **`data/local`** persiste ces modèles dans SQLite via Drift (`AppDatabase`), et traduit entre les lignes Drift générées (`*Row`) et les modèles `domain` dans les `Local*Repository`. **`data/universe`** charge et parse le fichier JSON du système de jeu actif (`assets/universes/<id>.json`) en `UniverseConfig`.
-3. **`app/providers.dart`** est le point de câblage (DI) : il expose `appDatabaseProvider`, `universeConfigProvider` (injecté depuis `main.dart` au démarrage), un provider par repository, et `rulesEngineProvider`. C'est le seul endroit à modifier pour brancher un futur backend distant (`Remote*Repository`) à la place du local.
+2. **`data/local`** persiste ces modèles dans SQLite via Drift (`AppDatabase`), et traduit entre les lignes Drift générées (`*Row`) et les modèles `domain` dans les `Local*Repository`. **`data/universe`** découvre et parse tous les fichiers JSON sous `assets/universes/` en deux listes distinctes (par préfixe de nom de fichier) : les modes de création (`CreationModeConfig`) et les univers (`UniverseConfig`).
+3. **`app/providers.dart`** est le point de câblage (DI) : il expose `appDatabaseProvider`, `availableCreationModesProvider`/`availableUniversesProvider` (les listes complètes, injectées depuis `main.dart` au démarrage), `selectedCreationModeProvider`/`selectedCreationModeIdProvider`/`selectedUniverseProvider` (le mode de création — et l'univers qui va avec — choisi par le joueur en cours de création de personnage), un provider par repository, et `rulesEngineProvider`. C'est le seul endroit à modifier pour brancher un futur backend distant (`Remote*Repository`) à la place du local.
 4. **`features/*`** contient un `Notifier`/`AsyncNotifier` Riverpod par écran (ex. `CharacterCreationNotifier`, `CharacterListProvider`) qui lit les repositories/le rules engine, et les widgets d'écran qui les consomment via `ConsumerWidget`/`ConsumerStatefulWidget`.
 5. **`design_system`** ne connaît ni Riverpod ni le domaine métier : ce sont des widgets purs paramétrés par variant/label/callback, réutilisés à l'identique entre les écrans.
 
@@ -102,57 +111,120 @@ lib/
 
 Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu générique :
 
-- `GameSystems` — un système de jeu (ex. `cthulhu-v7`) avec ses suggestions d'occupation.
+- `GameSystems` — un mode de création (ex. `call_of_cthulhu_classique`) avec ses suggestions d'occupation.
 - `Characters` — rattaché à un `GameSystem`, avec nom/occupation/description/niveau.
 - `CharacterStats` — caractéristiques **et** compétences d'un personnage (`kind` distingue les deux), génériques sur `key`/`label`/`value` pour rester agnostiques du système.
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
 - `GameTables` — tables/campagnes, éventuellement rattachées à un système.
 
-Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul le fichier de config JSON de l'univers (voir ci-dessous) change.
+Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul un nouveau fichier de config JSON de mode de création (voir ci-dessous) change.
 
-### Configuration par univers (`assets/universes/*.json`)
+### Univers et mode de création
 
-Les caractéristiques, compétences, occupations (et leurs bonus), ressources (PV/SAN/PM) et formules de calcul de la fiche de personnage **ne sont pas codées en dur** : elles vivent dans un fichier JSON par univers/système de jeu, `assets/universes/<systemId>.json` (aujourd'hui : `cthulhu-v7.json`). C'est ce fichier qui pilote entièrement l'écran de création et la fiche de personnage.
+Un **univers** (ex. "Call of Cthulhu") peut avoir plusieurs **modes de création** : des variantes de règles pour construire un personnage dans cet univers. Aujourd'hui, Call of Cthulhu en a deux : "Classique" (jets de dés) et "Simplifié" (caractéristiques choisies dans une liste de valeurs proposées plutôt que tirées aux dés) — un futur mode suivrait le même schéma. Un univers **structure** tout ce qui est commun à ses modes (caractéristiques, compétences, occupations, ressources, attributs globaux — voir [Configuration d'un univers](#configuration-dun-univers-assetsuniversesuniverse_json) juste après) ; chaque mode de création est un second fichier JSON qui ne porte que ce qui *diffère* réellement de ce tronc commun (voir [Configuration d'un mode de création](#configuration-dun-mode-de-création-assetsuniverses) ensuite).
 
-Forme résumée du fichier (voir `assets/universes/cthulhu-v7.json` pour l'exemple complet) :
+Au démarrage, `main.dart` charge d'abord tous les univers (`loadAllUniverseConfigs()`), puis résout chaque mode de création qu'ils indexent (`loadAllCreationModeConfigs(universes)`) en fusionnant le tronc commun de son univers avec son propre fichier de surcharge (voir `lib/data/universe/universe_assets_loader.dart`, basé sur `AssetManifest` pour la découverte des `universe_*.json` — pas de liste codée en dur), puis les injecte via `availableCreationModesProvider`/`availableUniversesProvider`. Dans l'écran de création (`CharacterCreationScreen`), le joueur choisit son "Univers", puis (dans la même section, avec le nom et la description du personnage) son "Mode de création" ; ce choix pilote `selectedCreationModeIdProvider`/`selectedCreationModeProvider`/`selectedUniverseProvider`, dont dépend tout le reste du formulaire (occupations, caractéristiques, compétences…) — changer de sélection réinitialise le brouillon en cours. Chaque personnage garde une référence immuable vers le mode de création qui l'a vu naître via `Character.systemId` (voir `creationModeByIdProvider`, utilisé par la fiche de personnage pour toujours l'interpréter avec le bon jeu de règles, même si d'autres modes sont ajoutés plus tard).
+
+### Configuration d'un univers (`assets/universes/universe_*.json`)
+
+Un fichier `assets/universes/universe_<id>.json` porte trois choses :
+
+1. Les **métadonnées/constantes** partagées par tous les modes de création de cet univers — nom, description, lien vers le livre de règles, seuils de réussite/échec critique.
+2. L'**index `creation_modes`** : la liste des modes de création de cet univers, chacun avec son identité (`id`/`name`/`description`) et le nom du fichier JSON (`configuration_file`, relatif au même dossier) qui porte ses propres règles.
+3. Le **`general_configuration`** : le tronc commun — même forme qu'un `character_sheet` de mode de création (`global_attributes`/`characteristics`/`resources`/`skills`/`occupations`) — que chaque mode de création vient ensuite compléter/surcharger.
 
 ```jsonc
 {
-  "id": "cthulhu-v7",
-  "name": "L'Appel de Cthulhu",
-  "character_sheet": {
-    "skill_points_formula": "EDU * 4 + INT * 2",
-    "critical_success_max": 5,
-    "critical_failure_min": 96,
+  "id": "call_of_cthulhu",
+  "name": "Call of Cthulhu",
+  "description": "L'Appel de Cthulhu est un jeu de rôle d'horreur basé sur les récits de H. P. Lovecraft…",
+  "rulebook_pdf_url": "https://www.chaosium.com/wp-content/uploads/2023/04/Call-of-Cthulhu-7th-Edition-Rulebook.pdf",
+  "critical_success_max": 5,
+  "critical_failure_min": 96,
+  "creation_modes": [
+    { "id": "call_of_cthulhu_classique", "name": "Classique",
+      "description": "Lancez vos dés pour déterminer les valeurs de vos caractéristiques.",
+      "configuration_file": "call_of_cthulhu_classique.json" },
+    { "id": "call_of_cthulhu_simplifie", "name": "Simplifié",
+      "description": "Affectez les valeurs 40, 50, 50, 50, 60, 60, 70 et 80 aux huit caractéristiques dans l'ordre de votre choix.",
+      "configuration_file": "call_of_cthulhu_simplifie.json" }
+  ],
+  "general_configuration": {
+    "global_attributes": [
+      { "key": "age", "name": "Âge", "type": "integer" },
+      { "key": "fortune", "name": "Fortune", "type": "choice",
+        "choices": ["Indigent", "Pauvre", "Moyen", "Aisé", "Riche", "Richissime"] }
+    ],
     "characteristics": [
-      { "key": "FOR", "name": "Force", "calculation_method": "roll", "calculation_formula": "3D6*5" },
-      { "key": "ESQ", "name": "Esquive", "calculation_method": "derived", "calculation_formula": "DEX / 2" },
-      { "key": "MVT", "name": "Mouvement", "calculation_method": "derived",
-        "condition_table": [
-          { "condition": "FOR > TAI && DEX > TAI", "value": 9 },
-          { "condition": "true", "value": 8 }
-        ] }
+      { "key": "FOR", "name": "Force", "description": "Puissance physique brute…", "type": "integer", "min": 0, "max": 100 }
     ],
     "skills": [
-      { "key": "bibliotheque", "name": "Bibliothèque", "base_value": 20 },
-      { "key": "esquive", "name": "Esquive", "base_formula": "DEX / 2" }
+      { "key": "bibliotheque", "name": "Bibliothèque", "description": "Trouver une information…", "base_value": 20, "max": 100 }
     ],
     "occupations": [
-      { "key": "medecin", "name": "Médecin",
+      { "key": "medecin", "name": "Médecin", "description": "Praticien de la médecine…",
         "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
-        "skills_bonus": [{ "skill": "medecine", "flat_bonus": 20 }] }
+        "occupation_skill_points_formula": "EDU * 4",
+        "occupation_skills": ["medecine", "premiers_soins", "psychologie", "sciences", "bibliotheque", "persuasion"],
+        "occupation_skill_choices": 1 }
     ],
     "resources": [
-      { "key": "PV", "label": "PV", "formula": "(CON + TAI) / 10", "tone": "danger" }
+      { "key": "PV", "label": "PV", "description": "Points de vie…", "type": "integer", "min": 0, "max": 100, "tone": "danger" }
     ]
   }
 }
 ```
 
-Les chaînes `calculation_formula`/`condition_table[].condition`/`condition_table[].value`/`skill_points_formula`/`resources[].formula`/`skills[].base_formula` sont interprétées par un petit évaluateur (`lib/domain/rules/formula_evaluator.dart`) qui supporte les dés (`3D6`, `d6`), l'arithmétique (`+ - * /`, parenthèses, `Floor()`), et les conditions (`>= <= == != > <`, `&& ||`). C'est ce même évaluateur — pas de code Dart spécifique à Cthulhu — qui calcule les jets, les stats dérivées, le budget de points de compétence et les ressources.
+Le champ `name` est ce que `CreationModeConfig.universe_name` doit matcher exactement pour rattacher un mode de création à cet univers (voir `universeByNameProvider`). `critical_success_max`/`critical_failure_min` sont lus par `ConfigRulesEngine.rollSkillCheck` — un jet ≤ au premier est toujours une réussite critique, un jet ≥ au second toujours un échec critique, quelle que soit la compétence visée. Notez ce qui *manque* volontairement au `general_configuration` ci-dessus : ni `calculation_method`/`calculation_formula` sur une caractéristique, ni `formula` sur une ressource — c'est justement ce qui varie entre "Classique" et "Simplifié", donc ça vit dans les fichiers de mode plutôt qu'ici. `type`/`min`/`max` (sur les caractéristiques, ressources, attributs globaux) documentent le format attendu de la valeur ; ils ne sont pour l'instant pas exploités par le code Dart (pas de validation de saisie), c'est une réserve pour un usage futur.
 
-`main.dart` charge ce fichier une fois au démarrage (avant `runApp`) et l'injecte via `universeConfigProvider.overrideWithValue(...)` ; tout le reste de l'app le lit ensuite de façon synchrone via ce provider.
+### Configuration d'un mode de création (`assets/universes/*.json`)
+
+Un fichier de mode de création (celui référencé par `configuration_file` dans l'index `creation_modes` de son univers) ne porte **que** les différences avec le `general_configuration` de son univers — pas d'`id`/`name`/`description` (déjà dans l'index), juste un `character_sheet` :
+
+```jsonc
+{
+  "character_sheet": {
+    "personal_skill_points": "INT * 2",
+    "global_attributes": [],
+    "characteristics": [
+      { "key": "FOR", "calculation_method": "roll", "calculation_formula": "3D6*5" },
+      { "key": "ESQ", "calculation_method": "derived", "calculation_formula": "DEX / 2" },
+      { "key": "MVT", "calculation_method": "derived",
+        "condition_table": [
+          { "condition": "FOR > TAI && DEX > TAI", "value": 9 },
+          { "condition": "true", "value": 8 }
+        ] }
+    ],
+    "resources": [
+      { "key": "PV", "formula": "(CON + TAI) / 10" }
+    ],
+    "skills": [
+      { "key": "mythe_de_cthulhu", "name": "Mythe de Cthulhu", "description": "Connaissance interdite du Mythe…", "base_value": 0 }
+    ],
+    "occupations": []
+  }
+}
+```
+
+`CharacterSheetConfig.merge` (`lib/domain/models/creation_mode_config.dart`) combine ce fichier avec le `general_configuration` de son univers, liste par liste, **fusionnées par `key`** (`_mergeEntriesByKey`) :
+- une entrée présente des deux côtés (ex. `FOR` ci-dessus) est fusionnée champ par champ — le mode ne redéfinit que ce qui change (`calculation_method`/`calculation_formula`) et hérite le reste (`name`, `description`, `type`…) du `general_configuration` ;
+- une entrée présente seulement dans le fichier de mode (ex. `mythe_de_cthulhu`, une compétence propre à "Classique") s'ajoute au catalogue commun, sans toucher aux autres modes ;
+- une entrée présente seulement dans le `general_configuration` (l'immense majorité des compétences/occupations) est héritée sans changement.
+
+`personal_skill_points` est un simple scalaire : la valeur du fichier de mode si elle existe, sinon celle du `general_configuration`, sinon `"0"`. Voir `buildCreationModeConfig` (`lib/data/universe/universe_assets_loader.dart`) pour l'assemblage complet id/nom/description (venant de l'entrée `creation_modes` de l'univers) + `character_sheet` fusionné, et les tests `test/domain/models/creation_mode_config_test.dart`/`call_of_cthulhu_simplifie_test.dart` qui exercent cette fusion sur les vrais fichiers shippés (ex. "Classique" surcharge la base de Baratin à 10 alors que le tronc commun la fixe à 5).
+
+Les chaînes `calculation_formula`/`condition_table[].condition`/`condition_table[].value`/`personal_skill_points`/`occupations[].occupation_skill_points_formula`/`resources[].formula`/`skills[].base_formula` sont interprétées par un petit évaluateur (`lib/domain/rules/formula_evaluator.dart`) qui supporte les dés (`3D6`, `d6`), l'arithmétique (`+ - * /`, parenthèses, `Floor()`, `Max(a, b, ...)`), et les conditions (`>= <= == != > <`, `&& ||`). C'est ce même évaluateur — pas de code Dart spécifique à Cthulhu — qui calcule les jets, les stats dérivées, les budgets de points de compétence et les ressources.
+
+**Points de compétence personnels (`personal_skill_points`)** : chaque jeu définit sa propre règle pour le nombre de points que le joueur répartit librement sur *n'importe quelle* compétence à la création (CdC v7 : `INT * 2`, les « points d'intérêt personnel », ex. Nager).
+
+Le schéma prévoit aussi `occupations[].skills_bonus` : un bonus fixe, automatique et non réparti par le joueur, qu'une occupation accorderait à des compétences précises (même forme que `characteristics_bonus`, en pourcentage plutôt qu'en points de caractéristique). CdC v7 n'en donne plus aucun exemple depuis l'introduction des points de compétence d'occupation ci-dessous, qui couvrent le même besoin de façon plus flexible — le champ reste disponible dans le schéma pour un futur système qui en aurait besoin.
+
+**Points de compétence d'occupation (`occupations[].occupation_skill_points_formula`)** : en plus du crédit personnel ci-dessus, chaque occupation a son propre budget de points (CdC v7 : ex. `EDU * 4`, ou `EDU * 2 + Max(FOR, DEX) * 2` pour une occupation physique), dépensable **uniquement** sur la liste de compétences listées dans `occupations[].occupation_skills` (typiquement 5-7 compétences). `occupation_skill_choices` (souvent `1`) donne au joueur un nombre de créneaux « Compétence d'occupation bonus » : il choisit alors lui-même quelle compétence supplémentaire devient éligible à ce budget. Ce crédit est totalement séparé du pool `personal_skill_points` — les deux se cumulent sur une même compétence si le joueur le souhaite. Voir `CharacterCreationState.occupationSkillAllocated`/`occupationSkillChoiceSelections` (`lib/features/character_creation/providers/character_creation_provider.dart`) pour la logique, et la carte « Compétences » de l'écran de création pour l'UI.
+
+**Caractéristique à choix (`calculation_method: "choice"`)** : pour une caractéristique qui n'est ni tirée aux dés ni calculée, mais choisie par le joueur dans une liste fixe d'options numériques (`choices`, ex. `["40", "50", "60", "70", "80"]`). Le mode "Simplifié" de CdC v7 assigne ainsi FOR/DEX/CON/POU/APP/ÉDU/INT/TAI — ce sont des caractéristiques primaires comme les autres, donc elles apparaissent comme un cercle tap-to-open dans la carte « Caractéristiques » de l'écran de création, au même endroit et avec le même style que les caractéristiques tirées aux dés. Le cercle ouvre `CharacteristicChoiceDialog` (`lib/features/character_creation/widgets/characteristic_choice_dialog.dart`) — la même coquille de popup que `CharacteristicRollDialog`, mais avec une liste de valeurs à choisir plutôt que des dés à lancer ; sélectionner une valeur met à jour le cercle immédiatement, avant même de valider. Elles alimentent normalement toutes les formules (stats dérivées, bases de compétence, ressources, budgets de points…) via `CharacteristicConfig.choiceValueAt`/`CharacterCreationState.resolvedCharacteristics`. La valeur stockée/persistée est la vraie valeur numérique choisie (pas son index), donc elles s'affichent sur la fiche comme un cadran numérique classique. (`choice` accepte aussi des options textuelles en théorie — voir `CharacteristicConfig.isNumericChoice` — mais CdC v7 n'en a plus d'exemple depuis que Fortune a été déplacée vers `global_attributes` ci-dessous ; à réserver à une caractéristique qui reste alimentée par des formules malgré des options textuelles.)
+
+**Attributs globaux (`global_attributes`)** : informations propres à cet univers mais qui ne sont ni tirées, ni calculées, ni jamais lues par une formule — juste enregistrées et affichées (contrairement à une caractéristique à choix numérique, qui peut nourrir des formules). C'est la différence avec le nom/la description du personnage, communs à tout univers et donc gérés hors de ce fichier : un attribut global est spécifique à *cet* univers-ci. CdC v7 en a deux : l'âge (`"type": "integer"`, saisi en texte libre) et Fortune (`"type": "choice"`, paliers "Indigent" à "Richissime", remplaçant l'ancienne compétence Crédit). `GlobalAttributeConfig` (`lib/domain/models/creation_mode_config.dart`) porte `key`/`name`/`description`/`type`/`choices` ; pour un attribut `choice`, la valeur stockée/persistée est l'index dans `choices` (même convention qu'un choix de caractéristique), pour un `integer` c'est le nombre saisi tel quel. Persisté comme `CharacterStat` avec `kind: StatKind.attribute` (troisième valeur de l'enum, à côté de `characteristic`/`skill`) — d'où une lecture par `Character.attributes`. Dans l'écran de création, ces champs apparaissent dans la carte « Occupation », juste après le sélecteur d'occupation (un `QBSelect` pour `choice`, un `QBInput` numérique pour `integer` — pas de popup, contrairement aux caractéristiques à choix numérique ci-dessus). Sur la fiche de personnage, ils s'affichent en badge texte sous les cadrans de caractéristiques (`_attributeValueLabel` mappe l'index vers son libellé pour un `choice`).
 
 ### Extensibilité multi-système
 
@@ -167,12 +239,12 @@ abstract interface class RulesEngine {
 }
 ```
 
-`ConfigRulesEngine` (`lib/domain/rules/config_rules_engine.dart`) en est l'implémentation : générique, elle interprète n'importe quel `UniverseConfig` plutôt que de coder en dur les règles d'un seul système. Ajouter un système (D&D 5e, Vampire…) qui reste décrivable par le schéma JSON ci-dessus consiste simplement à :
-1. écrire un nouveau fichier `assets/universes/<systemId>.json` ;
-2. le déclarer dans `pubspec.yaml` (déjà fait pour tout le dossier `assets/universes/`) ;
-3. faire de `universeConfigProvider`/`rulesEngineProvider` une map `systemId -> UniverseConfig/RulesEngine` (chargée par le futur écran de choix d'univers) plutôt qu'un override unique injecté au démarrage.
+`ConfigRulesEngine` (`lib/domain/rules/config_rules_engine.dart`) en est l'implémentation : générique, elle interprète n'importe quel `CreationModeConfig` (plus le `UniverseConfig` de son univers, pour les seuils de critique) plutôt que de coder en dur les règles d'un seul système. Ajouter un système (D&D 5e, Vampire…) ou une variante de règles (un futur mode "Débutant"…) qui reste décrivable par le schéma JSON ci-dessus consiste simplement à :
+1. si c'est un nouvel univers, écrire son fichier `assets/universes/universe_<id>.json` avec son `general_configuration` (voir [Configuration d'un univers](#configuration-dun-univers-assetsuniversesuniverse_json)) ;
+2. écrire un nouveau fichier de surcharges pour ce mode (juste ce qui diffère du `general_configuration`) et l'ajouter à l'index `creation_modes` de son univers (voir [Configuration d'un mode de création](#configuration-dun-mode-de-création-assetsuniverses)) ;
+3. rien de plus — le dossier `assets/universes/` entier est déjà déclaré dans `pubspec.yaml`, `loadAllUniverseConfigs()` découvre tout `universe_*.json` qui y apparaît sans changement de code, et `loadAllCreationModeConfigs()` résout chaque entrée de leurs `creation_modes` en suivant `configuration_file`. Le nouveau mode apparaît alors automatiquement dans les menus "Univers"/"Mode de création" de l'écran de création.
 
-Seul un système avec une mécanique réellement inédite (non descriptible en dés/arithmétique/conditions) nécessiterait une nouvelle implémentation de `RulesEngine`.
+Seul un système avec une mécanique réellement inédite (non descriptible en dés/arithmétique/conditions) nécessiterait une nouvelle implémentation de `RulesEngine`, câblée dans `rulesEngineProvider`.
 
 ## Prérequis
 
@@ -253,7 +325,9 @@ flutter test
 Tests actuellement présents (`test/`) :
 - `domain/rules/formula_evaluator_test.dart` — l'évaluateur de formules/dés/conditions lui-même.
 - `domain/rules/config_rules_engine_test.dart` — mécaniques de jet (caractéristiques, dérivées, jets de compétence) sur une config de test.
-- `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/cthulhu-v7.json` réellement embarqué.
+- `domain/models/creation_mode_config_test.dart` — smoke-test du mode "Classique" tel que réellement résolu à l'exécution (`universe_call_of_cthulhu.json`'s `general_configuration` fusionné avec `call_of_cthulhu_classique.json`, via `buildCreationModeConfig`).
+- `domain/models/call_of_cthulhu_simplifie_test.dart` — même chose pour "Simplifié" (`call_of_cthulhu_simplifie.json`), notamment ses caractéristiques à choix numérique et le fait qu'il hérite du même catalogue de compétences/occupations que "Classique".
+- `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/universe_call_of_cthulhu.json` : métadonnées, index `creation_modes`, contenu du `general_configuration`.
 - `services/dice_service_test.dart` — primitives de lancer de dés.
 
 ## Workflow git (branches)
@@ -441,7 +515,8 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 
 ## Limitations connues
 
-- Un seul univers est embarqué aujourd'hui (`assets/universes/cthulhu-v7.json`), chargé une fois au démarrage via un id codé en dur dans `main.dart` plutôt que choisi par l'utilisateur — voir [Extensibilité multi-système](#extensibilité-multi-système).
+- Un seul univers est embarqué aujourd'hui (Call of Cthulhu, avec ses modes "Classique" et "Simplifié") : le menu "Univers" de l'écran de création n'a donc qu'une option pour l'instant, même si le mécanisme sous-jacent (découverte dynamique + sélection) supporte déjà d'en ajouter d'autres sans changement de code — voir [Univers et mode de création](#univers-et-mode-de-création).
+- Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
 - Aucune synchronisation distante : tout est stocké en local via SQLite (Drift). Le remplacement par un backend distant se ferait en ajoutant des implémentations `Remote*Repository` et en modifiant uniquement `lib/app/providers.dart`.

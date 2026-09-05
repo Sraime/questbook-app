@@ -25,8 +25,36 @@ class Characters extends Table {
   IntColumn get level => integer().withDefault(const Constant(1))();
   DateTimeColumn get createdAt => dateTime()();
 
+  /// Drives last-write-wins against the API: every local mutation bumps it,
+  /// and the server keeps whichever side carries the later value.
+  /// The epoch default only exists so the v1 → v2 `ALTER TABLE ADD COLUMN`
+  /// stays a constant expression; the migration immediately backfills it
+  /// from [createdAt].
+  DateTimeColumn get updatedAt =>
+      dateTime().withDefault(Constant(DateTime.fromMillisecondsSinceEpoch(0)))();
+
+  /// Tombstone. Rows are kept after a delete so the deletion can be pushed to
+  /// the API and replicated to the user's other devices.
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  /// Set on every local write, cleared once the API has acknowledged the push.
+  /// Defaults to true so characters created before this feature existed are
+  /// uploaded on the first sign-in.
+  BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Small key/value store for synchronisation bookkeeping: the incremental pull
+/// cursor and the id of the account the local data belongs to.
+@DataClassName('SyncMetadataRow')
+class SyncMetadata extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }
 
 /// Stores 'characteristic' or 'skill' — see domain/models/character_stat.dart's
@@ -97,6 +125,7 @@ class GameTables extends Table {
     CharacterResources,
     InventoryItems,
     GameTables,
+    SyncMetadata,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -105,5 +134,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(characters, characters.updatedAt);
+            await m.addColumn(characters, characters.deletedAt);
+            await m.addColumn(characters, characters.needsSync);
+            await m.createTable(syncMetadata);
+            // Characters that predate synchronisation have never been edited
+            // as far as the API is concerned, so their creation date is the
+            // most honest "last modified" value available.
+            await customStatement(
+              'UPDATE characters SET updated_at = created_at',
+            );
+          }
+        },
+      );
 }

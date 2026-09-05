@@ -109,7 +109,7 @@ class GameSystemRow extends DataClass implements Insertable<GameSystemRow> {
   final String id;
   final String name;
 
-  /// JSON-encoded list<String> of suggested occupations for this system.
+  /// JSON-encoded `List<String>` of suggested occupations for this system.
   final String occupationSuggestions;
   const GameSystemRow({
     required this.id,
@@ -357,6 +357,44 @@ class $CharactersTable extends Characters
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DateTime.fromMillisecondsSinceEpoch(0)),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _needsSyncMeta = const VerificationMeta(
+    'needsSync',
+  );
+  @override
+  late final GeneratedColumn<bool> needsSync = GeneratedColumn<bool>(
+    'needs_sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_sync" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -366,6 +404,9 @@ class $CharactersTable extends Characters
     description,
     level,
     createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -429,6 +470,24 @@ class $CharactersTable extends Characters
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('needs_sync')) {
+      context.handle(
+        _needsSyncMeta,
+        needsSync.isAcceptableOrUnknown(data['needs_sync']!, _needsSyncMeta),
+      );
+    }
     return context;
   }
 
@@ -466,6 +525,18 @@ class $CharactersTable extends Characters
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      needsSync: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_sync'],
+      )!,
     );
   }
 
@@ -483,6 +554,22 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
   final String? description;
   final int level;
   final DateTime createdAt;
+
+  /// Drives last-write-wins against the API: every local mutation bumps it,
+  /// and the server keeps whichever side carries the later value.
+  /// The epoch default only exists so the v1 → v2 `ALTER TABLE ADD COLUMN`
+  /// stays a constant expression; the migration immediately backfills it
+  /// from [createdAt].
+  final DateTime updatedAt;
+
+  /// Tombstone. Rows are kept after a delete so the deletion can be pushed to
+  /// the API and replicated to the user's other devices.
+  final DateTime? deletedAt;
+
+  /// Set on every local write, cleared once the API has acknowledged the push.
+  /// Defaults to true so characters created before this feature existed are
+  /// uploaded on the first sign-in.
+  final bool needsSync;
   const CharacterRow({
     required this.id,
     required this.systemId,
@@ -491,6 +578,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     this.description,
     required this.level,
     required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.needsSync,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -506,6 +596,11 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     }
     map['level'] = Variable<int>(level);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['needs_sync'] = Variable<bool>(needsSync);
     return map;
   }
 
@@ -522,6 +617,11 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           : Value(description),
       level: Value(level),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      needsSync: Value(needsSync),
     );
   }
 
@@ -538,6 +638,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       description: serializer.fromJson<String?>(json['description']),
       level: serializer.fromJson<int>(json['level']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      needsSync: serializer.fromJson<bool>(json['needsSync']),
     );
   }
   @override
@@ -551,6 +654,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       'description': serializer.toJson<String?>(description),
       'level': serializer.toJson<int>(level),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'needsSync': serializer.toJson<bool>(needsSync),
     };
   }
 
@@ -562,6 +668,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     Value<String?> description = const Value.absent(),
     int? level,
     DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    bool? needsSync,
   }) => CharacterRow(
     id: id ?? this.id,
     systemId: systemId ?? this.systemId,
@@ -570,6 +679,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     description: description.present ? description.value : this.description,
     level: level ?? this.level,
     createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    needsSync: needsSync ?? this.needsSync,
   );
   CharacterRow copyWithCompanion(CharactersCompanion data) {
     return CharacterRow(
@@ -584,6 +696,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           : this.description,
       level: data.level.present ? data.level.value : this.level,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      needsSync: data.needsSync.present ? data.needsSync.value : this.needsSync,
     );
   }
 
@@ -596,7 +711,10 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           ..write('occupation: $occupation, ')
           ..write('description: $description, ')
           ..write('level: $level, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync')
           ..write(')'))
         .toString();
   }
@@ -610,6 +728,9 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     description,
     level,
     createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
   );
   @override
   bool operator ==(Object other) =>
@@ -621,7 +742,10 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           other.occupation == this.occupation &&
           other.description == this.description &&
           other.level == this.level &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.needsSync == this.needsSync);
 }
 
 class CharactersCompanion extends UpdateCompanion<CharacterRow> {
@@ -632,6 +756,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
   final Value<String?> description;
   final Value<int> level;
   final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<bool> needsSync;
   final Value<int> rowid;
   const CharactersCompanion({
     this.id = const Value.absent(),
@@ -641,6 +768,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.description = const Value.absent(),
     this.level = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CharactersCompanion.insert({
@@ -651,6 +781,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.description = const Value.absent(),
     this.level = const Value.absent(),
     required DateTime createdAt,
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        systemId = Value(systemId),
@@ -664,6 +797,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Expression<String>? description,
     Expression<int>? level,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<bool>? needsSync,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -674,6 +810,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       if (description != null) 'description': description,
       if (level != null) 'level': level,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (needsSync != null) 'needs_sync': needsSync,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -686,6 +825,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Value<String?>? description,
     Value<int>? level,
     Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<bool>? needsSync,
     Value<int>? rowid,
   }) {
     return CharactersCompanion(
@@ -696,6 +838,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       description: description ?? this.description,
       level: level ?? this.level,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      needsSync: needsSync ?? this.needsSync,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -724,6 +869,15 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (needsSync.present) {
+      map['needs_sync'] = Variable<bool>(needsSync.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -740,6 +894,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
           ..write('description: $description, ')
           ..write('level: $level, ')
           ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2437,6 +2594,214 @@ class GameTablesCompanion extends UpdateCompanion<GameTableRow> {
   }
 }
 
+class $SyncMetadataTable extends SyncMetadata
+    with TableInfo<$SyncMetadataTable, SyncMetadataRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncMetadataTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_metadata';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncMetadataRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  SyncMetadataRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncMetadataRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncMetadataTable createAlias(String alias) {
+    return $SyncMetadataTable(attachedDatabase, alias);
+  }
+}
+
+class SyncMetadataRow extends DataClass implements Insertable<SyncMetadataRow> {
+  final String key;
+  final String value;
+  const SyncMetadataRow({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  SyncMetadataCompanion toCompanion(bool nullToAbsent) {
+    return SyncMetadataCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory SyncMetadataRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncMetadataRow(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  SyncMetadataRow copyWith({String? key, String? value}) =>
+      SyncMetadataRow(key: key ?? this.key, value: value ?? this.value);
+  SyncMetadataRow copyWithCompanion(SyncMetadataCompanion data) {
+    return SyncMetadataRow(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncMetadataRow(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncMetadataRow &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class SyncMetadataCompanion extends UpdateCompanion<SyncMetadataRow> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const SyncMetadataCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncMetadataCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<SyncMetadataRow> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncMetadataCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return SyncMetadataCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncMetadataCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2447,6 +2812,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CharacterResourcesTable(this);
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
   late final $GameTablesTable gameTables = $GameTablesTable(this);
+  late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2458,6 +2824,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     characterResources,
     inventoryItems,
     gameTables,
+    syncMetadata,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2854,6 +3221,9 @@ typedef $$CharactersTableCreateCompanionBuilder =
       Value<String?> description,
       Value<int> level,
       required DateTime createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
       Value<int> rowid,
     });
 typedef $$CharactersTableUpdateCompanionBuilder =
@@ -2865,6 +3235,9 @@ typedef $$CharactersTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<int> level,
       Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
       Value<int> rowid,
     });
 
@@ -2986,6 +3359,21 @@ class $$CharactersTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3127,6 +3515,21 @@ class $$CharactersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$GameSystemsTableOrderingComposer get systemId {
     final $$GameSystemsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3181,6 +3584,15 @@ class $$CharactersTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsSync =>
+      $composableBuilder(column: $table.needsSync, builder: (column) => column);
 
   $$GameSystemsTableAnnotationComposer get systemId {
     final $$GameSystemsTableAnnotationComposer composer = $composerBuilder(
@@ -3322,6 +3734,9 @@ class $$CharactersTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<int> level = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion(
                 id: id,
@@ -3331,6 +3746,9 @@ class $$CharactersTableTableManager
                 description: description,
                 level: level,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3342,6 +3760,9 @@ class $$CharactersTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<int> level = const Value.absent(),
                 required DateTime createdAt,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion.insert(
                 id: id,
@@ -3351,6 +3772,9 @@ class $$CharactersTableTableManager
                 description: description,
                 level: level,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4899,6 +5323,145 @@ typedef $$GameTablesTableProcessedTableManager =
       GameTableRow,
       PrefetchHooks Function({bool systemId})
     >;
+typedef $$SyncMetadataTableCreateCompanionBuilder =
+    SyncMetadataCompanion Function({
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$SyncMetadataTableUpdateCompanionBuilder =
+    SyncMetadataCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
+
+class $$SyncMetadataTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncMetadataTable> {
+  $$SyncMetadataTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncMetadataTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncMetadataTable> {
+  $$SyncMetadataTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncMetadataTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncMetadataTable> {
+  $$SyncMetadataTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SyncMetadataTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncMetadataTable,
+          SyncMetadataRow,
+          $$SyncMetadataTableFilterComposer,
+          $$SyncMetadataTableOrderingComposer,
+          $$SyncMetadataTableAnnotationComposer,
+          $$SyncMetadataTableCreateCompanionBuilder,
+          $$SyncMetadataTableUpdateCompanionBuilder,
+          (
+            SyncMetadataRow,
+            BaseReferences<_$AppDatabase, $SyncMetadataTable, SyncMetadataRow>,
+          ),
+          SyncMetadataRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncMetadataTableTableManager(_$AppDatabase db, $SyncMetadataTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncMetadataTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncMetadataTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncMetadataTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncMetadataCompanion(key: key, value: value, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncMetadataCompanion.insert(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncMetadataTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncMetadataTable,
+      SyncMetadataRow,
+      $$SyncMetadataTableFilterComposer,
+      $$SyncMetadataTableOrderingComposer,
+      $$SyncMetadataTableAnnotationComposer,
+      $$SyncMetadataTableCreateCompanionBuilder,
+      $$SyncMetadataTableUpdateCompanionBuilder,
+      (
+        SyncMetadataRow,
+        BaseReferences<_$AppDatabase, $SyncMetadataTable, SyncMetadataRow>,
+      ),
+      SyncMetadataRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4915,4 +5478,6 @@ class $AppDatabaseManager {
       $$InventoryItemsTableTableManager(_db, _db.inventoryItems);
   $$GameTablesTableTableManager get gameTables =>
       $$GameTablesTableTableManager(_db, _db.gameTables);
+  $$SyncMetadataTableTableManager get syncMetadata =>
+      $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
 }

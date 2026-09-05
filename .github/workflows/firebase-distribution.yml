@@ -17,6 +17,12 @@ on:
 env:
   FIREBASE_APP_ID: "1:56734402863:android:8f12f08f8eff13a8e2b9da"
   FIREBASE_PROJECT_ID: "questbook-48540"
+  # Injectés au build via --dart-define (voir lib/config/app_config.dart).
+  # Sans eux le binaire est hors ligne : ni connexion, ni synchronisation.
+  # Ce ne sont pas des secrets — l'identifiant client est de toute façon
+  # embarqué en clair dans l'APK, ce qui est le modèle prévu par Google.
+  QUESTBOOK_API_URL: "https://questbook.nextuscorp.com"
+  QUESTBOOK_GOOGLE_SERVER_CLIENT_ID: "56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf.apps.googleusercontent.com"
 
 jobs:
   build-and-distribute:
@@ -58,7 +64,10 @@ jobs:
           EOF
 
       - name: Build release APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --dart-define=QUESTBOOK_API_URL="$QUESTBOOK_API_URL" \
+            --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID"
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools

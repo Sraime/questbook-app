@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Reaching the Questbook API and Google sign-in. Flutter's debug manifest
+         injects this automatically, so without it here release builds would be
+         the only ones unable to use the network. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="questbook"
         android:name="${applicationName}"

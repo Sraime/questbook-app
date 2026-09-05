@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../config/app_config.dart';
@@ -115,6 +116,18 @@ class AuthRepository {
   }
 
   AuthFailure _translate(GoogleSignInException error) {
+    // Credential Manager reports an environment it simply cannot serve — Play
+    // Services too old to parse the request, no Google account on the device —
+    // as an ordinary cancellation. Silence is right for the user, who did tap
+    // "cancel" as far as the system is concerned, but it leaves the button
+    // looking inert to whoever is debugging, hence the trace.
+    assert(() {
+      debugPrint(
+        'GoogleSignInException(${error.code.name}): ${error.description}',
+      );
+      return true;
+    }());
+
     return switch (error.code) {
       GoogleSignInExceptionCode.canceled => const AuthFailure(
           'Connexion annulée.',
@@ -125,6 +138,10 @@ class AuthRepository {
         const AuthFailure('Connexion interrompue, réessaie.'),
       GoogleSignInExceptionCode.clientConfigurationError => const AuthFailure(
           'Configuration Google invalide pour cette application.',
+        ),
+      GoogleSignInExceptionCode.providerConfigurationError => const AuthFailure(
+          'Les services Google Play de cet appareil sont trop anciens ou '
+          'indisponibles. Mets-les à jour puis réessaie.',
         ),
       _ => AuthFailure('Échec de la connexion Google : ${error.description}'),
     };

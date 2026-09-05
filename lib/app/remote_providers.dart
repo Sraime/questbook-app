@@ -66,8 +66,9 @@ class AuthController extends AsyncNotifier<AuthUser?> {
       final user = await ref.read(authRepositoryProvider).signInWithGoogle();
       state = AsyncValue.data(user);
       // Uploading whatever was created offline is the whole point of signing
-      // in, so it happens immediately rather than waiting for a manual pull.
-      unawaited(ref.read(syncControllerProvider.notifier).synchronize());
+      // in, but starting that pass from here would close a dependency cycle:
+      // SyncController already listens to this provider. Publishing the new
+      // user above is enough to set it off.
       return null;
     } on AuthFailure catch (error) {
       state = const AsyncValue.data(null);

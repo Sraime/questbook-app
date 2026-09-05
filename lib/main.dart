@@ -73,6 +73,13 @@ class _AuthGate extends ConsumerWidget {
     // sign in to.
     if (!AppConfig.isRemoteEnabled) return child;
 
+    // Brings the synchronisation controller to life for the whole session: it
+    // is what reacts to signing in and to the app returning to the foreground,
+    // so it must not wait for a screen that happens to display sync status.
+    // Watching the notifier rather than the state keeps the entire app from
+    // rebuilding every time a pass starts or finishes.
+    ref.watch(syncControllerProvider.notifier);
+
     if (ref.watch(offlineModeProvider)) return child;
 
     return ref.watch(authControllerProvider).when(

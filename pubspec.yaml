@@ -48,7 +48,12 @@ dependencies:
   uuid: ^4.6.0
   google_sign_in: ^7.2.0
   dio: ^5.11.1
-  flutter_secure_storage: ^11.0.0
+  # Bloqué sous la v11 : elle compile contre l'API 37, que le SDK Android
+  # n'installe que sous `android-37.0` alors qu'AGP cherche `android-37`. Son
+  # build Groovy ne permet pas d'exprimer ce niveau mineur, donc tout build
+  # Android échoue. La v10 offre les mêmes chiffrements (RSA-OAEP + AES-GCM
+  # adossés au Keystore), il n'y a donc rien à y perdre en attendant.
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:

@@ -41,4 +41,8 @@ abstract interface class CharacterRepository {
   });
 
   Future<void> removeInventoryItem(String itemId);
+
+  /// Soft delete: the row survives locally as a tombstone until the API has
+  /// been told about it, so the deletion reaches the user's other devices.
+  Future<void> delete(String characterId);
 }

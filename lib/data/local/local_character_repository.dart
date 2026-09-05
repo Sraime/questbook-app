@@ -56,6 +56,8 @@ class LocalCharacterRepository implements CharacterRepository {
               description: description,
               level: 1,
               createdAt: now,
+              updatedAt: now,
+              needsSync: true,
             ),
           );
 
@@ -98,10 +100,13 @@ class LocalCharacterRepository implements CharacterRepository {
     String resourceKey,
     int newCurrent,
   ) async {
-    await (_db.update(_db.characterResources)
-          ..where((r) =>
-              r.characterId.equals(characterId) & r.key.equals(resourceKey)))
-        .write(CharacterResourcesCompanion(current: Value(newCurrent)));
+    await _db.transaction(() async {
+      await (_db.update(_db.characterResources)
+            ..where((r) =>
+                r.characterId.equals(characterId) & r.key.equals(resourceKey)))
+          .write(CharacterResourcesCompanion(current: Value(newCurrent)));
+      await _touch(characterId);
+    });
   }
 
   @override
@@ -110,10 +115,13 @@ class LocalCharacterRepository implements CharacterRepository {
     String statKey,
     int newValue,
   ) async {
-    await (_db.update(_db.characterStats)
-          ..where(
-              (s) => s.characterId.equals(characterId) & s.key.equals(statKey)))
-        .write(CharacterStatsCompanion(value: Value(newValue)));
+    await _db.transaction(() async {
+      await (_db.update(_db.characterStats)
+            ..where((s) =>
+                s.characterId.equals(characterId) & s.key.equals(statKey)))
+          .write(CharacterStatsCompanion(value: Value(newValue)));
+      await _touch(characterId);
+    });
   }
 
   @override
@@ -123,30 +131,68 @@ class LocalCharacterRepository implements CharacterRepository {
     int qty = 1,
     String? weight,
   }) async {
-    await _db.into(_db.inventoryItems).insert(
-          InventoryItemRow(
-            id: _uuid.v4(),
-            characterId: characterId,
-            name: name,
-            qty: qty,
-            weight: weight,
-          ),
-        );
+    await _db.transaction(() async {
+      await _db.into(_db.inventoryItems).insert(
+            InventoryItemRow(
+              id: _uuid.v4(),
+              characterId: characterId,
+              name: name,
+              qty: qty,
+              weight: weight,
+            ),
+          );
+      await _touch(characterId);
+    });
   }
 
   @override
   Future<void> removeInventoryItem(String itemId) async {
-    await (_db.delete(_db.inventoryItems)..where((i) => i.id.equals(itemId)))
-        .go();
+    await _db.transaction(() async {
+      // The owning character has to be resolved before the row disappears,
+      // otherwise its clock could not be bumped for the sync engine.
+      final item = await (_db.select(_db.inventoryItems)
+            ..where((i) => i.id.equals(itemId)))
+          .getSingleOrNull();
+      if (item == null) return;
+
+      await (_db.delete(_db.inventoryItems)..where((i) => i.id.equals(itemId)))
+          .go();
+      await _touch(item.characterId);
+    });
+  }
+
+  @override
+  Future<void> delete(String characterId) async {
+    final now = DateTime.now();
+    await (_db.update(_db.characters)..where((c) => c.id.equals(characterId)))
+        .write(CharactersCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+      needsSync: const Value(true),
+    ));
+  }
+
+  /// Marks the aggregate as locally modified. Every mutation goes through it,
+  /// including changes to stats, resources and inventory, because the API
+  /// treats a character and its children as a single versioned document.
+  Future<void> _touch(String characterId) async {
+    await (_db.update(_db.characters)..where((c) => c.id.equals(characterId)))
+        .write(CharactersCompanion(
+      updatedAt: Value(DateTime.now()),
+      needsSync: const Value(true),
+    ));
   }
 
   Future<List<Character>> _fetchAll() async {
-    final rows = await _db.select(_db.characters).get();
+    final rows = await (_db.select(_db.characters)
+          ..where((c) => c.deletedAt.isNull()))
+        .get();
     return Future.wait(rows.map(_hydrate));
   }
 
   Future<Character?> _fetchOne(String id) async {
-    final row = await (_db.select(_db.characters)..where((c) => c.id.equals(id)))
+    final row = await (_db.select(_db.characters)
+          ..where((c) => c.id.equals(id) & c.deletedAt.isNull()))
         .getSingleOrNull();
     if (row == null) return null;
     return _hydrate(row);

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
+import 'app/remote_providers.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'config/app_config.dart';
 import 'data/universe/universe_assets_loader.dart';
+import 'features/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,12 +48,45 @@ class QuestbookApp extends ConsumerWidget {
       routerConfig: appRouter,
       builder: (context, child) {
         return init.when(
-          data: (_) => child ?? const SizedBox.shrink(),
+          data: (_) => _AuthGate(child: child ?? const SizedBox.shrink()),
           loading: () => const _SplashScreen(),
           error: (error, stack) => _SplashScreen(error: error),
         );
       },
     );
+  }
+}
+
+/// Decides whether to show the sign-in screen or the app itself.
+///
+/// It wraps the router's child rather than living in the route table on
+/// purpose: signing in is optional, so this is a temporary overlay over an app
+/// that is already perfectly usable, not a navigation step.
+class _AuthGate extends ConsumerWidget {
+  const _AuthGate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Builds without an OAuth client id are offline-only: there is nothing to
+    // sign in to.
+    if (!AppConfig.isRemoteEnabled) return child;
+
+    if (ref.watch(offlineModeProvider)) return child;
+
+    return ref.watch(authControllerProvider).when(
+          data: (user) => user != null
+              ? child
+              : LoginScreen(
+                  onContinueOffline:
+                      ref.read(offlineModeProvider.notifier).enable,
+                ),
+          loading: () => const _SplashScreen(),
+          error: (error, stack) => LoginScreen(
+            onContinueOffline: ref.read(offlineModeProvider.notifier).enable,
+          ),
+        );
   }
 }
 

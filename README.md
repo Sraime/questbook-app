@@ -18,6 +18,10 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Installation](#installation)
 - [Génération de code](#génération-de-code)
 - [Exécution](#exécution)
+- [Compte Google et synchronisation](#compte-google-et-synchronisation)
+  - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
+  - [Lancer contre le backend local](#lancer-contre-le-backend-local)
+  - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
 - [Tests](#tests)
 - [Workflow git (branches)](#workflow-git-branches)
 - [Distribution Android (signature, Firebase, CI/CD)](#distribution-android-signature-firebase-cicd)
@@ -316,6 +320,78 @@ flutter create .
 flutter run -d chrome     # ou -d windows / -d linux / -d macos
 ```
 
+## Compte Google et synchronisation
+
+L'app peut sauvegarder les personnages sur un compte Google, via l'API Questbook
+qui vit dans un dépôt séparé : [`questbook-back`](https://github.com/Sraime/questbook-back)
+(Fastify + Prisma + PostgreSQL). Son README couvre l'installation, les variables
+d'environnement et le déploiement.
+
+**La connexion reste facultative.** Sans compte, l'app fonctionne exactement
+comme avant : tout est stocké en local par Drift. L'écran de connexion propose
+toujours « Continuer hors ligne ».
+
+### Configuration de build (`--dart-define`)
+
+Rien n'est codé en dur : `lib/config/app_config.dart` lit deux valeurs injectées
+au build.
+
+| Define | Rôle | Défaut |
+| --- | --- | --- |
+| `QUESTBOOK_API_URL` | Base URL de l'API. | `http://10.0.2.2:3000` (le `localhost` de la machine hôte, vu depuis l'émulateur Android) |
+| `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` | Client OAuth **Web** de Google Cloud — c'est l'audience des jetons d'identité que l'API vérifie, pas le client Android. | *(vide)* |
+
+Si `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` est vide, le build est purement hors
+ligne : ni écran de connexion, ni bandeau de compte, plutôt qu'un bouton qui ne
+peut pas marcher.
+
+Côté Google Cloud, il faut **deux** clients OAuth dans le même projet : un client
+Web (dont l'id est le define ci-dessus, et le seul que l'API accepte) et un
+client Android déclarant le `applicationId` et l'empreinte SHA-1 de la clé de
+signature — celle de debug pour `flutter run`, celle du keystore de release
+(voir [Signature de release](#signature-de-release)) pour les builds distribués.
+Un SHA-1 manquant est la cause la plus fréquente d'une connexion qui échoue avec
+« Google n'a pas renvoyé de jeton d'identité ».
+
+### Lancer contre le backend local
+
+Démarrer l'API dans `questbook-back` (`docker compose -f docker-compose.dev.yml up`
+puis `npm run dev`), puis :
+
+```bash
+flutter run -d emulator-5554 \
+  --dart-define=QUESTBOOK_API_URL=http://10.0.2.2:3000 \
+  --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID=<client-web>.apps.googleusercontent.com
+```
+
+Sur un **appareil physique**, `10.0.2.2` ne veut rien dire : utiliser l'adresse
+LAN de la machine (`http://192.168.x.x:3000`) et vérifier que le pare-feu Windows
+laisse passer le port.
+
+### Comment la synchronisation fonctionne
+
+Drift reste la source de vérité de l'UI : tous les écrans lisent les mêmes
+streams locaux, connecté ou non. La synchronisation ne fait que refléter ces
+lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
+
+- Chaque écriture locale marque le personnage `needsSync` et avance son
+  `updatedAt` ; une suppression laisse une **pierre tombale** (`deletedAt`) pour
+  que l'effacement se propage au lieu de disparaître silencieusement.
+- Une passe fait d'abord un *push* puis un *pull*, dans cet ordre — sinon un
+  personnage créé hors ligne ressemblerait, vu du pull, à quelque chose à
+  supprimer.
+- Les conflits se résolvent en **last-write-wins sur le personnage entier**,
+  la règle qu'applique aussi l'API, donc les deux côtés désignent toujours le
+  même gagnant.
+- Une passe se déclenche à la connexion, au retour au premier plan, et via le
+  bouton ↻ du bandeau de compte.
+- Si un **autre compte** se connecte sur l'appareil, les données locales sont
+  effacées : les personnages du compte précédent ne doivent pas fuiter dans la
+  nouvelle session.
+
+Les personnages créés avant cette fonctionnalité sont poussés tels quels à la
+première connexion (migration Drift v1 → v2, voir `lib/data/local/database.dart`).
+
 ## Tests
 
 ```bash
@@ -329,6 +405,9 @@ Tests actuellement présents (`test/`) :
 - `domain/models/call_of_cthulhu_simplifie_test.dart` — même chose pour "Simplifié" (`call_of_cthulhu_simplifie.json`), notamment ses caractéristiques à choix numérique et le fait qu'il hérite du même catalogue de compétences/occupations que "Classique".
 - `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/universe_call_of_cthulhu.json` : métadonnées, index `creation_modes`, contenu du `general_configuration`.
 - `services/dice_service_test.dart` — primitives de lancer de dés.
+- `data/local/local_character_repository_test.dart` — la comptabilité de synchronisation du dépôt local : chaque écriture marque le personnage à pousser, une suppression laisse une pierre tombale invisible dans la liste.
+- `data/local/migration_test.dart` — la migration v1 → v2 sur un vrai fichier SQLite ramené au schéma v1, pour vérifier qu'aucun personnage existant n'est perdu et que `updatedAt` est bien rempli.
+- `data/sync/sync_service_test.dart` — les règles de synchronisation (push, pull, conflits, changement de compte) contre une fausse API et une vraie base en mémoire.
 
 ## Workflow git (branches)
 
@@ -519,7 +598,8 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 - Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
-- Aucune synchronisation distante : tout est stocké en local via SQLite (Drift). Le remplacement par un backend distant se ferait en ajoutant des implémentations `Remote*Repository` et en modifiant uniquement `lib/app/providers.dart`.
+- La synchronisation ne couvre que les personnages (stats, ressources, inventaire). Les tables de jeu restent purement locales.
+- La connexion Google n'est câblée que pour Android : `ios/Runner/Info.plist` n'a pas encore de `CFBundleURLTypes`, et il manque un client OAuth iOS. Un build iOS lancé sans `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` reste utilisable, mais hors ligne. Voir [Compte Google et synchronisation](#compte-google-et-synchronisation).
 - L'écran « Tables » ne propose pas encore d'écran de détail : ouvrir une table existante est un no-op pour l'instant.
 - Distribution actuelle limitée à Firebase App Distribution (bêta-testeurs) ; pas encore de publication Play Store, ni de Play App Signing (la clé de signature `upload` est gérée manuellement — voir [Distribution Android](#distribution-android-signature-firebase-cicd)).
 - L'authentification CI Firebase (`firebase login:ci` / `--token`) repose sur un mécanisme déprécié par Google ; à migrer vers un compte de service GCP si `firebase-tools` le retire dans une future version majeure.

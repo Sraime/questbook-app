@@ -225,7 +225,6 @@
         "key": "bibliothecaire",
         "name": "Bibliothécaire",
         "description": "Gardien du savoir d'une bibliothèque publique ou universitaire, habitué aux ouvrages rares.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["bibliotheque", "langues", "histoire", "langue_maternelle", "psychologie", "comptabilite"],
         "occupation_skill_choices": 1
@@ -234,7 +233,6 @@
         "key": "detective_prive",
         "name": "Détective privé",
         "description": "Enquêteur indépendant, habitué à traquer des indices et des personnes disparues.",
-        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["trouver_objet_cache", "discretion", "pister", "droit", "psychologie", "combat_distance_armes_poing"],
         "occupation_skill_choices": 1
@@ -243,7 +241,6 @@
         "key": "journaliste",
         "name": "Journaliste",
         "description": "Reporter en quête de vérité, prompt à suivre une affaire jusqu'à ses zones d'ombre.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["baratin", "langues", "bibliotheque", "histoire", "psychologie", "persuasion"],
         "occupation_skill_choices": 1
@@ -252,7 +249,6 @@
         "key": "antiquaire",
         "name": "Antiquaire",
         "description": "Marchand d'objets anciens, à l'œil affûté pour les pièces rares... et parfois maudites.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["estimation", "histoire", "occultisme", "bibliotheque", "langues", "persuasion"],
         "occupation_skill_choices": 1
@@ -261,7 +257,6 @@
         "key": "professeur_universite",
         "name": "Professeur d'université",
         "description": "Enseignant-chercheur reconnu dans sa discipline, habitué à la rigueur académique.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 10 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["sciences", "psychologie", "bibliotheque", "langues", "histoire", "langue_maternelle"],
         "occupation_skill_choices": 2
@@ -270,7 +265,6 @@
         "key": "medecin",
         "name": "Médecin",
         "description": "Praticien de la médecine, formé à soigner les blessures comme les maladies.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["medecine", "premiers_soins", "psychologie", "sciences", "bibliotheque", "persuasion"],
         "occupation_skill_choices": 1
@@ -279,7 +273,6 @@
         "key": "avocat",
         "name": "Avocat",
         "description": "Juriste plaidant, rompu à défendre ou attaquer un dossier devant un tribunal.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["droit", "baratin", "persuasion", "psychologie", "bibliotheque", "histoire"],
         "occupation_skill_choices": 1
@@ -288,7 +281,6 @@
         "key": "policier",
         "name": "Policier",
         "description": "Agent des forces de l'ordre, habitué au terrain et aux situations tendues.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["combat_rapproche", "intimidation", "droit", "trouver_objet_cache", "psychologie", "combat_distance_armes_poing"],
         "occupation_skill_choices": 1
@@ -297,7 +289,6 @@
         "key": "inspecteur_police",
         "name": "Inspecteur de police",
         "description": "Enquêteur assermenté chargé des affaires les plus sensibles du commissariat.",
-        "characteristics_bonus": [{ "characteristic": "INT", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["trouver_objet_cache", "droit", "psychologie", "intimidation", "discretion", "combat_distance_armes_poing"],
         "occupation_skill_choices": 1
@@ -306,7 +297,6 @@
         "key": "agent_federal",
         "name": "Agent fédéral",
         "description": "Représentant d'une agence gouvernementale, aux pouvoirs étendus mais aux comptes à rendre.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["droit", "combat_distance_armes_poing", "intimidation", "psychologie", "discretion", "persuasion"],
         "occupation_skill_choices": 1
@@ -315,7 +305,6 @@
         "key": "chasseur_de_primes",
         "name": "Chasseur de primes",
         "description": "Traqueur indépendant payé pour retrouver des fugitifs, mort ou vif si nécessaire.",
-        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["combat_distance_armes_poing", "intimidation", "pister", "discretion", "combat_rapproche", "survie"],
         "occupation_skill_choices": 1
@@ -324,7 +313,6 @@
         "key": "criminel",
         "name": "Criminel",
         "description": "Vit en marge de la loi, du cambriolage discret au grand banditisme.",
-        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(DEX, APP) * 2",
         "occupation_skills": ["crochetage", "discretion", "pickpocket", "imposture", "intimidation", "mecanique"],
         "occupation_skill_choices": 1
@@ -333,7 +321,6 @@
         "key": "soldat",
         "name": "Soldat",
         "description": "Militaire de rang, formé au combat et à la discipline sous le feu.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["combat_distance_fusils", "combat_rapproche", "survie", "esquive", "mecanique", "orientation"],
         "occupation_skill_choices": 1
@@ -342,7 +329,6 @@
         "key": "chasseur_gros_gibier",
         "name": "Chasseur de gros gibier",
         "description": "Traqueur expérimenté des grands prédateurs, habitué aux contrées reculées.",
-        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, DEX) * 2",
         "occupation_skills": ["combat_distance_fusils", "pister", "survie", "naturalisme", "orientation", "equitation"],
         "occupation_skill_choices": 1
@@ -351,7 +337,6 @@
         "key": "marin",
         "name": "Marin",
         "description": "Homme ou femme de la mer, à l'aise sur un pont comme dans les vagues.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + Max(FOR, CON) * 2",
         "occupation_skills": ["nager", "pilotage", "mecanique", "orientation", "survie", "combat_rapproche"],
         "occupation_skill_choices": 1
@@ -360,7 +345,6 @@
         "key": "pilote",
         "name": "Pilote",
         "description": "Aviateur professionnel, à l'aise aux commandes d'un aéronef.",
-        "characteristics_bonus": [{ "characteristic": "DEX", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + DEX * 2",
         "occupation_skills": ["pilotage", "mecanique", "orientation", "electricite", "sciences", "langues"],
         "occupation_skill_choices": 1
@@ -369,7 +353,6 @@
         "key": "ingenieur",
         "name": "Ingénieur",
         "description": "Conçoit, construit et répare machines et structures complexes.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["mecanique", "electricite", "sciences", "arts_et_metiers", "comptabilite", "langue_maternelle"],
         "occupation_skill_choices": 1
@@ -378,7 +361,6 @@
         "key": "archeologue",
         "name": "Archéologue",
         "description": "Étudie les civilisations disparues sur le terrain, entre fouilles et bibliothèques.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["archeologie", "histoire", "naturalisme", "langues", "bibliotheque", "estimation"],
         "occupation_skill_choices": 1
@@ -387,7 +369,6 @@
         "key": "parapsychologue",
         "name": "Parapsychologue",
         "description": "Étudie sérieusement les phénomènes que la science refuse d'admettre.",
-        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["occultisme", "psychologie", "sciences", "bibliotheque", "histoire", "ecouter"],
         "occupation_skill_choices": 1
@@ -396,7 +377,6 @@
         "key": "membre_du_clerge",
         "name": "Membre du clergé",
         "description": "Guide spirituel d'une communauté, formé à l'écoute autant qu'à la doctrine.",
-        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["persuasion", "psychologie", "histoire", "baratin", "premiers_soins", "langue_maternelle"],
         "occupation_skill_choices": 1
@@ -405,7 +385,6 @@
         "key": "missionnaire",
         "name": "Missionnaire",
         "description": "Parti prêcher et soigner loin de chez soi, souvent en territoire hostile.",
-        "characteristics_bonus": [{ "characteristic": "POU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["persuasion", "langues", "premiers_soins", "psychologie", "naturalisme", "survie"],
         "occupation_skill_choices": 1
@@ -414,7 +393,6 @@
         "key": "infirmier",
         "name": "Infirmier",
         "description": "Soignant de terrain, souvent en première ligne face à la souffrance des patients.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["premiers_soins", "medecine", "psychologie", "sciences", "ecouter", "persuasion"],
         "occupation_skill_choices": 1
@@ -423,7 +401,6 @@
         "key": "ecrivain",
         "name": "Écrivain",
         "description": "Vit de sa plume, entre fiction et articles de circonstance.",
-        "characteristics_bonus": [{ "characteristic": "EDU", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["bibliotheque", "histoire", "persuasion", "langue_maternelle", "psychologie", "arts_et_metiers"],
         "occupation_skill_choices": 1
@@ -432,7 +409,6 @@
         "key": "artiste",
         "name": "Artiste",
         "description": "Peintre, sculpteur ou artisan d'art, vivant de sa sensibilité et de sa technique.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["arts_et_metiers", "histoire", "persuasion", "estimation", "baratin", "langue_maternelle"],
         "occupation_skill_choices": 1
@@ -441,7 +417,6 @@
         "key": "musicien",
         "name": "Musicien",
         "description": "Se produit sur scène ou compose, vivant au rythme des salles de concert.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["arts_et_metiers", "charme", "histoire", "ecouter", "baratin", "persuasion"],
         "occupation_skill_choices": 1
@@ -450,7 +425,6 @@
         "key": "artiste_de_scene",
         "name": "Artiste de scène",
         "description": "Comédien, magicien ou humoriste, habitué à captiver un public.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["charme", "baratin", "imposture", "arts_et_metiers", "ecouter", "psychologie"],
         "occupation_skill_choices": 1
@@ -459,7 +433,6 @@
         "key": "diplomate",
         "name": "Diplomate",
         "description": "Représentant officiel habitué aux salons feutrés et aux négociations délicates.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["persuasion", "langues", "baratin", "psychologie", "histoire", "charme"],
         "occupation_skill_choices": 1
@@ -468,7 +441,6 @@
         "key": "rentier",
         "name": "Rentier",
         "description": "Vit confortablement de sa fortune familiale, avec le temps libre que cela permet.",
-        "characteristics_bonus": [{ "characteristic": "APP", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + APP * 2",
         "occupation_skills": ["charme", "baratin", "equitation", "langues", "arts_et_metiers"],
         "occupation_skill_choices": 2
@@ -477,7 +449,6 @@
         "key": "athlete",
         "name": "Athlète",
         "description": "Sportif de haut niveau, entretenant un corps et des réflexes hors normes.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + DEX * 2",
         "occupation_skills": ["sauter", "grimper", "nager", "esquive", "combat_rapproche", "lancer"],
         "occupation_skill_choices": 1
@@ -486,7 +457,6 @@
         "key": "fermier",
         "name": "Fermier",
         "description": "Travaille la terre et le bétail, habitué à l'effort physique et à la mécanique agricole.",
-        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + FOR * 2",
         "occupation_skills": ["naturalisme", "conduite_engin_lourd", "mecanique", "survie", "equitation", "combat_distance_fusils"],
         "occupation_skill_choices": 1
@@ -495,7 +465,6 @@
         "key": "vagabond",
         "name": "Vagabond",
         "description": "Sans domicile fixe, survit grâce à sa débrouillardise et sa connaissance de la rue.",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + CON * 2",
         "occupation_skills": ["survie", "discretion", "trouver_objet_cache", "naturalisme", "pickpocket", "orientation"],
         "occupation_skill_choices": 1
@@ -504,7 +473,6 @@
         "key": "ouvrier",
         "name": "Ouvrier",
         "description": "Travailleur manuel qualifié, sur les chantiers ou en usine.",
-        "characteristics_bonus": [{ "characteristic": "FOR", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 2 + FOR * 2",
         "occupation_skills": ["mecanique", "conduite_engin_lourd", "combat_rapproche", "electricite", "arts_et_metiers", "conduite"],
         "occupation_skill_choices": 1

@@ -202,11 +202,10 @@ du README pour le détail.
     budget (les compétences éligibles changent).
   - Les deux sont distincts de `occupations[].skills_bonus`, un bonus fixe
     et non réparti par le joueur que le schéma permet d'accorder
-    automatiquement à des compétences précises (même forme que
-    `characteristics_bonus`) — aucune occupation de CdC v7 ne s'en sert
-    plus depuis l'introduction des points d'occupation ci-dessus, mais le
-    champ reste dans le modèle (`OccupationConfig.skillsBonus`/
-    `skillBonusFor`) pour un futur système.
+    automatiquement à des compétences précises — aucune occupation de
+    CdC v7 ne s'en sert plus depuis l'introduction des points d'occupation
+    ci-dessus, mais le champ reste dans le modèle
+    (`OccupationConfig.skillsBonus`/`skillBonusFor`) pour un futur système.
 - Les infos propres à un univers mais qui ne sont **jamais lues par une
   formule** (juste enregistrées/affichées) vivent dans
   `character_sheet.global_attributes`, pas dans `characteristics` — c'est

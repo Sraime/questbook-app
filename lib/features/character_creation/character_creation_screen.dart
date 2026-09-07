@@ -76,12 +76,10 @@ class _CharacterCreationScreenState
   }
 
   Future<void> _rollStat(String key, String label) async {
-    final notifier = ref.read(characterCreationProvider.notifier);
     await CharacteristicRollDialog.show(
       context,
       characteristicKey: key,
       characteristicLabel: label,
-      bonusLabel: notifier.occupationBonusLabelFor(key),
     );
   }
 

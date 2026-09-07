@@ -84,10 +84,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = character.occupation == null
-        ? 'Niveau ${character.level}'
-        : '${character.occupation} — niveau ${character.level}';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -99,13 +95,14 @@ class _Header extends StatelessWidget {
             color: QBColors.ink900,
           ),
         ),
-        Text(
-          subtitle,
-          style: QBType.body().copyWith(
-            fontSize: QBType.sm,
-            color: QBColors.textMuted,
+        if (character.occupation case final occupation?)
+          Text(
+            occupation,
+            style: QBType.body().copyWith(
+              fontSize: QBType.sm,
+              color: QBColors.textMuted,
+            ),
           ),
-        ),
         const SizedBox(height: QBSpace.s3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,

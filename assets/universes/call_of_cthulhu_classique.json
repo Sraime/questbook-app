@@ -117,7 +117,6 @@
         "key": "hacker",
         "name": "Pirate informatique",
         "description": "Bricoleur et théoricien des systèmes, capable de contourner ce qui devrait être verrouillé.",
-        "characteristics_bonus": [{ "characteristic": "INT", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["sciences", "electricite", "mecanique", "discretion", "crochetage", "langue_maternelle"],
         "occupation_skill_choices": 1

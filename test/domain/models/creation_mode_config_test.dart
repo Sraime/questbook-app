@@ -139,15 +139,10 @@ void main() {
     expect(config.characterSheet.skills, isNotEmpty);
   });
 
-  test('every occupation has a name and a characteristic bonus', () {
+  test('every occupation has a name', () {
     expect(config.characterSheet.occupations, isNotEmpty);
     for (final occupation in config.characterSheet.occupations) {
       expect(occupation.name, isNotEmpty);
-      expect(
-        occupation.characteristicsBonus,
-        isNotEmpty,
-        reason: '${occupation.key} grants no characteristic bonus at all',
-      );
     }
   });
 

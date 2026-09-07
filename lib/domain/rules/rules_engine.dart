@@ -36,7 +36,7 @@ abstract interface class RulesEngine {
 
   /// Rolls the characteristic identified by [characteristicKey] (its short
   /// code, e.g. `FOR`/`DEX`) using that stat's own dice formula, plus any
-  /// flat [bonus] (e.g. from a chosen occupation).
+  /// flat [bonus].
   CharacteristicRoll rollCharacteristic(
     String characteristicKey, {
     int bonus = 0,

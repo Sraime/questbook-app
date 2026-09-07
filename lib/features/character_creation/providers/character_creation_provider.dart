@@ -282,25 +282,11 @@ class CharacterCreationNotifier extends Notifier<CharacterCreationState> {
     state = state.copyWith(globalAttributeValues: updated);
   }
 
-  /// The flat bonus the currently-selected occupation grants to
-  /// [characteristicKey], if any (0 otherwise).
-  int occupationBonusFor(String characteristicKey) =>
-      state.selectedOccupation?.characteristicBonusFor(characteristicKey) ?? 0;
-
-  /// Display label for [occupationBonusFor], or null if there's no bonus
-  /// to show (no occupation selected, or it doesn't affect this stat).
-  String? occupationBonusLabelFor(String characteristicKey) {
-    final occupation = state.selectedOccupation;
-    if (occupation == null) return null;
-    final bonus = occupation.characteristicBonusFor(characteristicKey);
-    return bonus == 0 ? null : '${occupation.name} +$bonus';
-  }
-
   /// Rolls [key] using the active universe's dice formula for that
-  /// characteristic, applying the selected occupation's bonus (if any).
+  /// characteristic.
   CharacteristicRoll rollCharacteristic(String key) {
     final rules = ref.read(rulesEngineProvider);
-    final roll = rules.rollCharacteristic(key, bonus: occupationBonusFor(key));
+    final roll = rules.rollCharacteristic(key);
     final updated = Map<String, int?>.from(state.characteristics)..[key] = roll.total;
     state = state.copyWith(characteristics: updated);
     return roll;

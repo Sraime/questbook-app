@@ -116,7 +116,7 @@ lib/
 Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu générique :
 
 - `GameSystems` — un mode de création (ex. `call_of_cthulhu_classique`) avec ses suggestions d'occupation.
-- `Characters` — rattaché à un `GameSystem`, avec nom/occupation/description/niveau.
+- `Characters` — rattaché à un `GameSystem`, avec nom/occupation/description.
 - `CharacterStats` — caractéristiques **et** compétences d'un personnage (`kind` distingue les deux), génériques sur `key`/`label`/`value` pour rester agnostiques du système.
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
@@ -168,7 +168,6 @@ Un fichier `assets/universes/universe_<id>.json` porte trois choses :
     ],
     "occupations": [
       { "key": "medecin", "name": "Médecin", "description": "Praticien de la médecine…",
-        "characteristics_bonus": [{ "characteristic": "CON", "flat_bonus": 5 }],
         "occupation_skill_points_formula": "EDU * 4",
         "occupation_skills": ["medecine", "premiers_soins", "psychologie", "sciences", "bibliotheque", "persuasion"],
         "occupation_skill_choices": 1 }
@@ -222,7 +221,7 @@ Les chaînes `calculation_formula`/`condition_table[].condition`/`condition_tabl
 
 **Points de compétence personnels (`personal_skill_points`)** : chaque jeu définit sa propre règle pour le nombre de points que le joueur répartit librement sur *n'importe quelle* compétence à la création (CdC v7 : `INT * 2`, les « points d'intérêt personnel », ex. Nager).
 
-Le schéma prévoit aussi `occupations[].skills_bonus` : un bonus fixe, automatique et non réparti par le joueur, qu'une occupation accorderait à des compétences précises (même forme que `characteristics_bonus`, en pourcentage plutôt qu'en points de caractéristique). CdC v7 n'en donne plus aucun exemple depuis l'introduction des points de compétence d'occupation ci-dessous, qui couvrent le même besoin de façon plus flexible — le champ reste disponible dans le schéma pour un futur système qui en aurait besoin.
+Le schéma prévoit aussi `occupations[].skills_bonus` : un bonus fixe, automatique et non réparti par le joueur, qu'une occupation accorderait à des compétences précises (en pourcentage). CdC v7 n'en donne plus aucun exemple depuis l'introduction des points de compétence d'occupation ci-dessous, qui couvrent le même besoin de façon plus flexible — le champ reste disponible dans le schéma pour un futur système qui en aurait besoin.
 
 **Points de compétence d'occupation (`occupations[].occupation_skill_points_formula`)** : en plus du crédit personnel ci-dessus, chaque occupation a son propre budget de points (CdC v7 : ex. `EDU * 4`, ou `EDU * 2 + Max(FOR, DEX) * 2` pour une occupation physique), dépensable **uniquement** sur la liste de compétences listées dans `occupations[].occupation_skills` (typiquement 5-7 compétences). `occupation_skill_choices` (souvent `1`) donne au joueur un nombre de créneaux « Compétence d'occupation bonus » : il choisit alors lui-même quelle compétence supplémentaire devient éligible à ce budget. Ce crédit est totalement séparé du pool `personal_skill_points` — les deux se cumulent sur une même compétence si le joueur le souhaite. Voir `CharacterCreationState.occupationSkillAllocated`/`occupationSkillChoiceSelections` (`lib/features/character_creation/providers/character_creation_provider.dart`) pour la logique, et la carte « Compétences » de l'écran de création pour l'UI.
 

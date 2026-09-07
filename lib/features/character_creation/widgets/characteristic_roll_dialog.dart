@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../design_system/components/qb_badge.dart';
 import '../../../design_system/components/qb_button.dart';
 import '../../../design_system/components/qb_dialog.dart';
 import '../../../design_system/tokens/colors.dart';
@@ -17,18 +16,15 @@ class CharacteristicRollDialog extends ConsumerStatefulWidget {
     super.key,
     required this.characteristicKey,
     required this.characteristicLabel,
-    this.bonusLabel,
   });
 
   final String characteristicKey;
   final String characteristicLabel;
-  final String? bonusLabel;
 
   static Future<void> show(
     BuildContext context, {
     required String characteristicKey,
     required String characteristicLabel,
-    String? bonusLabel,
   }) {
     return showQBDialog(
       context: context,
@@ -37,7 +33,6 @@ class CharacteristicRollDialog extends ConsumerStatefulWidget {
       builder: (context) => CharacteristicRollDialog(
         characteristicKey: characteristicKey,
         characteristicLabel: characteristicLabel,
-        bonusLabel: bonusLabel,
       ),
     );
   }
@@ -77,10 +72,6 @@ class _CharacteristicRollDialogState
             ),
           ),
           const SizedBox(height: QBSpace.s5),
-          if (widget.bonusLabel != null) ...[
-            QBBadge(label: widget.bonusLabel!, tone: QBTone.info),
-            const SizedBox(height: QBSpace.s5),
-          ],
           QBButton(
             label: 'Lancer le dé',
             variant: QBButtonVariant.primary,
@@ -114,7 +105,9 @@ class _CharacteristicRollDialogState
         ),
         const SizedBox(height: QBSpace.s3),
         Text(
-          '${roll.diceSum} (dés) × 5 + ${roll.bonus} (bonus)',
+          roll.bonus == 0
+              ? '${roll.diceSum} (dés) × 5'
+              : '${roll.diceSum} (dés) × 5 + ${roll.bonus} (bonus)',
           style: QBType.mono().copyWith(
             fontSize: QBType.sm,
             color: QBColors.textMuted,
@@ -129,10 +122,6 @@ class _CharacteristicRollDialogState
             color: QBColors.ink900,
           ),
         ),
-        if (widget.bonusLabel != null) ...[
-          const SizedBox(height: 2),
-          QBBadge(label: widget.bonusLabel!, tone: QBTone.info),
-        ],
         const SizedBox(height: QBSpace.s4),
         Row(
           children: [

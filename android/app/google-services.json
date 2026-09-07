@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "56734402863",
+    "project_id": "questbook-48540",
+    "storage_bucket": "questbook-48540.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56734402863:android:8f12f08f8eff13a8e2b9da",
+        "android_client_info": {
+          "package_name": "com.questbook.questbook"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "56734402863-ao514q3vevar9prs8c5dtgbucv0o6lep.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.questbook.questbook",
+            "certificate_hash": "c5528ac3d130148b51ff961eb952074b2a6a5110"
+          }
+        },
+        {
+          "client_id": "56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyEvCfXLzvGEuYhX5hNFGAJIWFMbGaHrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "56734402863-oma1c0gsd0o6cfp7oefu8maej2bgb3sh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.questbook.questbook"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

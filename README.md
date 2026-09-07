@@ -38,7 +38,11 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Accueil (`/perso`)** : liste des personnages créés, avec un badge de points de vie et un accès rapide à la fiche.
 - **Création de personnage (`/perso/create`)** : choix de l'univers et du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
-- **Tables (`/tables`)** : liste des campagnes/tables de jeu, création d'une nouvelle table (titre + univers).
+- **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions ; chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Notifications (`/tables/notifications`)** : historique des invitations, sessions et réponses, avec pastille de non-lus sur la barre de navigation. Doublé de notifications push (Firebase Cloud Messaging).
+
+> Contrairement aux personnages, **les tables sont strictement en ligne** : elles sont partagées entre plusieurs comptes, il n'y a donc rien à stocker localement et l'onglet demande une connexion.
 
 Toute l'interface utilise un design system interne « juicy » (boutons/cartes/dés avec relief, ombres et dégradés) inspiré d'une maquette produit, situé dans `lib/design_system/`.
 
@@ -74,21 +78,25 @@ lib/
 │   └── theme.dart             # ThemeData Material basé sur les tokens du design system
 ├── domain/                    # Cœur métier, indépendant de Flutter/Drift
 │   ├── models/                # Character, CharacterStat, CharacterResource,
-│   │                          # GameSystem, GameTable, InventoryItem, Tone,
+│   │                          # GameSystem, InventoryItem, Tone,
 │   │                          # CreationModeConfig (parsing des configs de
 │   │                          # mode de création), UniverseConfig (parsing
 │   │                          # des métadonnées d'univers)
-│   ├── repositories/          # Interfaces abstraites (Character/GameSystem/Table)
+│   ├── repositories/          # Interfaces abstraites (Character/GameSystem)
 │   └── rules/                 # RulesEngine (interface) + ConfigRulesEngine
 │                               # (implémentation générique) + FormulaEvaluator
 ├── data/
 │   ├── universe/               # Découverte + chargement des configs de mode
 │   │                            # de création et d'univers (assets JSON)
-│   └── local/
-│       ├── database.dart      # Schéma Drift (tables SQLite) + AppDatabase
-│       ├── local_*_repository.dart  # Implémentations locales des repositories
-│       └── seed/               # seedDatabase() — insère le GameSystem de
-│                                # chaque mode de création bundlé
+│   ├── local/
+│   │   ├── database.dart      # Schéma Drift (tables SQLite) + AppDatabase
+│   │   ├── local_*_repository.dart  # Implémentations locales des repositories
+│   │   └── seed/               # seedDatabase() — insère le GameSystem de
+│   │                            # chaque mode de création bundlé
+│   ├── remote/                 # DTO et clients HTTP de l'API (auth, personnages,
+│   │                            # tables, sessions, notifications)
+│   ├── sync/                   # SyncService : push/pull des personnages
+│   └── push/                   # PushMessaging : jeton FCM et messages entrants
 ├── design_system/
 │   ├── tokens/                # colors, spacing, typography, effects (constantes de design)
 │   └── components/            # Widgets réutilisables préfixés qb_ (bouton, carte, dés, etc.)
@@ -96,7 +104,8 @@ lib/
 │   ├── home/                   # Écran « Mes personnages »
 │   ├── character_creation/     # Création de personnage + modale de jet de caractéristique
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
-│   ├── tables/                  # Écran « Mes tables »
+│   ├── tables/                  # « Mes tables », détail d'une table, notifications
+│   ├── auth/                    # Écran de connexion Google et barre de compte
 │   └── shell/                   # AppShell : bottom nav bar persistante (StatefulShellRoute)
 ├── services/
 │   └── dice_service.dart       # Primitives de lancer de dés (dNombre, dPourcent), testable isolément
@@ -120,7 +129,9 @@ Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu g
 - `CharacterStats` — caractéristiques **et** compétences d'un personnage (`kind` distingue les deux), génériques sur `key`/`label`/`value` pour rester agnostiques du système.
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
-- `GameTables` — tables/campagnes, éventuellement rattachées à un système.
+- `SyncMetadata` — curseur de synchronisation et identifiant du compte auquel appartiennent les données locales.
+
+Les tables de jeu **n'apparaissent pas ici** : elles sont partagées entre plusieurs comptes et vivent uniquement sur le serveur. La table Drift `GameTables` de la maquette locale a été supprimée par la migration v2 → v3.
 
 Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul un nouveau fichier de config JSON de mode de création (voir ci-dessous) change.
 
@@ -391,6 +402,45 @@ lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 Les personnages créés avant cette fonctionnalité sont poussés tels quels à la
 première connexion (migration Drift v1 → v2, voir `lib/data/local/database.dart`).
 
+### Tables : le choix inverse
+
+Les tables ne suivent **pas** ce modèle. Une table est partagée entre plusieurs
+comptes qui la modifient en même temps ; la stocker localement obligerait à
+résoudre des conflits sur des données que l'utilisateur ne contrôle pas seul,
+pour un gain nul — sans réseau, il n'y a de toute façon pas de partie à
+organiser. L'onglet Tables lit donc l'API directement (`FutureProvider` dans
+`lib/features/tables/providers/`) et affiche un état « connexion requise » à
+défaut. La maquette locale est supprimée par la migration Drift v2 → v3.
+
+### Notifications push (Firebase Cloud Messaging)
+
+`lib/data/push/push_messaging.dart` enregistre le jeton FCM de l'appareil à la
+connexion (`PUT /devices`) et le retire à la déconnexion, pour qu'un téléphone
+partagé cesse de recevoir les notifications du compte précédent. Un message
+reçu app ouverte rafraîchit la pastille ; un message ouvert depuis la barre
+système ouvre la table concernée.
+
+Le push n'est qu'un canal de livraison : **l'historique consultable vient de
+l'API**, où chaque ligne est écrite dans la transaction de la modification qui
+la justifie. Un appareil sans Play Services, ou un build sans Firebase, voit
+donc tout — simplement plus tard. C'est pourquoi `Firebase.initializeApp` est
+enveloppé dans un `try` au démarrage.
+
+`android/app/google-services.json` et `lib/firebase_options.dart` sont
+**versionnés volontairement** : ils ne contiennent pas de secret (ils sont de
+toute façon embarqués dans l'APK) et la CI en a besoin pour construire le
+release. Pour les régénérer :
+
+```bash
+dart pub global activate flutterfire_cli
+flutterfire configure --project=questbook-48540 --platforms=android \
+  --android-package-name=com.questbook.questbook
+```
+
+Côté serveur, l'envoi demande une clé de compte de service Firebase
+(`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) — voir
+le README du backend.
+
 ## Tests
 
 ```bash
@@ -597,8 +647,9 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 - Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
-- La synchronisation ne couvre que les personnages (stats, ressources, inventaire). Les tables de jeu restent purement locales.
+- La synchronisation hors-ligne ne couvre que les personnages (stats, ressources, inventaire). Les tables, sessions et notifications sont lues et écrites en ligne : sans réseau, l'onglet Tables est vide.
 - La connexion Google n'est câblée que pour Android : `ios/Runner/Info.plist` n'a pas encore de `CFBundleURLTypes`, et il manque un client OAuth iOS. Un build iOS lancé sans `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` reste utilisable, mais hors ligne. Voir [Compte Google et synchronisation](#compte-google-et-synchronisation).
-- L'écran « Tables » ne propose pas encore d'écran de détail : ouvrir une table existante est un no-op pour l'instant.
+- Les notifications push ne sont câblées que pour Android : le projet Firebase n'a pas d'app iOS, et l'envoi APNs demanderait une clé Apple. Sur iOS, seul l'historique in-app fonctionne.
+- Pas de relance en cas d'échec d'envoi d'un e-mail ou d'un push : les deux partent au mieux après le commit. La ligne de notification, elle, est écrite dans la transaction, donc l'historique in-app reste juste. Une table d'outbox avec relance reste un ajout simple si le besoin apparaît.
 - Distribution actuelle limitée à Firebase App Distribution (bêta-testeurs) ; pas encore de publication Play Store, ni de Play App Signing (la clé de signature `upload` est gérée manuellement — voir [Distribution Android](#distribution-android-signature-firebase-cicd)).
 - L'authentification CI Firebase (`firebase login:ci` / `--token`) repose sur un mécanisme déprécié par Google ; à migrer vers un compte de service GCP si `firebase-tools` le retire dans une future version majeure.

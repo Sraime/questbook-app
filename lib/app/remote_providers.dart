@@ -10,6 +10,9 @@ import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
 import '../data/remote/auth_tokens.dart';
 import '../data/remote/character_api.dart';
+import '../data/remote/notification_api.dart';
+import '../data/remote/session_api.dart';
+import '../data/remote/table_api.dart';
 import '../data/remote/token_store.dart';
 import '../data/sync/character_sync_dao.dart';
 import '../data/sync/sync_service.dart';
@@ -39,6 +42,18 @@ final authApiProvider = Provider<AuthApi>(
 
 final characterApiProvider = Provider<CharacterApi>(
   (ref) => CharacterApi(ref.watch(apiClientProvider)),
+);
+
+final tableApiProvider = Provider<TableApi>(
+  (ref) => TableApi(ref.watch(apiClientProvider)),
+);
+
+final sessionApiProvider = Provider<SessionApi>(
+  (ref) => SessionApi(ref.watch(apiClientProvider)),
+);
+
+final notificationApiProvider = Provider<NotificationApi>(
+  (ref) => NotificationApi(ref.watch(apiClientProvider)),
 );
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

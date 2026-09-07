@@ -58,13 +58,24 @@ class ApiException implements Exception {
   bool get isRetryable =>
       code == 'NETWORK_ERROR' || (statusCode != null && statusCode! >= 500);
 
-  Map<String, dynamic>? get conflictingCharacter {
+  /// The server hides records the caller may not see behind a 404, so this
+  /// also covers "someone removed you from the table while you had it open".
+  bool get isMissing => statusCode == 404;
+
+  /// The caller is a member but not the game master.
+  bool get isForbidden => statusCode == 403;
+
+  /// The record the server holds instead, when it rejected a write as stale.
+  /// [key] names the record inside the `details` envelope.
+  Map<String, dynamic>? conflictingRecord(String key) {
     final data = details;
-    if (data is Map && data['character'] is Map) {
-      return (data['character'] as Map).cast<String, dynamic>();
+    if (data is Map && data[key] is Map) {
+      return (data[key] as Map).cast<String, dynamic>();
     }
     return null;
   }
+
+  Map<String, dynamic>? get conflictingCharacter => conflictingRecord('character');
 
   @override
   String toString() => 'ApiException($code): $message';

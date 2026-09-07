@@ -105,18 +105,6 @@ class InventoryItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('GameTableRow')
-class GameTables extends Table {
-  TextColumn get id => text()();
-  TextColumn get title => text()();
-  TextColumn get universeLabel => text()();
-  DateTimeColumn get nextSession => dateTime().nullable()();
-  TextColumn get systemId => text().nullable().references(GameSystems, #id)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
 @DriftDatabase(
   tables: [
     GameSystems,
@@ -124,7 +112,6 @@ class GameTables extends Table {
     CharacterStats,
     CharacterResources,
     InventoryItems,
-    GameTables,
     SyncMetadata,
   ],
 )
@@ -134,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -151,6 +138,12 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'UPDATE characters SET updated_at = created_at',
             );
+          }
+          if (from < 3) {
+            // Tables became a shared, server-owned feature: they are no longer
+            // stored on the device at all. The rows held nothing but a local
+            // mockup, so there is nothing to migrate out of them.
+            await m.deleteTable('game_tables');
           }
         },
       );

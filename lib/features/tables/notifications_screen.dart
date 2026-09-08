@@ -45,6 +45,10 @@ class NotificationsScreen extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       'Notifications',
+                      // Without this the game font breaks the word in two
+                      // when the action beside it takes the width.
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: QBType.game().copyWith(
                         fontWeight: QBType.weightBold,
                         fontSize: 20,
@@ -66,7 +70,7 @@ class NotificationsScreen extends ConsumerWidget {
                         }
                       },
                       child: Text(
-                        'Tout marquer lu',
+                        'Tout lire',
                         style: QBType.game().copyWith(
                           fontWeight: QBType.weightSemibold,
                           fontSize: QBType.sm,

@@ -202,27 +202,30 @@ class _TableCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    table.title,
-                    style: QBType.game().copyWith(
-                      fontWeight: QBType.weightSemibold,
-                      fontSize: 15,
-                      color: QBColors.ink900,
-                    ),
-                  ),
-                ),
-                if (table.universeLabel != null)
-                  QBBadge(label: table.universeLabel!, tone: QBTone.info),
-                if (table.isGameMaster) ...[
-                  const SizedBox(width: 6),
-                  const QBBadge(label: 'MJ', tone: QBTone.warning),
-                ],
-              ],
+            // Badges sit under the title rather than beside it: a universe
+            // label is free text, and next to one the title was squeezed hard
+            // enough to break mid-word.
+            Text(
+              table.title,
+              style: QBType.game().copyWith(
+                fontWeight: QBType.weightSemibold,
+                fontSize: 15,
+                color: QBColors.ink900,
+              ),
             ),
+            if (table.universeLabel != null || table.isGameMaster) ...[
+              const SizedBox(height: QBSpace.s2),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (table.universeLabel != null)
+                    QBBadge(label: table.universeLabel!, tone: QBTone.info),
+                  if (table.isGameMaster)
+                    const QBBadge(label: 'MJ', tone: QBTone.warning),
+                ],
+              ),
+            ],
             const SizedBox(height: QBSpace.s2),
             Text(
               table.nextSessionAt == null

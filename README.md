@@ -39,7 +39,10 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création de personnage (`/perso/create`)** : choix de l'univers et du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions ; chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions, et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
+
+> Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Notifications (`/tables/notifications`)** : historique des invitations, sessions et réponses, avec pastille de non-lus sur la barre de navigation. Doublé de notifications push (Firebase Cloud Messaging).
 
 > Contrairement aux personnages, **les tables sont strictement en ligne** : elles sont partagées entre plusieurs comptes, il n'y a donc rien à stocker localement et l'onglet demande une connexion.
@@ -411,6 +414,16 @@ pour un gain nul — sans réseau, il n'y a de toute façon pas de partie à
 organiser. L'onglet Tables lit donc l'API directement (`FutureProvider` dans
 `lib/features/tables/providers/`) et affiche un état « connexion requise » à
 défaut. La maquette locale est supprimée par la migration Drift v2 → v3.
+
+Un cas se tient à la frontière des deux modèles : le personnage qu'un joueur
+inscrit à une session. Le choix se fait dans une liste lue en local, mais c'est
+l'identifiant qui part au serveur, lequel ne connaît que les personnages déjà
+synchronisés. Un personnage créé hors-ligne et jamais poussé revient donc en
+404, et la boîte de dialogue invite explicitement à synchroniser.
+
+La fiche d'un autre participant, elle, est lue en ligne et n'est jamais écrite
+sur l'appareil : elle appartient à quelqu'un d'autre, et c'est à lui de la
+changer.
 
 ### Notifications push (Firebase Cloud Messaging)
 

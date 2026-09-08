@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/remote_providers.dart';
 import '../../../data/remote/auth_tokens.dart';
+import '../../../data/remote/remote_character.dart';
 import '../../../data/remote/remote_table.dart';
 
 /// Tables are strictly online: there is no local copy to fall back on, so
@@ -68,6 +69,32 @@ final tableDetailProvider =
   final sessions = await ref.watch(sessionApiProvider).listForTable(tableId);
   return TableDetail(table: table, sessions: sessions);
 });
+
+/// Another player's sheet, readable only because they registered it for a
+/// session this user is also at. Fetched on demand and dropped when the sheet
+/// closes: it is someone else's data, and it is theirs to change.
+final attendeeCharacterProvider = FutureProvider.autoDispose
+    .family<RemoteCharacter, AttendeeCharacterRef>((ref, key) {
+  return ref
+      .watch(sessionApiProvider)
+      .attendeeCharacter(key.sessionId, key.userId);
+});
+
+class AttendeeCharacterRef {
+  const AttendeeCharacterRef({required this.sessionId, required this.userId});
+
+  final String sessionId;
+  final String userId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AttendeeCharacterRef &&
+      other.sessionId == sessionId &&
+      other.userId == userId;
+
+  @override
+  int get hashCode => Object.hash(sessionId, userId);
+}
 
 final notificationsProvider = FutureProvider<RemoteNotificationPage>((ref) async {
   final user = ref.watch(authControllerProvider).value;

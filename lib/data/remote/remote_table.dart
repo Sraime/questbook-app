@@ -171,12 +171,34 @@ enum AttendanceStatus {
   String get wire => this == AttendanceStatus.yes ? 'yes' : 'no';
 }
 
+/// Just enough of a character to name it in the answers list. The full sheet is
+/// fetched separately when someone asks to see it.
+class RemoteAttendanceCharacter {
+  const RemoteAttendanceCharacter({
+    required this.id,
+    required this.name,
+    required this.occupation,
+  });
+
+  factory RemoteAttendanceCharacter.fromJson(Map<String, dynamic> json) =>
+      RemoteAttendanceCharacter(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        occupation: json['occupation'] as String?,
+      );
+
+  final String id;
+  final String name;
+  final String? occupation;
+}
+
 class RemoteAttendance {
   const RemoteAttendance({
     required this.userId,
     required this.status,
     required this.respondedAt,
     required this.user,
+    required this.character,
   });
 
   factory RemoteAttendance.fromJson(Map<String, dynamic> json) => RemoteAttendance(
@@ -184,12 +206,21 @@ class RemoteAttendance {
         status: AttendanceStatus.parse(json['status'] as String),
         respondedAt: DateTime.parse(json['respondedAt'] as String).toLocal(),
         user: RemoteUser.fromJson((json['user'] as Map).cast<String, dynamic>()),
+        character: json['character'] == null
+            ? null
+            : RemoteAttendanceCharacter.fromJson(
+                (json['character'] as Map).cast<String, dynamic>(),
+              ),
       );
 
   final String userId;
   final AttendanceStatus status;
   final DateTime respondedAt;
   final RemoteUser user;
+
+  /// Who they are playing, once they have said. Confirming and choosing a
+  /// character are two separate moments.
+  final RemoteAttendanceCharacter? character;
 }
 
 class RemoteGameSession {
@@ -203,6 +234,7 @@ class RemoteGameSession {
     required this.status,
     required this.attendances,
     required this.myStatus,
+    required this.myCharacter,
   });
 
   factory RemoteGameSession.fromJson(Map<String, dynamic> json) => RemoteGameSession(
@@ -217,6 +249,11 @@ class RemoteGameSession {
         myStatus: json['myStatus'] == null
             ? null
             : AttendanceStatus.parse(json['myStatus'] as String),
+        myCharacter: json['myCharacter'] == null
+            ? null
+            : RemoteAttendanceCharacter.fromJson(
+                (json['myCharacter'] as Map).cast<String, dynamic>(),
+              ),
       );
 
   final String id;
@@ -231,6 +268,9 @@ class RemoteGameSession {
   /// Null while the signed-in member has not answered, which is deliberately
   /// different from having answered "no".
   final AttendanceStatus? myStatus;
+
+  /// The character the signed-in member is bringing, once they have said.
+  final RemoteAttendanceCharacter? myCharacter;
 
   bool get isCancelled => status == 'cancelled';
 

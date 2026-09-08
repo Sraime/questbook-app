@@ -16,7 +16,9 @@ import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
+import 'widgets/attendee_character_sheet.dart';
 import 'widgets/invite_player_dialog.dart';
+import 'widgets/session_character_dialog.dart';
 import 'widgets/session_form_dialog.dart';
 
 /// Everything about one table: who is at it, who has been invited, and what is
@@ -223,7 +225,14 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
-    final pending = widget.table.members.length - session.attendances.length;
+
+    // The game master runs the evening rather than attending it, so they are
+    // neither expected to answer nor counted among those who have not.
+    final answered = session.attendances.map((a) => a.userId).toSet();
+    final pending = widget.table.members
+        .where((member) =>
+            !member.role.isGameMaster && !answered.contains(member.userId))
+        .length;
 
     return QBCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -283,34 +292,83 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
           ],
           const SizedBox(height: QBSpace.s3),
           _AttendanceSummary(session: session, pendingCount: pending),
-          const SizedBox(height: QBSpace.s3),
-          Row(
-            children: [
-              Expanded(
-                child: QBButton(
-                  label: 'Je viens',
-                  size: QBButtonSize.sm,
-                  expand: true,
-                  variant: session.myStatus == AttendanceStatus.yes
-                      ? QBButtonVariant.primary
-                      : QBButtonVariant.secondary,
-                  onPressed:
-                      _busy ? null : () => _answer(AttendanceStatus.yes),
+          if (!widget.table.isGameMaster) ...[
+            const SizedBox(height: QBSpace.s3),
+            Row(
+              children: [
+                Expanded(
+                  child: QBButton(
+                    label: 'Je viens',
+                    size: QBButtonSize.sm,
+                    expand: true,
+                    variant: session.myStatus == AttendanceStatus.yes
+                        ? QBButtonVariant.primary
+                        : QBButtonVariant.secondary,
+                    onPressed:
+                        _busy ? null : () => _answer(AttendanceStatus.yes),
+                  ),
                 ),
-              ),
-              const SizedBox(width: QBSpace.s2),
-              Expanded(
-                child: QBButton(
-                  label: 'Je passe',
-                  size: QBButtonSize.sm,
-                  expand: true,
-                  variant: session.myStatus == AttendanceStatus.no
-                      ? QBButtonVariant.danger
-                      : QBButtonVariant.ghost,
-                  onPressed: _busy ? null : () => _answer(AttendanceStatus.no),
+                const SizedBox(width: QBSpace.s2),
+                Expanded(
+                  child: QBButton(
+                    label: 'Je passe',
+                    size: QBButtonSize.sm,
+                    expand: true,
+                    variant: session.myStatus == AttendanceStatus.no
+                        ? QBButtonVariant.danger
+                        : QBButtonVariant.ghost,
+                    onPressed:
+                        _busy ? null : () => _answer(AttendanceStatus.no),
+                  ),
                 ),
-              ),
+              ],
+            ),
+            // Answering and saying who you are playing are two moments: the
+            // player confirms first, and names a character whenever they know.
+            if (session.myStatus == AttendanceStatus.yes) ...[
+              const SizedBox(height: QBSpace.s2),
+              _MyCharacterRow(session: session, tableId: widget.table.id),
             ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MyCharacterRow extends StatelessWidget {
+  const _MyCharacterRow({required this.session, required this.tableId});
+
+  final RemoteGameSession session;
+  final String tableId;
+
+  @override
+  Widget build(BuildContext context) {
+    final character = session.myCharacter;
+
+    return GestureDetector(
+      onTap: () => showSessionCharacterDialog(
+        context,
+        tableId: tableId,
+        sessionId: session.id,
+        currentCharacterId: character?.id,
+      ),
+      child: Row(
+        children: [
+          Icon(LucideIcons.userRound, size: 13, color: QBColors.textMuted),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              character == null
+                  ? 'Choisir ton personnage'
+                  : 'Tu joues ${character.name}',
+              style: QBType.body().copyWith(
+                fontSize: QBType.xs,
+                color: QBColors.leather700,
+                decoration: TextDecoration.underline,
+                decorationColor: QBColors.leather700,
+              ),
+            ),
           ),
         ],
       ),
@@ -321,6 +379,9 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
 /// Who said what. Members who have not answered are counted separately: not
 /// answering is not the same as saying no, and the game master needs to know
 /// who to chase.
+///
+/// A player who has named a character opens it to everyone else at the table,
+/// so those lines are tappable.
 class _AttendanceSummary extends StatelessWidget {
   const _AttendanceSummary({required this.session, required this.pendingCount});
 
@@ -336,14 +397,10 @@ class _AttendanceSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (accepted.isNotEmpty)
-          _MutedText(
-            'Présents · ${accepted.map((a) => a.user.label).join(', ')}',
-          ),
-        if (declined.isNotEmpty)
-          _MutedText(
-            'Absents · ${declined.map((a) => a.user.label).join(', ')}',
-          ),
+        for (final attendance in accepted)
+          _AttendeeLine(session: session, attendance: attendance, coming: true),
+        for (final attendance in declined)
+          _AttendeeLine(session: session, attendance: attendance, coming: false),
         if (pendingCount > 0)
           _MutedText(
             pendingCount > 1
@@ -351,6 +408,78 @@ class _AttendanceSummary extends StatelessWidget {
                 : '1 joueur n’a pas encore répondu',
           ),
       ],
+    );
+  }
+}
+
+class _AttendeeLine extends StatelessWidget {
+  const _AttendeeLine({
+    required this.session,
+    required this.attendance,
+    required this.coming,
+  });
+
+  final RemoteGameSession session;
+  final RemoteAttendance attendance;
+  final bool coming;
+
+  @override
+  Widget build(BuildContext context) {
+    final character = attendance.character;
+
+    final line = Row(
+      children: [
+        Icon(
+          coming ? LucideIcons.check : LucideIcons.x,
+          size: 12,
+          color: QBColors.textMuted,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: attendance.user.label),
+                // Nobody is obliged to say who they are playing, so the
+                // character is only named once it is known.
+                if (character != null)
+                  TextSpan(
+                    text: ' · ${character.name}',
+                    style: TextStyle(
+                      color: QBColors.leather700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: QBColors.leather700,
+                    ),
+                  ),
+              ],
+            ),
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (character == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: line,
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => showAttendeeCharacterSheet(
+        context,
+        sessionId: session.id,
+        userId: attendance.userId,
+        playerLabel: attendance.user.label,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: line,
+      ),
     );
   }
 }
@@ -423,7 +552,13 @@ class _MemberRow extends ConsumerWidget {
             ],
           ),
         ),
-        if (canRemove)
+        if (canRemove) ...[
+          QBIconButton(
+            icon: const Icon(LucideIcons.crown, size: 16),
+            label: 'Confier la table à ${member.user.label}',
+            size: 32,
+            onPressed: () => _transfer(context, ref),
+          ),
           QBIconButton(
             icon: const Icon(LucideIcons.userMinus, size: 16),
             label: 'Retirer ${member.user.label}',
@@ -440,8 +575,47 @@ class _MemberRow extends ConsumerWidget {
               }
             },
           ),
+        ],
       ],
     );
+  }
+
+  /// Handing over is not a small thing: the current game master loses every
+  /// control on this screen, so it is worth a clear confirmation.
+  Future<void> _transfer(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confier la table ?'),
+        content: Text(
+          '${member.user.label} deviendra maître du jeu et organisera les '
+          'sessions à venir. Il sera retiré des participants de celles qui '
+          'n’ont pas encore eu lieu. Toi, tu redeviendras un joueur.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Non'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Confier'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(tableApiProvider)
+          .transferGameMaster(table.id, member.userId);
+      refreshTables(ref, tableId: table.id);
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 

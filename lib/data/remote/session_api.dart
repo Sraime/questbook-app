@@ -1,4 +1,5 @@
 import 'api_client.dart';
+import 'remote_character.dart';
 import 'remote_table.dart';
 
 /// Sessions are created under their table but addressed by their own id
@@ -84,13 +85,49 @@ class SessionApi {
     );
   }
 
-  Future<RemoteGameSession> setAttendance(String id, AttendanceStatus status) {
+  /// Answering may already name a character, or not: omitting [characterId]
+  /// leaves any earlier choice untouched.
+  Future<RemoteGameSession> setAttendance(
+    String id,
+    AttendanceStatus status, {
+    String? characterId,
+  }) {
     return _client.send(
       (dio) => dio.put<dynamic>(
         '/sessions/$id/attendance',
-        data: {'status': status.wire},
+        data: {
+          'status': status.wire,
+          'characterId': ?characterId,
+        },
       ),
       parse: _parseSession,
+    );
+  }
+
+  /// Naming, changing or dropping the character without touching the answer.
+  /// Passing null detaches it. The game master is notified separately from an
+  /// answer change, because it tells them something different.
+  Future<RemoteGameSession> setAttendanceCharacter(
+    String id,
+    String? characterId,
+  ) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$id/attendance/character',
+        data: {'characterId': characterId},
+      ),
+      parse: _parseSession,
+    );
+  }
+
+  /// The sheet of another player at the same session, which they opened by
+  /// registering it. Addressed by player, because that is what authorises the
+  /// read.
+  Future<RemoteCharacter> attendeeCharacter(String sessionId, String userId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/attendances/$userId/character'),
+      parse: (data) =>
+          RemoteCharacter.fromJson((data as Map).cast<String, dynamic>()),
     );
   }
 

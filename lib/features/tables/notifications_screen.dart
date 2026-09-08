@@ -210,6 +210,9 @@ class _NotificationCard extends ConsumerWidget {
         'session_created' => LucideIcons.calendarPlus,
         'session_updated' => LucideIcons.calendarClock,
         'session_cancelled' => LucideIcons.calendarX,
+        'attendance_changed' => LucideIcons.check,
+        'attendance_character_changed' => LucideIcons.userRound,
+        'game_master_transferred' => LucideIcons.crown,
         _ => LucideIcons.messageSquare,
       };
 }

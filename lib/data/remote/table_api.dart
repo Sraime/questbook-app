@@ -71,6 +71,16 @@ class TableApi {
     );
   }
 
+  /// Hands the table over. The caller becomes a plain player, and stops being
+  /// able to do any of this.
+  Future<RemoteGameTable> transferGameMaster(String id, String userId) {
+    return _client.send(
+      (dio) => dio.put<dynamic>('/tables/$id/game-master', data: {'userId': userId}),
+      parse: (data) =>
+          RemoteGameTable.fromJson((data as Map).cast<String, dynamic>()),
+    );
+  }
+
   /// Throws an [ApiException] with a 404 when no Questbook account uses this
   /// address, which is the one refusal the invitation dialog has to explain.
   Future<RemoteTableInvitation> invite(String id, {required String email}) {

@@ -58,8 +58,12 @@ class TableDetail {
     ..sort((a, b) => b.startsAt.compareTo(a.startsAt));
 }
 
+/// Disposed with the detail screen, so opening a table always fetches it
+/// again. A table changes under the user's feet — the game master moves a
+/// session, someone answers — and a cached copy from an earlier visit would
+/// show none of it.
 final tableDetailProvider =
-    FutureProvider.family<TableDetail, String>((ref, tableId) async {
+    FutureProvider.autoDispose.family<TableDetail, String>((ref, tableId) async {
   final table = await ref.watch(tableApiProvider).get(tableId);
   final sessions = await ref.watch(sessionApiProvider).listForTable(tableId);
   return TableDetail(table: table, sessions: sessions);

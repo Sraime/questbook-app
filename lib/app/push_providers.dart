@@ -18,17 +18,30 @@ import 'router.dart';
 final pushMessagingProvider = Provider<PushMessaging>((ref) {
   final push = PushMessaging(ref.watch(notificationApiProvider));
 
-  // A message arriving while the app is open should move the badge, not wait
-  // for the user to pull to refresh.
-  push.onMessageReceived = () => ref.invalidate(notificationsProvider);
+  // A message arriving while the app is open should move the badge and bring
+  // in whatever it announced, not wait for the user to pull to refresh.
+  push.onMessageReceived = (tableId) => _refresh(ref, tableId);
 
   // Tapping a notification from the system tray lands on the table it is
   // about, which is where the session, the invitation or the answer lives.
-  push.onNotificationOpened = (tableId) => appRouter.go('/tables/$tableId');
+  // Refresh first, so the screen opens on the change rather than on the copy
+  // fetched before it happened.
+  push.onNotificationOpened = (tableId) {
+    _refresh(ref, tableId);
+    appRouter.go('/tables/$tableId');
+  };
 
   ref.onDispose(push.dispose);
   return push;
 });
+
+void _refresh(Ref ref, String? tableId) {
+  ref.invalidate(notificationsProvider);
+  ref.invalidate(tablesOverviewProvider);
+  if (tableId != null) {
+    ref.invalidate(tableDetailProvider(tableId));
+  }
+}
 
 class PushController extends Notifier<void> {
   @override

@@ -23,9 +23,11 @@ class PushMessaging {
   StreamSubscription<RemoteMessage>? _foreground;
   StreamSubscription<RemoteMessage>? _opened;
 
-  /// Fired whenever a message arrives while the app is in use, so the badge
-  /// and the notification list can refresh without waiting for a manual pull.
-  void Function()? onMessageReceived;
+  /// Fired whenever a message arrives while the app is in use, so the badge,
+  /// the notification list and the table it concerns can refresh without
+  /// waiting for a manual pull. The table id is null for messages that are not
+  /// about one.
+  void Function(String? tableId)? onMessageReceived;
 
   /// Fired with the table id when the user taps a notification from outside
   /// the app.
@@ -47,8 +49,8 @@ class PushMessaging {
       await _register(await messaging.getToken());
 
       _tokenRefresh ??= messaging.onTokenRefresh.listen(_register);
-      _foreground ??= FirebaseMessaging.onMessage.listen((_) {
-        onMessageReceived?.call();
+      _foreground ??= FirebaseMessaging.onMessage.listen((message) {
+        onMessageReceived?.call(_tableIdOf(message));
       });
       _opened ??= FirebaseMessaging.onMessageOpenedApp.listen(_handleOpened);
 
@@ -99,9 +101,14 @@ class PushMessaging {
   }
 
   void _handleOpened(RemoteMessage message) {
-    final tableId = message.data['tableId'];
-    if (tableId is String && tableId.isNotEmpty) {
+    final tableId = _tableIdOf(message);
+    if (tableId != null) {
       onNotificationOpened?.call(tableId);
     }
+  }
+
+  static String? _tableIdOf(RemoteMessage message) {
+    final tableId = message.data['tableId'];
+    return tableId is String && tableId.isNotEmpty ? tableId : null;
   }
 }

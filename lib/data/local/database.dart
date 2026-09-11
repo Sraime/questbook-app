@@ -57,6 +57,27 @@ class SyncMetadata extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// The last answer the API gave for a given request, kept so the tables tab
+/// still has something to show without a network.
+///
+/// Deliberately opaque: the payload is the raw JSON envelope, replayed through
+/// the very same `fromJson` the live path uses. Mirroring the server's shape
+/// into columns would mean migrating this table every time the API grows a
+/// field, for a cache that is only ever read.
+@DataClassName('RemoteCacheRow')
+class RemoteCache extends Table {
+  TextColumn get key => text()();
+
+  /// The account the entry belongs to. Another user signing in on the device
+  /// must never be shown the previous one's tables.
+  TextColumn get accountId => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get fetchedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 /// Stores 'characteristic' or 'skill' — see domain/models/character_stat.dart's
 /// StatKind, mapped to/from this text value in LocalCharacterRepository.
 @DataClassName('CharacterStatRow')
@@ -113,6 +134,7 @@ class InventoryItems extends Table {
     CharacterResources,
     InventoryItems,
     SyncMetadata,
+    RemoteCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -121,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -144,6 +166,11 @@ class AppDatabase extends _$AppDatabase {
             // stored on the device at all. The rows held nothing but a local
             // mockup, so there is nothing to migrate out of them.
             await m.deleteTable('game_tables');
+          }
+          if (from < 4) {
+            // Tables come back to the device, but as a read-only copy of what
+            // the server last said — not as the local mockup dropped in v3.
+            await m.createTable(remoteCache);
           }
         },
       );

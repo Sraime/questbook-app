@@ -84,8 +84,13 @@ class QuestbookApp extends ConsumerWidget {
 /// Decides whether to show the sign-in screen or the app itself.
 ///
 /// It wraps the router's child rather than living in the route table on
-/// purpose: signing in is optional, so this is a temporary overlay over an app
-/// that is already perfectly usable, not a navigation step.
+/// purpose: it is an overlay over an app that is otherwise fully navigable,
+/// not a navigation step of its own.
+///
+/// An account is now required. Characters belong to one, tables are shared
+/// with other players through one, and a session can only be answered by
+/// somebody the server can name — a purely local user had no way to take part
+/// in any of it.
 class _AuthGate extends ConsumerWidget {
   const _AuthGate({required this.child});
 
@@ -108,19 +113,12 @@ class _AuthGate extends ConsumerWidget {
     // moment the app starts, not from the moment a screen happens to need it.
     ref.watch(pushControllerProvider.notifier);
 
-    if (ref.watch(offlineModeProvider)) return child;
-
     return ref.watch(authControllerProvider).when(
-          data: (user) => user != null
-              ? child
-              : LoginScreen(
-                  onContinueOffline:
-                      ref.read(offlineModeProvider.notifier).enable,
-                ),
+          data: (user) => user != null ? child : const LoginScreen(),
           loading: () => const _SplashScreen(),
-          error: (error, stack) => LoginScreen(
-            onContinueOffline: ref.read(offlineModeProvider.notifier).enable,
-          ),
+          // Restoring a session never fails for want of a network — the cached
+          // profile answers for it — so an error here really is no session.
+          error: (error, stack) => const LoginScreen(),
         );
   }
 }

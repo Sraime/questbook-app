@@ -1,22 +1,40 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/providers.dart';
 import '../../../app/remote_providers.dart';
+import '../../../data/local/remote_cache_dao.dart';
+import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/auth_tokens.dart';
 import '../../../data/remote/remote_character.dart';
 import '../../../data/remote/remote_table.dart';
+import '../../../data/remote/session_api.dart';
+import '../../../data/remote/table_api.dart';
 
-/// Tables are strictly online: there is no local copy to fall back on, so
-/// every provider here reads straight from the API and simply refetches after
-/// a change. Watching [authControllerProvider] makes them reload when the
-/// account changes and empty out on sign-out.
+final remoteCacheProvider = Provider<RemoteCacheDao>(
+  (ref) => RemoteCacheDao(ref.watch(appDatabaseProvider)),
+);
+
+/// Tables live on the server: they are shared with other players, so the
+/// device is never their source of truth. What it does keep is a copy of the
+/// last answer, so losing the network turns the tab into a dated archive
+/// rather than an error screen. Watching [authControllerProvider] makes these
+/// reload when the account changes and empty out on sign-out.
 
 /// What the Tables tab needs in one go: the tables the user belongs to, and
 /// the invitations still waiting for an answer.
 class TablesOverview {
-  const TablesOverview({required this.tables, required this.invitations});
+  const TablesOverview({
+    required this.tables,
+    required this.invitations,
+    this.cachedAt,
+  });
 
   final List<RemoteGameTable> tables;
   final List<RemoteTableInvitation> invitations;
+
+  /// Set when this came from the local copy rather than the server, and says
+  /// how old it is. Null means fresh.
+  final DateTime? cachedAt;
 
   bool get isEmpty => tables.isEmpty && invitations.isEmpty;
 }
@@ -28,23 +46,54 @@ final tablesOverviewProvider = FutureProvider<TablesOverview>((ref) async {
   }
 
   final api = ref.watch(tableApiProvider);
-  final results = await Future.wait([
-    api.list(),
-    api.pendingInvitations(),
-  ]);
+  final cache = ref.watch(remoteCacheProvider);
 
-  return TablesOverview(
-    tables: results[0] as List<RemoteGameTable>,
-    invitations: results[1] as List<RemoteTableInvitation>,
-  );
+  try {
+    final results = await Future.wait([
+      api.listRaw(),
+      api.pendingInvitationsRaw(),
+    ]);
+
+    await cache.write(
+      RemoteCacheDao.overviewKey,
+      user.id,
+      {'tables': results[0], 'invitations': results[1]},
+    );
+
+    return TablesOverview(
+      tables: TableApi.parseTables(results[0]),
+      invitations: TableApi.parseInvitations(results[1]),
+    );
+  } on ApiException catch (error) {
+    // Only a missing network falls back. A refusal from the server is real
+    // news about the account, and showing yesterday's tables would hide it.
+    if (!error.isRetryable) rethrow;
+
+    final cached = await cache.read(RemoteCacheDao.overviewKey, user.id);
+    if (cached == null) rethrow;
+
+    final payload = (cached.data as Map).cast<String, dynamic>();
+    return TablesOverview(
+      tables: TableApi.parseTables(payload['tables']),
+      invitations: TableApi.parseInvitations(payload['invitations']),
+      cachedAt: cached.fetchedAt,
+    );
+  }
 });
 
 /// A table and its sessions, which the detail screen always shows together.
 class TableDetail {
-  const TableDetail({required this.table, required this.sessions});
+  const TableDetail({
+    required this.table,
+    required this.sessions,
+    this.cachedAt,
+  });
 
   final RemoteGameTable table;
   final List<RemoteGameSession> sessions;
+
+  /// See [TablesOverview.cachedAt].
+  final DateTime? cachedAt;
 
   /// Scheduled and still ahead of us, soonest first.
   List<RemoteGameSession> get upcoming => sessions
@@ -65,9 +114,36 @@ class TableDetail {
 /// show none of it.
 final tableDetailProvider =
     FutureProvider.autoDispose.family<TableDetail, String>((ref, tableId) async {
-  final table = await ref.watch(tableApiProvider).get(tableId);
-  final sessions = await ref.watch(sessionApiProvider).listForTable(tableId);
-  return TableDetail(table: table, sessions: sessions);
+  final user = ref.watch(authControllerProvider).value;
+  final cache = ref.watch(remoteCacheProvider);
+  final key = RemoteCacheDao.detailKey(tableId);
+
+  try {
+    final table = await ref.watch(tableApiProvider).getRaw(tableId);
+    final sessions =
+        await ref.watch(sessionApiProvider).listForTableRaw(tableId);
+
+    if (user != null) {
+      await cache.write(key, user.id, {'table': table, 'sessions': sessions});
+    }
+
+    return TableDetail(
+      table: TableApi.parseTable(table),
+      sessions: SessionApi.parseSessions(sessions),
+    );
+  } on ApiException catch (error) {
+    if (!error.isRetryable || user == null) rethrow;
+
+    final cached = await cache.read(key, user.id);
+    if (cached == null) rethrow;
+
+    final payload = (cached.data as Map).cast<String, dynamic>();
+    return TableDetail(
+      table: TableApi.parseTable(payload['table']),
+      sessions: SessionApi.parseSessions(payload['sessions']),
+      cachedAt: cached.fetchedAt,
+    );
+  }
 });
 
 /// Another player's sheet, readable only because they registered it for a

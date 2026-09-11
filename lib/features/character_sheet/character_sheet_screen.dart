@@ -16,6 +16,7 @@ import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 import '../../app/providers.dart';
+import '../../app/remote_providers.dart';
 import '../../domain/models/character.dart';
 import '../../domain/models/creation_mode_config.dart';
 import '../../domain/models/tone.dart';
@@ -77,13 +78,15 @@ class _CharacterSheetScreenState extends ConsumerState<CharacterSheetScreen> {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.character});
 
   final Character character;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canWrite = ref.watch(canWriteProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,12 +117,14 @@ class _Header extends StatelessWidget {
                 children: [
                   for (final resource in character.resources)
                     GestureDetector(
-                      onTap: () => ResourceEditDialog.show(
-                        context,
-                        characterId: character.id,
-                        resourceKey: resource.key,
-                        title: _resourceTitle(resource.key),
-                      ),
+                      onTap: canWrite
+                          ? () => ResourceEditDialog.show(
+                                context,
+                                characterId: character.id,
+                                resourceKey: resource.key,
+                                title: _resourceTitle(resource.key),
+                              )
+                          : null,
                       child: QBBadge(
                         label: '${resource.label} ${resource.current}/${resource.max}',
                         tone: _mapTone(resource.tone),
@@ -318,6 +323,8 @@ class _InventoryTabState extends ConsumerState<_InventoryTab> {
   @override
   Widget build(BuildContext context) {
     final inventory = widget.character.inventory;
+    final canWrite = ref.watch(canWriteProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -343,22 +350,26 @@ class _InventoryTabState extends ConsumerState<_InventoryTab> {
                         name: item.name,
                         qty: item.qty,
                         weight: item.weight,
-                        onRemove: () => ref
-                            .read(characterActionsProvider)
-                            .removeInventoryItem(item.id),
+                        onRemove: canWrite
+                            ? () => ref
+                                .read(characterActionsProvider)
+                                .removeInventoryItem(item.id)
+                            : null,
                       ),
                   ],
                 ),
         ),
-        const SizedBox(height: QBSpace.s3),
-        QBInput(controller: _nameController, placeholder: 'Ajouter un objet…'),
-        const SizedBox(height: QBSpace.s2),
-        QBButton(
-          label: 'Ajouter',
-          variant: QBButtonVariant.secondary,
-          expand: true,
-          onPressed: _addItem,
-        ),
+        if (canWrite) ...[
+          const SizedBox(height: QBSpace.s3),
+          QBInput(controller: _nameController, placeholder: 'Ajouter un objet…'),
+          const SizedBox(height: QBSpace.s2),
+          QBButton(
+            label: 'Ajouter',
+            variant: QBButtonVariant.secondary,
+            expand: true,
+            onPressed: _addItem,
+          ),
+        ],
       ],
     );
   }

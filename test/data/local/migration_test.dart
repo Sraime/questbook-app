@@ -53,6 +53,7 @@ void main() {
     db.execute('ALTER TABLE characters DROP COLUMN deleted_at');
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
     db.execute('DROP TABLE sync_metadata');
+    db.execute('DROP TABLE remote_cache');
     addLegacyGameTables(db);
 
     db.execute(
@@ -145,15 +146,25 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 3);
+    expect(version.data.values.first, 4);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
   /// tables mockup.
   void downgradeToV2() {
     final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE remote_cache');
     addLegacyGameTables(db);
     db.execute('PRAGMA user_version = 2');
+    db.close();
+  }
+
+  /// Rewinds to schema version 3: tables gone from the device entirely, before
+  /// they came back as a read-only cache.
+  void downgradeToV3() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE remote_cache');
+    db.execute('PRAGMA user_version = 3');
     db.close();
   }
 
@@ -197,22 +208,42 @@ void main() {
     expect(await db.select(db.syncMetadata).get(), isEmpty);
   });
 
-  test('upgrades straight from v1 to v3, mockup included', () async {
+  test('opens the tables cache when upgrading from v3', () async {
+    downgradeToV3();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    await db.into(db.remoteCache).insert(
+          RemoteCacheRow(
+            key: 'tables.overview',
+            accountId: 'account-1',
+            payload: '{"tables":[]}',
+            fetchedAt: DateTime.utc(2025, 9, 12),
+          ),
+        );
+
+    expect(await db.select(db.remoteCache).get(), hasLength(1));
+  });
+
+  test('upgrades straight from v1 to v4, mockup dropped and cache opened',
+      () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
     final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
-    final remaining = await db
+    final mockup = await db
         .customSelect(
           "SELECT name FROM sqlite_master "
           "WHERE type = 'table' AND name = 'game_tables'",
         )
         .get();
 
-    expect(version.data.values.first, 3);
-    expect(remaining, isEmpty);
+    expect(version.data.values.first, 4);
+    expect(mockup, isEmpty);
+    expect(await db.select(db.remoteCache).get(), isEmpty);
     expect(await db.select(db.characters).get(), hasLength(1));
   });
 }

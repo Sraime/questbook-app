@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
 import '../data/auth/auth_repository.dart';
+import '../data/local/remote_cache_dao.dart';
 import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
@@ -32,6 +33,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   // A refresh token the server refuses is unrecoverable: re-running the auth
   // controller finds no tokens left and drops the app back to signed out.
   client.onSessionExpired = () => ref.invalidate(authControllerProvider);
+
+  // One direction only. The controller needs a way to knock on the server's
+  // door, and reaching for `apiClientProvider` from inside it would close a
+  // cycle with the line below.
+  final connectivity = ref.read(connectivityProvider.notifier)..attach(client);
+  client.onReachability = (reachable) =>
+      connectivity.report(reachable: reachable);
 
   return client;
 });
@@ -93,6 +101,10 @@ class AuthController extends AsyncNotifier<AuthUser?> {
 
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
+    // The cached tables belong to the account that just left. They are keyed
+    // by it and so could never be shown to anyone else, but keeping another
+    // player's table around on a shared device serves no one.
+    await RemoteCacheDao(ref.read(appDatabaseProvider)).clear();
     state = const AsyncValue.data(null);
   }
 }
@@ -163,14 +175,68 @@ class SyncController extends Notifier<SyncState> {
 final syncControllerProvider =
     NotifierProvider<SyncController, SyncState>(SyncController.new);
 
-/// Set when the user chooses "Continuer hors ligne" on the sign-in screen, so
-/// the gate lets them through for the rest of the session without an account.
-class OfflineModeNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
+/// Whether the API can be reached right now.
+///
+/// Deliberately measured rather than declared: the device can hold a perfect
+/// Wi-Fi signal behind a captive portal, so what counts is whether the server
+/// answers. Every request reports back, and while the answer is no, a light
+/// probe keeps asking so the app notices the network returning on its own.
+class ConnectivityController extends Notifier<bool> {
+  static const _probeInterval = Duration(seconds: 20);
 
-  void enable() => state = true;
+  Timer? _probe;
+  ApiClient? _client;
+
+  /// Handed over by [apiClientProvider] as it builds.
+  void attach(ApiClient client) => _client = client;
+
+  @override
+  bool build() {
+    ref.onDispose(() => _probe?.cancel());
+
+    // Coming back to the app is the likeliest moment for the network to have
+    // changed — the user may well have gone looking for it.
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (!state) unawaited(recheck());
+      },
+    );
+    ref.onDispose(lifecycle.dispose);
+
+    // Optimistic: the first request will say otherwise soon enough, and
+    // starting offline would flash the banner on every launch.
+    return true;
+  }
+
+  void report({required bool reachable}) {
+    if (reachable == state) return;
+    state = reachable;
+    reachable ? _probe?.cancel() : _scheduleProbe();
+  }
+
+  void _scheduleProbe() {
+    _probe?.cancel();
+    _probe = Timer.periodic(_probeInterval, (_) => unawaited(recheck()));
+  }
+
+  /// Checks immediately rather than waiting for the next tick — used when the
+  /// app comes back to the foreground, and behind the banner's retry.
+  Future<void> recheck() async {
+    if (_client case final client?) {
+      report(reachable: await client.ping());
+    }
+  }
 }
 
-final offlineModeProvider =
-    NotifierProvider<OfflineModeNotifier, bool>(OfflineModeNotifier.new);
+final connectivityProvider =
+    NotifierProvider<ConnectivityController, bool>(ConnectivityController.new);
+
+/// True when the user may change anything at all.
+///
+/// Without a network the app is an archive: the tables live on the server and
+/// are shared with other players, and a character edited here would race with
+/// whatever the account did elsewhere. Reading is welcome, writing waits.
+final canWriteProvider = Provider<bool>((ref) {
+  return ref.watch(authControllerProvider).value != null &&
+      ref.watch(connectivityProvider);
+});

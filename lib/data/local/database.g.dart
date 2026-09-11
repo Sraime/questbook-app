@@ -2426,6 +2426,322 @@ class SyncMetadataCompanion extends UpdateCompanion<SyncMetadataRow> {
   }
 }
 
+class $RemoteCacheTable extends RemoteCache
+    with TableInfo<$RemoteCacheTable, RemoteCacheRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemoteCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
+    'fetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fetchedAt = GeneratedColumn<DateTime>(
+    'fetched_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, accountId, payload, fetchedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'remote_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RemoteCacheRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(
+        _fetchedAtMeta,
+        fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fetchedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  RemoteCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RemoteCacheRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      fetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fetched_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RemoteCacheTable createAlias(String alias) {
+    return $RemoteCacheTable(attachedDatabase, alias);
+  }
+}
+
+class RemoteCacheRow extends DataClass implements Insertable<RemoteCacheRow> {
+  final String key;
+
+  /// The account the entry belongs to. Another user signing in on the device
+  /// must never be shown the previous one's tables.
+  final String accountId;
+  final String payload;
+  final DateTime fetchedAt;
+  const RemoteCacheRow({
+    required this.key,
+    required this.accountId,
+    required this.payload,
+    required this.fetchedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['account_id'] = Variable<String>(accountId);
+    map['payload'] = Variable<String>(payload);
+    map['fetched_at'] = Variable<DateTime>(fetchedAt);
+    return map;
+  }
+
+  RemoteCacheCompanion toCompanion(bool nullToAbsent) {
+    return RemoteCacheCompanion(
+      key: Value(key),
+      accountId: Value(accountId),
+      payload: Value(payload),
+      fetchedAt: Value(fetchedAt),
+    );
+  }
+
+  factory RemoteCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RemoteCacheRow(
+      key: serializer.fromJson<String>(json['key']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'accountId': serializer.toJson<String>(accountId),
+      'payload': serializer.toJson<String>(payload),
+      'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
+    };
+  }
+
+  RemoteCacheRow copyWith({
+    String? key,
+    String? accountId,
+    String? payload,
+    DateTime? fetchedAt,
+  }) => RemoteCacheRow(
+    key: key ?? this.key,
+    accountId: accountId ?? this.accountId,
+    payload: payload ?? this.payload,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
+  RemoteCacheRow copyWithCompanion(RemoteCacheCompanion data) {
+    return RemoteCacheRow(
+      key: data.key.present ? data.key.value : this.key,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteCacheRow(')
+          ..write('key: $key, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, accountId, payload, fetchedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RemoteCacheRow &&
+          other.key == this.key &&
+          other.accountId == this.accountId &&
+          other.payload == this.payload &&
+          other.fetchedAt == this.fetchedAt);
+}
+
+class RemoteCacheCompanion extends UpdateCompanion<RemoteCacheRow> {
+  final Value<String> key;
+  final Value<String> accountId;
+  final Value<String> payload;
+  final Value<DateTime> fetchedAt;
+  final Value<int> rowid;
+  const RemoteCacheCompanion({
+    this.key = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RemoteCacheCompanion.insert({
+    required String key,
+    required String accountId,
+    required String payload,
+    required DateTime fetchedAt,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       accountId = Value(accountId),
+       payload = Value(payload),
+       fetchedAt = Value(fetchedAt);
+  static Insertable<RemoteCacheRow> custom({
+    Expression<String>? key,
+    Expression<String>? accountId,
+    Expression<String>? payload,
+    Expression<DateTime>? fetchedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (accountId != null) 'account_id': accountId,
+      if (payload != null) 'payload': payload,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RemoteCacheCompanion copyWith({
+    Value<String>? key,
+    Value<String>? accountId,
+    Value<String>? payload,
+    Value<DateTime>? fetchedAt,
+    Value<int>? rowid,
+  }) {
+    return RemoteCacheCompanion(
+      key: key ?? this.key,
+      accountId: accountId ?? this.accountId,
+      payload: payload ?? this.payload,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteCacheCompanion(')
+          ..write('key: $key, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2436,6 +2752,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CharacterResourcesTable(this);
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
+  late final $RemoteCacheTable remoteCache = $RemoteCacheTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2447,6 +2764,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     characterResources,
     inventoryItems,
     syncMetadata,
+    remoteCache,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4668,6 +4986,187 @@ typedef $$SyncMetadataTableProcessedTableManager =
       SyncMetadataRow,
       PrefetchHooks Function()
     >;
+typedef $$RemoteCacheTableCreateCompanionBuilder =
+    RemoteCacheCompanion Function({
+      required String key,
+      required String accountId,
+      required String payload,
+      required DateTime fetchedAt,
+      Value<int> rowid,
+    });
+typedef $$RemoteCacheTableUpdateCompanionBuilder =
+    RemoteCacheCompanion Function({
+      Value<String> key,
+      Value<String> accountId,
+      Value<String> payload,
+      Value<DateTime> fetchedAt,
+      Value<int> rowid,
+    });
+
+class $$RemoteCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $RemoteCacheTable> {
+  $$RemoteCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemoteCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemoteCacheTable> {
+  $$RemoteCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemoteCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemoteCacheTable> {
+  $$RemoteCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+}
+
+class $$RemoteCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemoteCacheTable,
+          RemoteCacheRow,
+          $$RemoteCacheTableFilterComposer,
+          $$RemoteCacheTableOrderingComposer,
+          $$RemoteCacheTableAnnotationComposer,
+          $$RemoteCacheTableCreateCompanionBuilder,
+          $$RemoteCacheTableUpdateCompanionBuilder,
+          (
+            RemoteCacheRow,
+            BaseReferences<_$AppDatabase, $RemoteCacheTable, RemoteCacheRow>,
+          ),
+          RemoteCacheRow,
+          PrefetchHooks Function()
+        > {
+  $$RemoteCacheTableTableManager(_$AppDatabase db, $RemoteCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemoteCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemoteCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemoteCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> fetchedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteCacheCompanion(
+                key: key,
+                accountId: accountId,
+                payload: payload,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String accountId,
+                required String payload,
+                required DateTime fetchedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteCacheCompanion.insert(
+                key: key,
+                accountId: accountId,
+                payload: payload,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemoteCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemoteCacheTable,
+      RemoteCacheRow,
+      $$RemoteCacheTableFilterComposer,
+      $$RemoteCacheTableOrderingComposer,
+      $$RemoteCacheTableAnnotationComposer,
+      $$RemoteCacheTableCreateCompanionBuilder,
+      $$RemoteCacheTableUpdateCompanionBuilder,
+      (
+        RemoteCacheRow,
+        BaseReferences<_$AppDatabase, $RemoteCacheTable, RemoteCacheRow>,
+      ),
+      RemoteCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4684,4 +5183,6 @@ class $AppDatabaseManager {
       $$InventoryItemsTableTableManager(_db, _db.inventoryItems);
   $$SyncMetadataTableTableManager get syncMetadata =>
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
+  $$RemoteCacheTableTableManager get remoteCache =>
+      $$RemoteCacheTableTableManager(_db, _db.remoteCache);
 }

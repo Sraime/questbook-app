@@ -10,14 +10,13 @@ import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 
-/// Shown at launch when nobody is signed in.
+/// Shown at launch when nobody is signed in, and the only way past it.
 ///
-/// Signing in is offered, never imposed: the app works entirely offline, so
-/// there is always a way through to the character list without an account.
+/// There used to be a way through without an account. It could not be kept:
+/// tables are shared with other players, and answering a session means being
+/// somebody the server can name.
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key, required this.onContinueOffline});
-
-  final VoidCallback onContinueOffline;
+  const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -104,16 +103,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                     const SizedBox(height: QBSpace.s3),
-                    QBButton(
-                      label: 'Continuer hors ligne',
-                      variant: QBButtonVariant.ghost,
-                      expand: true,
-                      onPressed: _busy ? null : widget.onContinueOffline,
-                    ),
-                    const SizedBox(height: QBSpace.s2),
                     Text(
-                      'Tes personnages resteront alors sur cet appareil '
-                      'uniquement.',
+                      'Une fois connecté, tes personnages et tes tables '
+                      'restent consultables sans réseau.',
                       textAlign: TextAlign.center,
                       style: QBType.body().copyWith(
                         fontSize: QBType.xs,

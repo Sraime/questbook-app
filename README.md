@@ -460,6 +460,15 @@ le README du backend.
 flutter test
 ```
 
+`.github/workflows/ci.yml` rejoue `flutter analyze` puis `flutter test` sur
+chaque pull request et sur les pushes de `dev`. Les deux sont bloquants : le
+projet est à zéro avertissement et il s'agit de le garder ainsi. Le job installe
+`libsqlite3-dev`, dont les tests de migration Drift ont besoin pour ouvrir une
+vraie base sur le runner.
+
+Ce garde-fou est ce qui sépare une PR rouge de la distribution aux testeurs,
+puisque celle-ci part dès qu'une PR tombe dans `main`.
+
 Tests actuellement présents (`test/`) :
 - `domain/rules/formula_evaluator_test.dart` — l'évaluateur de formules/dés/conditions lui-même.
 - `domain/rules/config_rules_engine_test.dart` — mécaniques de jet (caractéristiques, dérivées, jets de compétence) sur une config de test.
@@ -468,8 +477,9 @@ Tests actuellement présents (`test/`) :
 - `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/universe_call_of_cthulhu.json` : métadonnées, index `creation_modes`, contenu du `general_configuration`.
 - `services/dice_service_test.dart` — primitives de lancer de dés.
 - `data/local/local_character_repository_test.dart` — la comptabilité de synchronisation du dépôt local : chaque écriture marque le personnage à pousser, une suppression laisse une pierre tombale invisible dans la liste.
-- `data/local/migration_test.dart` — la migration v1 → v2 sur un vrai fichier SQLite ramené au schéma v1, pour vérifier qu'aucun personnage existant n'est perdu et que `updatedAt` est bien rempli.
+- `data/local/migration_test.dart` — les migrations sur un vrai fichier SQLite ramené aux schémas v1 puis v2, pour vérifier qu'aucun personnage existant n'est perdu, que `updatedAt` est bien rempli et que la maquette locale des tables est bien supprimée en v3.
 - `data/sync/sync_service_test.dart` — les règles de synchronisation (push, pull, conflits, changement de compte) contre une fausse API et une vraie base en mémoire.
+- `data/remote/api_client_test.dart` — le rafraîchissement du jeton contre un vrai serveur HTTP local : un 401 déclenche un refresh puis un seul rejeu, plusieurs requêtes simultanées ne brûlent qu'un seul refresh token, et un refresh refusé termine la session au lieu de boucler.
 
 ## Workflow git (branches)
 
@@ -478,7 +488,8 @@ Le dépôt suit un git-flow simplifié à deux branches :
 - **`dev`** — branche de travail. Toutes les modifications (features, fixes,
   docs…) sont commitées ici (directement ou via des branches
   `feature/xxx` ouvertes depuis `dev`, selon la taille du changement).
-  Pousser sur `dev` **ne déclenche aucun build/déploiement**.
+  Pousser sur `dev` déclenche l'analyse et les tests, mais **aucun build ni
+  aucune distribution**.
 - **`main`** — branche de release, protégée. Elle ne doit être mise à jour
   que via une **Pull Request `dev` → `main`**, jamais par un push direct.
   C'est le *merge* de cette PR qui déclenche automatiquement la CI (build +

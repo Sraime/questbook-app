@@ -482,7 +482,7 @@ Tests actuellement présents (`test/`) :
 - `data/local/local_character_repository_test.dart` — la comptabilité de synchronisation du dépôt local : chaque écriture marque le personnage à pousser, une suppression laisse une pierre tombale invisible dans la liste.
 - `data/local/migration_test.dart` — les migrations sur un vrai fichier SQLite ramené aux schémas v1 puis v2, pour vérifier qu'aucun personnage existant n'est perdu, que `updatedAt` est bien rempli et que la maquette locale des tables est bien supprimée en v3.
 - `data/sync/sync_service_test.dart` — les règles de synchronisation (push, pull, conflits, changement de compte) contre une fausse API et une vraie base en mémoire.
-- `data/remote/api_client_test.dart` — le rafraîchissement du jeton contre un vrai serveur HTTP local : un 401 déclenche un refresh puis un seul rejeu, plusieurs requêtes simultanées ne brûlent qu'un seul refresh token, et un refresh refusé termine la session au lieu de boucler.
+- `data/remote/api_client_test.dart` — le rafraîchissement du jeton contre un vrai serveur HTTP local : un 401 déclenche un refresh puis un seul rejeu, plusieurs requêtes simultanées ne brûlent qu'un seul refresh token, et un refresh refusé termine la session au lieu de boucler. Vérifie aussi qu'une requête sans corps ne déclare pas de type de média : Dio estampille tout `application/json`, ce qu'un serveur strict lit comme la promesse d'un corps qui ne vient jamais.
 
 ## Workflow git (branches)
 

@@ -26,6 +26,23 @@ class ApiClient {
         },
       ),
     );
+
+    // A request with no body has no media type to declare, and saying
+    // `application/json` anyway makes a strict server look for a payload that
+    // was never coming. Dio sets the header from [BaseOptions] whatever the
+    // body, so dropping it here is the only place the distinction can be made.
+    for (final dio in [_dio, _plain]) {
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.data == null) {
+              options.headers.remove(Headers.contentTypeHeader);
+            }
+            handler.next(options);
+          },
+        ),
+      );
+    }
   }
 
   static BaseOptions _optionsFor(String baseUrl) => BaseOptions(

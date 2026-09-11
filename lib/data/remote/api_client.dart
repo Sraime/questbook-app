@@ -24,22 +24,6 @@ class ApiClient {
           }
           handler.next(options);
         },
-        onError: (error, handler) async {
-          if (error.response?.statusCode != 401 || _hasBeenRetried(error)) {
-            return handler.next(error);
-          }
-
-          final refreshed = await _refreshTokens();
-          if (!refreshed) {
-            return handler.next(error);
-          }
-
-          try {
-            handler.resolve(await _retry(error.requestOptions));
-          } on DioException catch (retryError) {
-            handler.next(retryError);
-          }
-        },
       ),
     );
   }
@@ -55,13 +39,10 @@ class ApiClient {
         validateStatus: (status) => status != null && status < 500,
       );
 
-  static const _retriedMarker = 'questbook-retried';
-
   final Dio _dio;
 
-  /// A second client without the auth interceptor, used for sign-in, token
-  /// refresh and post-refresh retries. Without it, a failing refresh would
-  /// recurse into itself.
+  /// A second client without the auth interceptor, used for sign-in and token
+  /// refresh. Without it, a failing refresh would recurse into itself.
   final Dio _plain;
 
   final TokenStore _tokenStore;
@@ -83,27 +64,6 @@ class ApiClient {
   Future<void> clearTokens() async {
     _cached = null;
     await _tokenStore.clear();
-  }
-
-  bool _hasBeenRetried(DioException error) =>
-      error.requestOptions.extra[_retriedMarker] == true;
-
-  Future<Response<dynamic>> _retry(RequestOptions options) async {
-    final tokens = await _tokens();
-    return _plain.request<dynamic>(
-      options.path,
-      data: options.data,
-      queryParameters: options.queryParameters,
-      options: Options(
-        method: options.method,
-        headers: {
-          ...options.headers,
-          if (tokens != null) 'Authorization': 'Bearer ${tokens.accessToken}',
-        },
-        extra: {...options.extra, _retriedMarker: true},
-        validateStatus: options.validateStatus,
-      ),
-    );
   }
 
   /// Refreshes the token pair, collapsing concurrent callers onto a single
@@ -145,12 +105,25 @@ class ApiClient {
 
   /// Runs a request and turns every failure into an [ApiException], so callers
   /// never have to know Dio exists.
+  ///
+  /// An expired access token is refreshed here rather than in an error
+  /// interceptor: [_optionsFor] deliberately lets Dio resolve 4xx responses so
+  /// the error envelope can be read, which means a 401 never reaches
+  /// `onError`.
   Future<T> send<T>(Future<Response<dynamic>> Function(Dio dio) request, {
     bool authenticated = true,
     required T Function(dynamic data) parse,
   }) async {
     try {
-      final response = await request(authenticated ? _dio : _plain);
+      var response = await request(authenticated ? _dio : _plain);
+
+      if (authenticated &&
+          response.statusCode == 401 &&
+          await _refreshTokens()) {
+        // Exactly one retry: the second answer is final, whatever it says.
+        response = await request(_dio);
+      }
+
       final status = response.statusCode ?? 0;
 
       if (status >= 400) {

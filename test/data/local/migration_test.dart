@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:questbook/data/local/database.dart';
 import 'package:sqlite3/sqlite3.dart' as raw;
 
-/// The v1 → v2 migration runs on the phone of every existing player, on a
-/// database full of characters they care about. These tests exercise it on a
-/// real file rather than trusting it by inspection.
+/// Migrations run on the phone of every existing player, on a database full of
+/// characters they care about. These tests exercise them on a real file rather
+/// than trusting them by inspection.
 ///
-/// Rather than hand-copying drift's v1 DDL, the v2 schema is created and then
-/// stripped back down to v1, which keeps the fixture honest even if the older
-/// tables are edited later.
+/// Rather than hand-copying drift's older DDL, the current schema is created
+/// and then stripped back down, which keeps the fixtures honest even if the
+/// surviving tables are edited later.
 void main() {
   late Directory tempDir;
   late String dbPath;
@@ -27,6 +27,24 @@ void main() {
 
   tearDown(() => tempDir.deleteSync(recursive: true));
 
+  /// Recreates the `game_tables` table exactly as schema versions 1 and 2 had
+  /// it, since the current schema no longer declares it at all.
+  void addLegacyGameTables(raw.Database db) {
+    db.execute(
+      'CREATE TABLE game_tables ('
+      'id TEXT NOT NULL, '
+      'title TEXT NOT NULL, '
+      'universe_label TEXT NOT NULL, '
+      'next_session INTEGER NULL, '
+      'system_id TEXT NULL REFERENCES game_systems (id), '
+      'PRIMARY KEY (id))',
+    );
+    db.execute(
+      "INSERT INTO game_tables (id, title, universe_label) "
+      "VALUES ('local-table', 'Les Inspecteurs Chavillois', 'Cthulhu')",
+    );
+  }
+
   /// Rewinds the file to what schema version 1 looked like and drops a legacy
   /// character into it.
   void downgradeToV1({required DateTime createdAt}) {
@@ -35,6 +53,7 @@ void main() {
     db.execute('ALTER TABLE characters DROP COLUMN deleted_at');
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
     db.execute('DROP TABLE sync_metadata');
+    addLegacyGameTables(db);
 
     db.execute(
       "INSERT INTO game_systems (id, name, occupation_suggestions) "
@@ -126,6 +145,74 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 2);
+    expect(version.data.values.first, 3);
+  });
+
+  /// Rewinds the file to schema version 2, which still carried the local-only
+  /// tables mockup.
+  void downgradeToV2() {
+    final db = raw.sqlite3.open(dbPath);
+    addLegacyGameTables(db);
+    db.execute('PRAGMA user_version = 2');
+    db.close();
+  }
+
+  test('drops the local tables mockup when upgrading from v2', () async {
+    downgradeToV2();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    final remaining = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master "
+          "WHERE type = 'table' AND name = 'game_tables'",
+        )
+        .get();
+
+    expect(
+      remaining,
+      isEmpty,
+      reason: 'game tables are now owned by the server, not the device',
+    );
+  });
+
+  test('keeps characters and their sync state across the v2 upgrade', () async {
+    downgradeToV2();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    // A v2 database created by the setUp fixture has no characters, so the
+    // point here is simply that the upgrade leaves a working schema behind.
+    await db.into(db.gameSystems).insert(
+          GameSystemRow(
+            id: 'call_of_cthulhu_classique',
+            name: 'Classique',
+            occupationSuggestions: '[]',
+          ),
+        );
+
+    expect(await db.select(db.characters).get(), isEmpty);
+    expect(await db.select(db.syncMetadata).get(), isEmpty);
+  });
+
+  test('upgrades straight from v1 to v3, mockup included', () async {
+    downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    final version = await db.customSelect('PRAGMA user_version').getSingle();
+    final remaining = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master "
+          "WHERE type = 'table' AND name = 'game_tables'",
+        )
+        .get();
+
+    expect(version.data.values.first, 3);
+    expect(remaining, isEmpty);
+    expect(await db.select(db.characters).get(), hasLength(1));
   });
 }

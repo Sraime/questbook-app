@@ -1,0 +1,257 @@
+[
+    {
+        "name": "Call of Cthulhu",
+        "description": "Call of Cthulhu is a horror fiction role-playing game based on H. P. Lovecraft's story of the same name and the associated Cthulhu Mythos. The game, often abbreviated as CoC, is published by Chaosium and was originally created by Sandy Petersen; it was first released in 1981 and is in its seventh edition, with licensed foreign language editions available as well. Its game system is based on Chaosium's Basic Role-Playing (BRP) with additions for the horror genre. These include special rules for sanity and luck. It is one of the longest-running tabletop role-playing games still in publication.",
+        "version": "7th edition",
+        "rulebook_pdf_url": "https://www.chaosium.com/wp-content/uploads/2023/04/Call-of-Cthulhu-7th-Edition-Rulebook.pdf",
+        "characater_sheet": {
+            "global_attributes": [
+                {
+                    "name": "name",
+                    "description": "shortname and lastname",
+                    "type": "string"
+                },
+                {
+                    "name": "Age",
+                    "description": "age of the investigator",
+                    "type": "integer"
+                },
+                {
+                    "name": "gender",
+                    "description": "gender of the investigator",
+                    "type": "string"
+                }
+            ],
+            "special_attributes": [
+                {
+                    "name": "Occupation",
+                    "description": "a measure of your investigator’s occupation. ",
+                    "type": "choice",
+                    "choices": [
+                        {
+                            "name": "Doctor",
+                            "description": "a doctor is a medical professional who diagnoses and treats diseases and injuries. ",
+                            "skills_bonus": [
+                                {
+                                    "name": "Medicine",
+                                    "description": "a measure of your investigator’s ability to diagnose and treat diseases and injuries. ",
+                                    "flat_bonus": 1
+                                }
+                            ],
+                            "characteristics_bonus": [
+                                {
+                                    "name": "Health",
+                                    "description": "a measure of your investigator’s health. ",
+                                    "flat_bonus": 1
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Lawyer",
+                            "description": "a lawyer is a legal professional who advises and represents clients in legal matters. "
+                }
+            ],
+            "skills": [
+                {
+                    "name": "Investigation",
+                    "description": "a measure of your investigator’s cunning, problem solving, and ability to make leaps of logic and intuition. ",
+                    "base_value": 10
+                }
+            ],
+            "characteristics": [
+                {
+                    "name": "Constitution",
+                    "short_name": "CON",
+                    "description": "a measure of your investigator’s physical power, athletic training, and the use of weapons. ",
+                    "calculation_formula": "(3D6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Size",
+                    "short_name": "SIZ",
+                    "description": "a measure of your investigator’s size and build. ",
+                    "calculation_formula": "((2D6)+6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Dexterity",
+                    "short_name": "DEX",
+                    "description": "a measure of your investigator’s agility, reflexes, and balance. ",
+                    "calculation_formula": "(3D6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Intelligence",
+                    "short_name": "INT",
+                    "description": "a measure of your investigator’s cunning, problem solving, and ability to make leaps of logic and intuition. ",
+                    "calculation_formula": "((2D6)+6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Power",
+                    "short_name": "POW",
+                    "description": "a measure of your investigator’s physical power, athletic training, and the use of weapons. ",
+                    "calculation_formula": "(3D6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Strength",
+                    "short_name": "STR",
+                    "description": "a measure of your investigator’s physical power, athletic training, and the use of weapons. ",
+                    "calculation_formula": "(3D6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Appearance",
+                    "short_name": "APP",
+                    "description": "a measure of your investigator’s appearance and attractiveness. ",
+                    "calculation_formula": "(3D6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Education",
+                    "short_name": "EDU",
+                    "description": "a measure of your investigator’s education and knowledge. ",
+                    "calculation_formula": "((2D6)+6)*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Hit Points",
+                    "short_name": "HP",
+                    "description": "a measure of your investigator’s health and well-being. ",
+                    "calculation_formula": "(CON + SIZ)/10",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Magic Points",
+                    "short_name": "MP",
+                    "description": "a measure of your investigator’s magic and well-being. ",
+                    "calculation_formula": "POW/5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Sanity",
+                    "short_name": "SAN",
+                    "description": "a measure of your investigator’s sanity and well-being. ",
+                    "calculation_formula": "POW",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Luck",
+                    "short_name": "LUK",
+                    "description": "a measure of your investigator’s luck and well-being. ",
+                    "calculation_formula": "3D6*5",
+                    "calcultion_method": "on_init"
+                },
+                {
+                    "name": "Build",
+                    "short_name": "BLD",
+                    "description": "a measure of your investigator’s build. ",
+                    "condition_table_values": [
+                        {
+                            "condition": "STR + SIZ >= 2 && STR + SIZ <= 64",
+                            "value": -2
+                        },
+                        {
+                            "condition": "STR + SIZ >= 65 && STR + SIZ <= 84",
+                            "value": -1
+                        },
+                        {
+                            "condition": "STR + SIZ >= 85 && STR + SIZ <= 124",
+                            "value": 0
+                        },
+                        {
+                            "condition": "STR + SIZ >= 125 && STR + SIZ <= 164",
+                            "value": 1
+                        },
+                        {
+                            "condition": "STR + SIZ >= 165 && STR + SIZ <= 204",
+                            "value": 2
+                        },
+                        {
+                            "condition": "STR + SIZ >= 205 && STR + SIZ <= 284",
+                            "value": 3
+                        },
+                        {
+                            "condition": "STR + SIZ >= 285 && STR + SIZ <= 364",
+                            "value": 4
+                        },
+                        {
+                            "condition": "STR + SIZ >= 365 && STR + SIZ <= 444",
+                            "value": 5
+                        },
+                        {
+                            "condition": "STR + SIZ > 444",
+                            "value": "5 + Floor((STR + SIZ - 444)/80)"
+                        }
+                    ],
+                    "calcultion_method": "on_roll"
+                },
+                {
+                    "name": "Damage Bonus",
+                    "short_name": "DB",
+                    "description": "a measure of your investigator’s damage bonus. ",
+                    "condition_table_values": [
+                        {
+                            "condition": "STR + SIZ >= 2 && STR + SIZ <= 64",
+                            "value": -2
+                        },
+                        {
+                            "condition": "STR + SIZ >= 65 && STR + SIZ <= 84",
+                            "value": -1
+                        },
+                        {
+                            "condition": "STR + SIZ >= 85 && STR + SIZ <= 124",
+                            "value": 0
+                        },
+                        {
+                            "condition": "STR + SIZ >= 125 && STR + SIZ <= 164",
+                            "value": "1D4"
+                        },
+                        {
+                            "condition": "STR + SIZ >= 165 && STR + SIZ <= 204",
+                            "value": "1D6"
+                        },
+                        {
+                            "condition": "STR + SIZ >= 205 && STR + SIZ <= 284",
+                            "value": "2D6"
+                        },
+                        {
+                            "condition": "STR + SIZ >= 285 && STR + SIZ <= 364",
+                            "value": "3D6"
+                        },
+                        {
+                            "condition": "STR + SIZ >= 365 && STR + SIZ <= 444",
+                            "value": "4D6"
+                        },
+                        {
+                            "condition": "STR + SIZ > 444",
+                            "value": "4D6 + (Floor((STR + SIZ - 444)/80))D6"
+                        }
+                    ],
+                    "calcultion_method": "on_roll"
+                },
+                {
+                    "name": "Move",
+                    "short_name": "MOV",
+                    "description": "a measure of your investigator’s movement and speed. ",
+                    "condition_table_values": [
+                        {
+                            "condition": "STR < SIZ && DEX < SIZ",
+                            "value": 7
+                        },
+                        {
+                            "condition": "STR >= SIZ || DEX >= SIZ",
+                            "value": 8
+                        },
+                        {
+                            "condition": "STR >= SIZ && DEX >= SIZ",
+                            "value": 9
+                        }
+                    ],
+                    "calcultion_method": "on_roll"
+                }
+            ]
+        }
+    }
+]

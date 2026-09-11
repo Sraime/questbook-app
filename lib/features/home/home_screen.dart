@@ -108,14 +108,16 @@ class _CharacterList extends StatelessWidget {
                               color: QBColors.ink900,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _roleLine(character),
-                            style: QBType.body().copyWith(
-                              fontSize: QBType.xs,
-                              color: QBColors.textMuted,
+                          if (character.occupation case final occupation?) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              occupation,
+                              style: QBType.body().copyWith(
+                                fontSize: QBType.xs,
+                                color: QBColors.textMuted,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -149,12 +151,6 @@ class _CharacterList extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _roleLine(Character character) {
-    final occupation = character.occupation;
-    final level = 'niveau ${character.level}';
-    return occupation == null ? level : '$occupation — $level';
   }
 }
 

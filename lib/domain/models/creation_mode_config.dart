@@ -471,8 +471,8 @@ class SkillConfig {
   }
 }
 
-/// A flat bonus one occupation grants to a specific characteristic (by
-/// short key, e.g. `"EDU"`) or skill (by key, e.g. `"medecine"`).
+/// A flat bonus one occupation grants to a specific skill (by key, e.g.
+/// `"medecine"`).
 class StatBonus {
   const StatBonus({required this.target, required this.flatBonus});
 
@@ -480,18 +480,18 @@ class StatBonus {
   final int flatBonus;
 
   factory StatBonus.fromJson(Map<String, dynamic> json) {
-    final target = json['characteristic'] ?? json['skill'];
+    final target = json['skill'];
     return StatBonus(target: target as String, flatBonus: json['flat_bonus'] as int);
   }
 }
 
-/// One occupation choice offered at creation, with the bonuses it grants.
+/// One occupation choice offered at creation, with the skill-point budget
+/// it grants (and optional automatic [skillsBonus]).
 class OccupationConfig {
   const OccupationConfig({
     required this.key,
     required this.name,
     required this.description,
-    this.characteristicsBonus = const [],
     this.skillsBonus = const [],
     this.occupationSkillPointsFormula,
     this.occupationSkills = const [],
@@ -501,7 +501,6 @@ class OccupationConfig {
   final String key;
   final String name;
   final String description;
-  final List<StatBonus> characteristicsBonus;
   final List<StatBonus> skillsBonus;
 
   /// The rule for how many points the player has to distribute across this
@@ -525,13 +524,6 @@ class OccupationConfig {
   bool get hasOccupationSkillPoints =>
       occupationSkillPointsFormula != null && occupationSkills.isNotEmpty;
 
-  int characteristicBonusFor(String characteristicKey) {
-    for (final b in characteristicsBonus) {
-      if (b.target == characteristicKey) return b.flatBonus;
-    }
-    return 0;
-  }
-
   int skillBonusFor(String skillKey) {
     for (final b in skillsBonus) {
       if (b.target == skillKey) return b.flatBonus;
@@ -544,9 +536,6 @@ class OccupationConfig {
       key: json['key'] as String,
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
-      characteristicsBonus: (json['characteristics_bonus'] as List<dynamic>? ?? const [])
-          .map((e) => StatBonus.fromJson(e as Map<String, dynamic>))
-          .toList(),
       skillsBonus: (json['skills_bonus'] as List<dynamic>? ?? const [])
           .map((e) => StatBonus.fromJson(e as Map<String, dynamic>))
           .toList(),

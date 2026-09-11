@@ -4,6 +4,11 @@
          the only ones unable to use the network. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Push notifications for table invitations and game sessions. Android 13
+         and above also require the user to grant this at runtime, which
+         PushMessagingService asks for right after sign-in. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="questbook"
         android:name="${applicationName}"

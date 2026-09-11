@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/local/database.dart';
 import '../data/local/local_character_repository.dart';
 import '../data/local/local_game_system_repository.dart';
-import '../data/local/local_table_repository.dart';
 import '../data/local/seed/seed_runner.dart';
 import '../domain/models/creation_mode_config.dart';
 import '../domain/models/universe_config.dart';
 import '../domain/repositories/character_repository.dart';
 import '../domain/repositories/game_system_repository.dart';
-import '../domain/repositories/table_repository.dart';
 import '../domain/rules/config_rules_engine.dart';
 import '../domain/rules/rules_engine.dart';
 
@@ -135,10 +133,6 @@ final characterRepositoryProvider = Provider<CharacterRepository>((ref) {
 
 final gameSystemRepositoryProvider = Provider<GameSystemRepository>((ref) {
   return LocalGameSystemRepository(ref.watch(appDatabaseProvider));
-});
-
-final tableRepositoryProvider = Provider<TableRepository>((ref) {
-  return LocalTableRepository(ref.watch(appDatabaseProvider));
 });
 
 /// [ConfigRulesEngine] generalizes across any universe describable by the

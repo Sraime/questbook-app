@@ -23,10 +23,15 @@ class QBBottomNavBar extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.badges = const {},
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
+
+  /// Unread counts keyed by tab index. A tab with no entry, or a zero, shows
+  /// no badge at all.
+  final Map<int, int> badges;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +56,7 @@ class QBBottomNavBar extends StatelessWidget {
             Expanded(child: _NavTabButton(
               tab: qbNavTabs[i],
               selected: i == currentIndex,
+              badge: badges[i] ?? 0,
               onTap: () => onTap(i),
             )),
         ],
@@ -64,11 +70,13 @@ class _NavTabButton extends StatelessWidget {
     required this.tab,
     required this.selected,
     required this.onTap,
+    this.badge = 0,
   });
 
   final QBNavTab tab;
   final bool selected;
   final VoidCallback onTap;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -95,27 +103,38 @@ class _NavTabButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 22,
-              height: 22,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? const Color(0x26000000) : null,
-                gradient: selected
-                    ? null
-                    : const RadialGradient(
-                        center: Alignment(-0.36, -0.44),
-                        colors: [Color(0xFF5C4326), Color(0xFF2A1C10)],
-                      ),
-              ),
-              child: Icon(
-                tab.icon,
-                size: 14,
-                color: selected
-                    ? QBColors.ink900
-                    : QBColors.paper300.withValues(alpha: 0.75),
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected ? const Color(0x26000000) : null,
+                    gradient: selected
+                        ? null
+                        : const RadialGradient(
+                            center: Alignment(-0.36, -0.44),
+                            colors: [Color(0xFF5C4326), Color(0xFF2A1C10)],
+                          ),
+                  ),
+                  child: Icon(
+                    tab.icon,
+                    size: 14,
+                    color: selected
+                        ? QBColors.ink900
+                        : QBColors.paper300.withValues(alpha: 0.75),
+                  ),
+                ),
+                if (badge > 0)
+                  Positioned(
+                    top: -3,
+                    right: -5,
+                    child: _UnreadDot(count: badge),
+                  ),
+              ],
             ),
             const SizedBox(height: 3),
             Text(
@@ -128,6 +147,39 @@ class _NavTabButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The wax-red seal used to mark unread notifications on a tab.
+class _UnreadDot extends StatelessWidget {
+  const _UnreadDot({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: QBColors.wax500,
+        shape: BoxShape.rectangle,
+        borderRadius: BorderRadius.circular(QBRadius.full),
+        border: Border.all(color: QBColors.leather900, width: 1.5),
+      ),
+      child: Text(
+        // Past nine the exact figure stops being actionable, and the badge
+        // would start pushing the icon around.
+        count > 9 ? '9+' : '$count',
+        style: QBType.game().copyWith(
+          fontWeight: QBType.weightBold,
+          fontSize: 9,
+          height: 1,
+          color: QBColors.paper50,
         ),
       ),
     );

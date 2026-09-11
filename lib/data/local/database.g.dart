@@ -2218,382 +2218,6 @@ class InventoryItemsCompanion extends UpdateCompanion<InventoryItemRow> {
   }
 }
 
-class $GameTablesTable extends GameTables
-    with TableInfo<$GameTablesTable, GameTableRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $GameTablesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _universeLabelMeta = const VerificationMeta(
-    'universeLabel',
-  );
-  @override
-  late final GeneratedColumn<String> universeLabel = GeneratedColumn<String>(
-    'universe_label',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _nextSessionMeta = const VerificationMeta(
-    'nextSession',
-  );
-  @override
-  late final GeneratedColumn<DateTime> nextSession = GeneratedColumn<DateTime>(
-    'next_session',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _systemIdMeta = const VerificationMeta(
-    'systemId',
-  );
-  @override
-  late final GeneratedColumn<String> systemId = GeneratedColumn<String>(
-    'system_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES game_systems (id)',
-    ),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    title,
-    universeLabel,
-    nextSession,
-    systemId,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'game_tables';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<GameTableRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('universe_label')) {
-      context.handle(
-        _universeLabelMeta,
-        universeLabel.isAcceptableOrUnknown(
-          data['universe_label']!,
-          _universeLabelMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_universeLabelMeta);
-    }
-    if (data.containsKey('next_session')) {
-      context.handle(
-        _nextSessionMeta,
-        nextSession.isAcceptableOrUnknown(
-          data['next_session']!,
-          _nextSessionMeta,
-        ),
-      );
-    }
-    if (data.containsKey('system_id')) {
-      context.handle(
-        _systemIdMeta,
-        systemId.isAcceptableOrUnknown(data['system_id']!, _systemIdMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  GameTableRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return GameTableRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-      universeLabel: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}universe_label'],
-      )!,
-      nextSession: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}next_session'],
-      ),
-      systemId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}system_id'],
-      ),
-    );
-  }
-
-  @override
-  $GameTablesTable createAlias(String alias) {
-    return $GameTablesTable(attachedDatabase, alias);
-  }
-}
-
-class GameTableRow extends DataClass implements Insertable<GameTableRow> {
-  final String id;
-  final String title;
-  final String universeLabel;
-  final DateTime? nextSession;
-  final String? systemId;
-  const GameTableRow({
-    required this.id,
-    required this.title,
-    required this.universeLabel,
-    this.nextSession,
-    this.systemId,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['title'] = Variable<String>(title);
-    map['universe_label'] = Variable<String>(universeLabel);
-    if (!nullToAbsent || nextSession != null) {
-      map['next_session'] = Variable<DateTime>(nextSession);
-    }
-    if (!nullToAbsent || systemId != null) {
-      map['system_id'] = Variable<String>(systemId);
-    }
-    return map;
-  }
-
-  GameTablesCompanion toCompanion(bool nullToAbsent) {
-    return GameTablesCompanion(
-      id: Value(id),
-      title: Value(title),
-      universeLabel: Value(universeLabel),
-      nextSession: nextSession == null && nullToAbsent
-          ? const Value.absent()
-          : Value(nextSession),
-      systemId: systemId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(systemId),
-    );
-  }
-
-  factory GameTableRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return GameTableRow(
-      id: serializer.fromJson<String>(json['id']),
-      title: serializer.fromJson<String>(json['title']),
-      universeLabel: serializer.fromJson<String>(json['universeLabel']),
-      nextSession: serializer.fromJson<DateTime?>(json['nextSession']),
-      systemId: serializer.fromJson<String?>(json['systemId']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'title': serializer.toJson<String>(title),
-      'universeLabel': serializer.toJson<String>(universeLabel),
-      'nextSession': serializer.toJson<DateTime?>(nextSession),
-      'systemId': serializer.toJson<String?>(systemId),
-    };
-  }
-
-  GameTableRow copyWith({
-    String? id,
-    String? title,
-    String? universeLabel,
-    Value<DateTime?> nextSession = const Value.absent(),
-    Value<String?> systemId = const Value.absent(),
-  }) => GameTableRow(
-    id: id ?? this.id,
-    title: title ?? this.title,
-    universeLabel: universeLabel ?? this.universeLabel,
-    nextSession: nextSession.present ? nextSession.value : this.nextSession,
-    systemId: systemId.present ? systemId.value : this.systemId,
-  );
-  GameTableRow copyWithCompanion(GameTablesCompanion data) {
-    return GameTableRow(
-      id: data.id.present ? data.id.value : this.id,
-      title: data.title.present ? data.title.value : this.title,
-      universeLabel: data.universeLabel.present
-          ? data.universeLabel.value
-          : this.universeLabel,
-      nextSession: data.nextSession.present
-          ? data.nextSession.value
-          : this.nextSession,
-      systemId: data.systemId.present ? data.systemId.value : this.systemId,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('GameTableRow(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('universeLabel: $universeLabel, ')
-          ..write('nextSession: $nextSession, ')
-          ..write('systemId: $systemId')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(id, title, universeLabel, nextSession, systemId);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is GameTableRow &&
-          other.id == this.id &&
-          other.title == this.title &&
-          other.universeLabel == this.universeLabel &&
-          other.nextSession == this.nextSession &&
-          other.systemId == this.systemId);
-}
-
-class GameTablesCompanion extends UpdateCompanion<GameTableRow> {
-  final Value<String> id;
-  final Value<String> title;
-  final Value<String> universeLabel;
-  final Value<DateTime?> nextSession;
-  final Value<String?> systemId;
-  final Value<int> rowid;
-  const GameTablesCompanion({
-    this.id = const Value.absent(),
-    this.title = const Value.absent(),
-    this.universeLabel = const Value.absent(),
-    this.nextSession = const Value.absent(),
-    this.systemId = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  GameTablesCompanion.insert({
-    required String id,
-    required String title,
-    required String universeLabel,
-    this.nextSession = const Value.absent(),
-    this.systemId = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       title = Value(title),
-       universeLabel = Value(universeLabel);
-  static Insertable<GameTableRow> custom({
-    Expression<String>? id,
-    Expression<String>? title,
-    Expression<String>? universeLabel,
-    Expression<DateTime>? nextSession,
-    Expression<String>? systemId,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (title != null) 'title': title,
-      if (universeLabel != null) 'universe_label': universeLabel,
-      if (nextSession != null) 'next_session': nextSession,
-      if (systemId != null) 'system_id': systemId,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  GameTablesCompanion copyWith({
-    Value<String>? id,
-    Value<String>? title,
-    Value<String>? universeLabel,
-    Value<DateTime?>? nextSession,
-    Value<String?>? systemId,
-    Value<int>? rowid,
-  }) {
-    return GameTablesCompanion(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      universeLabel: universeLabel ?? this.universeLabel,
-      nextSession: nextSession ?? this.nextSession,
-      systemId: systemId ?? this.systemId,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (universeLabel.present) {
-      map['universe_label'] = Variable<String>(universeLabel.value);
-    }
-    if (nextSession.present) {
-      map['next_session'] = Variable<DateTime>(nextSession.value);
-    }
-    if (systemId.present) {
-      map['system_id'] = Variable<String>(systemId.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('GameTablesCompanion(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('universeLabel: $universeLabel, ')
-          ..write('nextSession: $nextSession, ')
-          ..write('systemId: $systemId, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $SyncMetadataTable extends SyncMetadata
     with TableInfo<$SyncMetadataTable, SyncMetadataRow> {
   @override
@@ -2811,7 +2435,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CharacterResourcesTable characterResources =
       $CharacterResourcesTable(this);
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
-  late final $GameTablesTable gameTables = $GameTablesTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2823,7 +2446,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     characterStats,
     characterResources,
     inventoryItems,
-    gameTables,
     syncMetadata,
   ];
   @override
@@ -2888,24 +2510,6 @@ final class $$GameSystemsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
-
-  static MultiTypedResultKey<$GameTablesTable, List<GameTableRow>>
-  _gameTablesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.gameTables,
-    aliasName: 'game_systems__id__game_tables__system_id',
-  );
-
-  $$GameTablesTableProcessedTableManager get gameTablesRefs {
-    final manager = $$GameTablesTableTableManager(
-      $_db,
-      $_db.gameTables,
-    ).filter((f) => f.systemId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_gameTablesRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
 }
 
 class $$GameSystemsTableFilterComposer
@@ -2948,31 +2552,6 @@ class $$GameSystemsTableFilterComposer
           }) => $$CharactersTableFilterComposer(
             $db: $db,
             $table: $db.characters,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> gameTablesRefs(
-    Expression<bool> Function($$GameTablesTableFilterComposer f) f,
-  ) {
-    final $$GameTablesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.gameTables,
-      getReferencedColumn: (t) => t.systemId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$GameTablesTableFilterComposer(
-            $db: $db,
-            $table: $db.gameTables,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3052,31 +2631,6 @@ class $$GameSystemsTableAnnotationComposer
     );
     return f(composer);
   }
-
-  Expression<T> gameTablesRefs<T extends Object>(
-    Expression<T> Function($$GameTablesTableAnnotationComposer a) f,
-  ) {
-    final $$GameTablesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.gameTables,
-      getReferencedColumn: (t) => t.systemId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$GameTablesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.gameTables,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$GameSystemsTableTableManager
@@ -3092,7 +2646,7 @@ class $$GameSystemsTableTableManager
           $$GameSystemsTableUpdateCompanionBuilder,
           (GameSystemRow, $$GameSystemsTableReferences),
           GameSystemRow,
-          PrefetchHooks Function({bool charactersRefs, bool gameTablesRefs})
+          PrefetchHooks Function({bool charactersRefs})
         > {
   $$GameSystemsTableTableManager(_$AppDatabase db, $GameSystemsTable table)
     : super(
@@ -3137,63 +2691,36 @@ class $$GameSystemsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback:
-              ({charactersRefs = false, gameTablesRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (charactersRefs) db.characters,
-                    if (gameTablesRefs) db.gameTables,
-                  ],
-                  addJoins: null,
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (charactersRefs)
-                        await $_getPrefetchedData<
-                          GameSystemRow,
-                          $GameSystemsTable,
-                          CharacterRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$GameSystemsTableReferences
-                              ._charactersRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$GameSystemsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).charactersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.systemId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (gameTablesRefs)
-                        await $_getPrefetchedData<
-                          GameSystemRow,
-                          $GameSystemsTable,
-                          GameTableRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$GameSystemsTableReferences
-                              ._gameTablesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$GameSystemsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).gameTablesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.systemId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
+          prefetchHooksCallback: ({charactersRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (charactersRefs) db.characters],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (charactersRefs)
+                    await $_getPrefetchedData<
+                      GameSystemRow,
+                      $GameSystemsTable,
+                      CharacterRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$GameSystemsTableReferences
+                          ._charactersRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$GameSystemsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).charactersRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.systemId == item.id),
+                      typedResults: items,
+                    ),
+                ];
               },
+            );
+          },
         ),
       );
 }
@@ -3210,7 +2737,7 @@ typedef $$GameSystemsTableProcessedTableManager =
       $$GameSystemsTableUpdateCompanionBuilder,
       (GameSystemRow, $$GameSystemsTableReferences),
       GameSystemRow,
-      PrefetchHooks Function({bool charactersRefs, bool gameTablesRefs})
+      PrefetchHooks Function({bool charactersRefs})
     >;
 typedef $$CharactersTableCreateCompanionBuilder =
     CharactersCompanion Function({
@@ -5002,327 +4529,6 @@ typedef $$InventoryItemsTableProcessedTableManager =
       InventoryItemRow,
       PrefetchHooks Function({bool characterId})
     >;
-typedef $$GameTablesTableCreateCompanionBuilder =
-    GameTablesCompanion Function({
-      required String id,
-      required String title,
-      required String universeLabel,
-      Value<DateTime?> nextSession,
-      Value<String?> systemId,
-      Value<int> rowid,
-    });
-typedef $$GameTablesTableUpdateCompanionBuilder =
-    GameTablesCompanion Function({
-      Value<String> id,
-      Value<String> title,
-      Value<String> universeLabel,
-      Value<DateTime?> nextSession,
-      Value<String?> systemId,
-      Value<int> rowid,
-    });
-
-final class $$GameTablesTableReferences
-    extends BaseReferences<_$AppDatabase, $GameTablesTable, GameTableRow> {
-  $$GameTablesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $GameSystemsTable _systemIdTable(_$AppDatabase db) =>
-      db.gameSystems.createAlias('game_tables__system_id__game_systems__id');
-
-  $$GameSystemsTableProcessedTableManager? get systemId {
-    final $_column = $_itemColumn<String>('system_id');
-    if ($_column == null) return null;
-    final manager = $$GameSystemsTableTableManager(
-      $_db,
-      $_db.gameSystems,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_systemIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-}
-
-class $$GameTablesTableFilterComposer
-    extends Composer<_$AppDatabase, $GameTablesTable> {
-  $$GameTablesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get universeLabel => $composableBuilder(
-    column: $table.universeLabel,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get nextSession => $composableBuilder(
-    column: $table.nextSession,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$GameSystemsTableFilterComposer get systemId {
-    final $$GameSystemsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.systemId,
-      referencedTable: $db.gameSystems,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$GameSystemsTableFilterComposer(
-            $db: $db,
-            $table: $db.gameSystems,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$GameTablesTableOrderingComposer
-    extends Composer<_$AppDatabase, $GameTablesTable> {
-  $$GameTablesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get universeLabel => $composableBuilder(
-    column: $table.universeLabel,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get nextSession => $composableBuilder(
-    column: $table.nextSession,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$GameSystemsTableOrderingComposer get systemId {
-    final $$GameSystemsTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.systemId,
-      referencedTable: $db.gameSystems,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$GameSystemsTableOrderingComposer(
-            $db: $db,
-            $table: $db.gameSystems,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$GameTablesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $GameTablesTable> {
-  $$GameTablesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumn<String> get universeLabel => $composableBuilder(
-    column: $table.universeLabel,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get nextSession => $composableBuilder(
-    column: $table.nextSession,
-    builder: (column) => column,
-  );
-
-  $$GameSystemsTableAnnotationComposer get systemId {
-    final $$GameSystemsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.systemId,
-      referencedTable: $db.gameSystems,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$GameSystemsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.gameSystems,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$GameTablesTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $GameTablesTable,
-          GameTableRow,
-          $$GameTablesTableFilterComposer,
-          $$GameTablesTableOrderingComposer,
-          $$GameTablesTableAnnotationComposer,
-          $$GameTablesTableCreateCompanionBuilder,
-          $$GameTablesTableUpdateCompanionBuilder,
-          (GameTableRow, $$GameTablesTableReferences),
-          GameTableRow,
-          PrefetchHooks Function({bool systemId})
-        > {
-  $$GameTablesTableTableManager(_$AppDatabase db, $GameTablesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$GameTablesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$GameTablesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$GameTablesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> title = const Value.absent(),
-                Value<String> universeLabel = const Value.absent(),
-                Value<DateTime?> nextSession = const Value.absent(),
-                Value<String?> systemId = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => GameTablesCompanion(
-                id: id,
-                title: title,
-                universeLabel: universeLabel,
-                nextSession: nextSession,
-                systemId: systemId,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String title,
-                required String universeLabel,
-                Value<DateTime?> nextSession = const Value.absent(),
-                Value<String?> systemId = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => GameTablesCompanion.insert(
-                id: id,
-                title: title,
-                universeLabel: universeLabel,
-                nextSession: nextSession,
-                systemId: systemId,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$GameTablesTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({systemId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (systemId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.systemId,
-                                referencedTable: $$GameTablesTableReferences
-                                    ._systemIdTable(db),
-                                referencedColumn: $$GameTablesTableReferences
-                                    ._systemIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$GameTablesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $GameTablesTable,
-      GameTableRow,
-      $$GameTablesTableFilterComposer,
-      $$GameTablesTableOrderingComposer,
-      $$GameTablesTableAnnotationComposer,
-      $$GameTablesTableCreateCompanionBuilder,
-      $$GameTablesTableUpdateCompanionBuilder,
-      (GameTableRow, $$GameTablesTableReferences),
-      GameTableRow,
-      PrefetchHooks Function({bool systemId})
-    >;
 typedef $$SyncMetadataTableCreateCompanionBuilder =
     SyncMetadataCompanion Function({
       required String key,
@@ -5476,8 +4682,6 @@ class $AppDatabaseManager {
       $$CharacterResourcesTableTableManager(_db, _db.characterResources);
   $$InventoryItemsTableTableManager get inventoryItems =>
       $$InventoryItemsTableTableManager(_db, _db.inventoryItems);
-  $$GameTablesTableTableManager get gameTables =>
-      $$GameTablesTableTableManager(_db, _db.gameTables);
   $$SyncMetadataTableTableManager get syncMetadata =>
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
 }

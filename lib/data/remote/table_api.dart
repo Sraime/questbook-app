@@ -1,32 +1,41 @@
 import 'api_client.dart';
 import 'remote_table.dart';
 
-/// Tables, their members and their invitations. Everything here needs the
-/// network: unlike characters, none of it has a local copy to fall back on.
+/// Tables, their members and their invitations.
+///
+/// Reads come in two flavours: the parsed one for normal use, and a `…Raw`
+/// one that hands back the envelope untouched so it can be stored and read
+/// again without a network. Both end in the same parser, so an offline screen
+/// and an online one can never disagree about what a table is.
 class TableApi {
   TableApi(this._client);
 
   final ApiClient _client;
 
-  Future<List<RemoteGameTable>> list() {
+  Future<List<RemoteGameTable>> list() async => parseTables(await listRaw());
+
+  Future<dynamic> listRaw() {
     return _client.send(
       (dio) => dio.get<dynamic>('/tables'),
-      parse: (data) {
-        final tables = (data as Map)['tables'];
-        if (tables is! List) return const <RemoteGameTable>[];
-        return tables
-            .whereType<Map>()
-            .map((entry) =>
-                RemoteGameTable.fromJson(entry.cast<String, dynamic>()))
-            .toList(growable: false);
-      },
+      parse: (data) => data,
     );
   }
 
-  Future<RemoteGameTable> get(String id) {
+  static List<RemoteGameTable> parseTables(Object? data) {
+    final tables = (data as Map)['tables'];
+    if (tables is! List) return const <RemoteGameTable>[];
+    return tables
+        .whereType<Map>()
+        .map((entry) => RemoteGameTable.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  Future<RemoteGameTable> get(String id) async => _parseTable(await getRaw(id));
+
+  Future<dynamic> getRaw(String id) {
     return _client.send(
       (dio) => dio.get<dynamic>('/tables/$id'),
-      parse: _parseTable,
+      parse: (data) => data,
     );
   }
 
@@ -99,20 +108,28 @@ class TableApi {
   }
 
   /// Invitations waiting for the signed-in user, across every table.
-  Future<List<RemoteTableInvitation>> pendingInvitations() {
+  Future<List<RemoteTableInvitation>> pendingInvitations() async =>
+      parseInvitations(await pendingInvitationsRaw());
+
+  Future<dynamic> pendingInvitationsRaw() {
     return _client.send(
       (dio) => dio.get<dynamic>('/invitations'),
-      parse: (data) {
-        final invitations = (data as Map)['invitations'];
-        if (invitations is! List) return const <RemoteTableInvitation>[];
-        return invitations
-            .whereType<Map>()
-            .map((entry) =>
-                RemoteTableInvitation.fromJson(entry.cast<String, dynamic>()))
-            .toList(growable: false);
-      },
+      parse: (data) => data,
     );
   }
+
+  static List<RemoteTableInvitation> parseInvitations(Object? data) {
+    final invitations = (data as Map)['invitations'];
+    if (invitations is! List) return const <RemoteTableInvitation>[];
+    return invitations
+        .whereType<Map>()
+        .map((entry) =>
+            RemoteTableInvitation.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  static RemoteGameTable parseTable(Object? data) =>
+      RemoteGameTable.fromJson((data as Map).cast<String, dynamic>());
 
   Future<RemoteGameTable> acceptInvitation(String invitationId) {
     return _client.send(
@@ -128,6 +145,5 @@ class TableApi {
     );
   }
 
-  RemoteGameTable _parseTable(Object? data) =>
-      RemoteGameTable.fromJson((data as Map).cast<String, dynamic>());
+  RemoteGameTable _parseTable(Object? data) => parseTable(data);
 }

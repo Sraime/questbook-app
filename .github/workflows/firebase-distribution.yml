@@ -30,11 +30,30 @@ jobs:
     # `pull_request: closed` fires on both merged AND declined/closed PRs —
     # skip the whole job unless it was actually merged (manual runs always go).
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    # Pour poser le tag de distribution en fin de job.
+    permissions:
+      contents: write
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
+          # Les tags servent de registre des versions deja distribuees.
+          fetch-depth: 0
+
+      # Deux distributions sous le meme numero sont indiscernables pour un
+      # testeur, et laissent le versionCode Android en arriere. Le tag pose en
+      # fin de job fait foi : s'il existe deja, la version n'a pas ete montee.
+      - name: Verify the version has not been distributed yet
+        id: version
+        run: |
+          version=$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2)
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::error::La version $version a deja ete distribuee. Monte 'version' dans pubspec.yaml avant de merger."
+            exit 1
+          fi
+          echo "Version a distribuer : $version"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -83,6 +102,13 @@ jobs:
             --groups "testeurs" \
             --release-notes "${{ github.event.inputs.release_notes || format('PR #{0} mergee : {1}', github.event.pull_request.number, github.event.pull_request.title) }}" \
             --token "$FIREBASE_TOKEN"
+
+      # Pose apres coup : un build qui echoue ne doit pas bruler son numero.
+      - name: Tag the distributed version
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          git tag -a "v$version" -m "Distribue aux testeurs le $(date -u +%Y-%m-%d)"
+          git push origin "v$version"
 
       - name: Clean up signing secrets from runner
         if: always()

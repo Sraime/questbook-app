@@ -1,6 +1,7 @@
 import 'api_client.dart';
 import 'remote_character.dart';
 import 'remote_table.dart';
+import 'table_api.dart';
 
 /// Sessions are created under their table but addressed by their own id
 /// afterwards, so a notification can link straight to one.
@@ -9,19 +10,24 @@ class SessionApi {
 
   final ApiClient _client;
 
-  Future<List<RemoteGameSession>> listForTable(String tableId) {
+  Future<List<RemoteGameSession>> listForTable(String tableId) async =>
+      parseSessions(await listForTableRaw(tableId));
+
+  /// The envelope untouched, for the offline cache. See [TableApi.listRaw].
+  Future<dynamic> listForTableRaw(String tableId) {
     return _client.send(
       (dio) => dio.get<dynamic>('/tables/$tableId/sessions'),
-      parse: (data) {
-        final sessions = (data as Map)['sessions'];
-        if (sessions is! List) return const <RemoteGameSession>[];
-        return sessions
-            .whereType<Map>()
-            .map((entry) =>
-                RemoteGameSession.fromJson(entry.cast<String, dynamic>()))
-            .toList(growable: false);
-      },
+      parse: (data) => data,
     );
+  }
+
+  static List<RemoteGameSession> parseSessions(Object? data) {
+    final sessions = (data as Map)['sessions'];
+    if (sessions is! List) return const <RemoteGameSession>[];
+    return sessions
+        .whereType<Map>()
+        .map((entry) => RemoteGameSession.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
   }
 
   Future<RemoteGameSession> get(String id) {

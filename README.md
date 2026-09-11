@@ -22,10 +22,13 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
   - [Lancer contre le backend local](#lancer-contre-le-backend-local)
   - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
+  - [Tables : le choix inverse](#tables--le-choix-inverse)
+  - [Consultation seule (hors ligne)](#consultation-seule-hors-ligne)
 - [Tests](#tests)
 - [Workflow git (branches)](#workflow-git-branches)
 - [Distribution Android (signature, Firebase, CI/CD)](#distribution-android-signature-firebase-cicd)
   - [Vue d'ensemble](#vue-densemble)
+  - [Numéro de version](#numéro-de-version)
   - [Signature de release](#signature-de-release)
   - [Firebase App Distribution](#firebase-app-distribution)
   - [CI GitHub Actions](#ci-github-actions)
@@ -40,12 +43,15 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions, et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Session (`/tables/:id/sessions/new`, `/tables/:id/sessions/:sessionId`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Notifications (`/tables/notifications`)** : historique des invitations, sessions et réponses, avec pastille de non-lus sur la barre de navigation. Doublé de notifications push (Firebase Cloud Messaging).
 
-> Contrairement aux personnages, **les tables sont strictement en ligne** : elles sont partagées entre plusieurs comptes, il n'y a donc rien à stocker localement et l'onglet demande une connexion.
+- **Connexion (obligatoire)** : l'app démarre sur l'écran de connexion Google tant qu'aucun compte n'a été utilisé sur l'appareil. Il n'y a plus de « Continuer hors ligne ».
+
+> **Sans réseau, l'app passe en consultation seule.** Personnages et tables restent lisibles — les seconds depuis la dernière réponse du serveur, datée à l'écran — mais rien ne peut être modifié tant que le serveur ne répond pas. Voir [Consultation seule](#consultation-seule-hors-ligne).
 
 Toute l'interface utilise un design system interne « juicy » (boutons/cartes/dés avec relief, ombres et dégradés) inspiré d'une maquette produit, situé dans `lib/design_system/`.
 
@@ -107,7 +113,8 @@ lib/
 │   ├── home/                   # Écran « Mes personnages »
 │   ├── character_creation/     # Création de personnage + modale de jet de caractéristique
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
-│   ├── tables/                  # « Mes tables », détail d'une table, notifications
+│   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
+│   │                            # session, notifications
 │   ├── auth/                    # Écran de connexion Google et barre de compte
 │   └── shell/                   # AppShell : bottom nav bar persistante (StatefulShellRoute)
 ├── services/
@@ -133,8 +140,9 @@ Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu g
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
 - `SyncMetadata` — curseur de synchronisation et identifiant du compte auquel appartiennent les données locales.
+- `RemoteCache` — la dernière réponse de l'API pour quelques lectures (tables, sessions), conservée telle quelle pour que l'onglet Tables reste lisible sans réseau. Voir [Consultation seule](#consultation-seule-hors-ligne).
 
-Les tables de jeu **n'apparaissent pas ici** : elles sont partagées entre plusieurs comptes et vivent uniquement sur le serveur. La table Drift `GameTables` de la maquette locale a été supprimée par la migration v2 → v3.
+Les tables de jeu **ne sont pas modélisées ici** : elles sont partagées entre plusieurs comptes et le serveur en reste la source de vérité. La table Drift `GameTables` de la maquette locale a été supprimée par la migration v2 → v3 ; ce que la v4 réintroduit est une copie en lecture seule, pas un modèle.
 
 Ce schéma générique (`kind`/`key`/`label`/`value`) permet d'ajouter un nouveau système de jeu sans migration : seul un nouveau fichier de config JSON de mode de création (voir ci-dessous) change.
 
@@ -340,9 +348,14 @@ qui vit dans un dépôt séparé : [`questbook-back`](https://github.com/Sraime/
 (Fastify + Prisma + PostgreSQL). Son README couvre l'installation, les variables
 d'environnement et le déploiement.
 
-**La connexion reste facultative.** Sans compte, l'app fonctionne exactement
-comme avant : tout est stocké en local par Drift. L'écran de connexion propose
-toujours « Continuer hors ligne ».
+**La connexion est obligatoire.** Elle a longtemps été facultative, et l'écran
+de connexion proposait « Continuer hors ligne ». Ce n'était plus tenable : les
+tables sont partagées avec d'autres joueurs, et confirmer sa présence à une
+séance suppose d'être quelqu'un que le serveur sait nommer. Un utilisateur
+purement local n'avait accès à rien de tout cela.
+
+**Ne pas confondre avec le réseau.** Une fois connecté, perdre le réseau ne
+déconnecte pas : l'app bascule en **consultation seule**, décrite plus bas.
 
 ### Configuration de build (`--dart-define`)
 
@@ -408,12 +421,51 @@ première connexion (migration Drift v1 → v2, voir `lib/data/local/database.da
 ### Tables : le choix inverse
 
 Les tables ne suivent **pas** ce modèle. Une table est partagée entre plusieurs
-comptes qui la modifient en même temps ; la stocker localement obligerait à
-résoudre des conflits sur des données que l'utilisateur ne contrôle pas seul,
-pour un gain nul — sans réseau, il n'y a de toute façon pas de partie à
-organiser. L'onglet Tables lit donc l'API directement (`FutureProvider` dans
-`lib/features/tables/providers/`) et affiche un état « connexion requise » à
-défaut. La maquette locale est supprimée par la migration Drift v2 → v3.
+comptes qui la modifient en même temps ; en faire une source de vérité locale
+obligerait à résoudre des conflits sur des données que l'utilisateur ne
+contrôle pas seul. L'onglet Tables lit donc l'API directement (`FutureProvider`
+dans `lib/features/tables/providers/`). La maquette locale des débuts a été
+supprimée par la migration Drift v2 → v3.
+
+Ce que le téléphone garde, depuis la v4, c'est la **dernière réponse** du
+serveur (table `RemoteCache`), et rien de plus : jamais un brouillon, jamais
+une modification en attente. Sans réseau, l'onglet rejoue cette copie en
+annonçant sa date plutôt que d'afficher une erreur — voir ci-dessous.
+
+L'entrée est volontairement opaque : elle stocke l'enveloppe JSON brute, qui
+repasse par le `fromJson` du chemin normal. Recopier la forme du serveur en
+colonnes imposerait une migration à chaque champ ajouté à l'API, pour un cache
+qu'on ne fait que relire.
+
+### Consultation seule (hors ligne)
+
+Ce que voit un utilisateur déjà connecté mais sans réseau :
+
+- ses personnages et ses tables, **en lecture** ;
+- un bandeau « Hors ligne — consultation seule » en haut de l'app, avec un
+  « Réessayer » ;
+- la date de la copie affichée sur l'onglet Tables et sur le détail d'une
+  table ;
+- **aucun bouton d'écriture** : ni création de personnage ou de table, ni
+  réponse à une session, ni invitation, ni transmission du MJ. Ils sont retirés
+  plutôt que désactivés, et le bandeau dit pourquoi — un bouton grisé sans
+  explication se lit comme une panne.
+
+La connectivité est **mesurée, pas déclarée** (`connectivityProvider` dans
+`lib/app/remote_providers.dart`) : un téléphone peut afficher quatre barres
+derrière un portail captif, donc ce qui compte est de savoir si le serveur
+répond. Chaque requête rend son verdict à l'`ApiClient`, et tant que la réponse
+est non, une sonde légère (`GET /health`, toutes les 20 s, plus au retour au
+premier plan) continue de demander — sinon un utilisateur qui retrouve la 4G
+resterait bloqué sur sa copie sans rien pour l'en sortir. Dès que le réseau
+revient, les tables sont rechargées.
+
+Un refus du serveur (403, 404…) n'est **pas** un motif de repli sur le cache :
+c'est une nouvelle réelle à propos du compte, et afficher les tables d'hier
+par-dessus l'enterrerait. Seule une panne réseau déclenche le repli.
+
+Le cache est rattaché à un compte et effacé à la déconnexion : sur un téléphone
+partagé, personne ne doit tomber sur les tables du joueur précédent.
 
 Un cas se tient à la frontière des deux modèles : le personnage qu'un joueur
 inscrit à une session. Le choix se fait dans une liste lue en local, mais c'est
@@ -460,6 +512,15 @@ le README du backend.
 flutter test
 ```
 
+`.github/workflows/ci.yml` rejoue `flutter analyze` puis `flutter test` sur
+chaque pull request et sur les pushes de `dev`. Les deux sont bloquants : le
+projet est à zéro avertissement et il s'agit de le garder ainsi. Le job installe
+`libsqlite3-dev`, dont les tests de migration Drift ont besoin pour ouvrir une
+vraie base sur le runner.
+
+Ce garde-fou est ce qui sépare une PR rouge de la distribution aux testeurs,
+puisque celle-ci part dès qu'une PR tombe dans `main`.
+
 Tests actuellement présents (`test/`) :
 - `domain/rules/formula_evaluator_test.dart` — l'évaluateur de formules/dés/conditions lui-même.
 - `domain/rules/config_rules_engine_test.dart` — mécaniques de jet (caractéristiques, dérivées, jets de compétence) sur une config de test.
@@ -468,8 +529,11 @@ Tests actuellement présents (`test/`) :
 - `domain/models/universe_config_test.dart` — smoke-test du fichier `assets/universes/universe_call_of_cthulhu.json` : métadonnées, index `creation_modes`, contenu du `general_configuration`.
 - `services/dice_service_test.dart` — primitives de lancer de dés.
 - `data/local/local_character_repository_test.dart` — la comptabilité de synchronisation du dépôt local : chaque écriture marque le personnage à pousser, une suppression laisse une pierre tombale invisible dans la liste.
-- `data/local/migration_test.dart` — la migration v1 → v2 sur un vrai fichier SQLite ramené au schéma v1, pour vérifier qu'aucun personnage existant n'est perdu et que `updatedAt` est bien rempli.
+- `data/local/migration_test.dart` — les migrations sur un vrai fichier SQLite ramené aux schémas v1, v2 puis v3, pour vérifier qu'aucun personnage existant n'est perdu, que `updatedAt` est bien rempli, que la maquette locale des tables est bien supprimée en v3 et que le cache s'ouvre en v4.
+- `data/local/remote_cache_dao_test.dart` — le cache rend ce qu'on lui a confié, remplace une entrée au lieu d'en empiler, et refuse de montrer celle d'un autre compte.
+- `features/tables/offline_tables_test.dart` — le repli hors ligne bout en bout : la copie est rejouée quand le serveur est injoignable et datée, un refus du serveur passe au travers sans être masqué, et l'écriture est refusée tant que le réseau n'est pas revenu.
 - `data/sync/sync_service_test.dart` — les règles de synchronisation (push, pull, conflits, changement de compte) contre une fausse API et une vraie base en mémoire.
+- `data/remote/api_client_test.dart` — le rafraîchissement du jeton contre un vrai serveur HTTP local : un 401 déclenche un refresh puis un seul rejeu, plusieurs requêtes simultanées ne brûlent qu'un seul refresh token, et un refresh refusé termine la session au lieu de boucler. Vérifie aussi qu'une requête sans corps ne déclare pas de type de média : Dio estampille tout `application/json`, ce qu'un serveur strict lit comme la promesse d'un corps qui ne vient jamais.
 
 ## Workflow git (branches)
 
@@ -478,7 +542,8 @@ Le dépôt suit un git-flow simplifié à deux branches :
 - **`dev`** — branche de travail. Toutes les modifications (features, fixes,
   docs…) sont commitées ici (directement ou via des branches
   `feature/xxx` ouvertes depuis `dev`, selon la taille du changement).
-  Pousser sur `dev` **ne déclenche aucun build/déploiement**.
+  Pousser sur `dev` déclenche l'analyse et les tests, mais **aucun build ni
+  aucune distribution**.
 - **`main`** — branche de release, protégée. Elle ne doit être mise à jour
   que via une **Pull Request `dev` → `main`**, jamais par un push direct.
   C'est le *merge* de cette PR qui déclenche automatiquement la CI (build +
@@ -506,11 +571,12 @@ git push origin dev
 
 ### Vue d'ensemble
 
-Le projet est connecté à un projet Firebase (**`questbook-48540`**) uniquement
-pour distribuer des builds de test aux beta-testeurs via **Firebase App
-Distribution** — il n'y a aujourd'hui aucun SDK Firebase (Auth, Analytics,
-Firestore…) intégré dans l'app elle-même, uniquement de l'outillage de
-distribution. Le flux complet, une fois poussé sur `main` :
+Le projet est connecté à un projet Firebase (**`questbook-48540`**) pour deux
+usages distincts : distribuer des builds de test aux beta-testeurs via **Firebase
+App Distribution**, et envoyer les notifications push via **Cloud Messaging**
+(`firebase_core` et `firebase_messaging` côté app). Aucun autre SDK Firebase
+n'est intégré : ni Auth, ni Analytics, ni Firestore. Le flux de distribution,
+une fois poussé sur `main` :
 
 ```
 Pull Request "dev → main" mergée sur GitHub
@@ -523,6 +589,25 @@ Pull Request "dev → main" mergée sur GitHub
 
 Trois briques composent ce dispositif, détaillées ci-dessous : la **signature
 release**, le **projet Firebase**, et le **workflow CI**.
+
+### Numéro de version
+
+**Monter `version` dans `pubspec.yaml` fait partie de la PR, pas de l'après.**
+Deux distributions sous le même numéro sont indiscernables pour un testeur, qui
+ne peut plus savoir laquelle il a installée, et le `versionCode` Android figé
+interdit toute publication ultérieure sur le Play Store.
+
+Le workflow refuse donc de distribuer une version déjà livrée. Chaque
+distribution réussie pose un tag `v<version>` — `v1.3.0+5`, par exemple — et le
+job échoue d'emblée si ce tag existe déjà. Les tags font office de registre : ce
+sont eux qui disent ce qui est réellement parti chez les testeurs.
+
+Le tag est posé **après** la distribution, pour qu'un build en échec ne brûle pas
+son numéro.
+
+> C'est arrivé le 11 septembre : la feature « Tables de jeu » est partie en
+> `1.2.0+4`, le numéro exact de la release du 5 septembre, sans que rien ne le
+> signale. D'où ce garde-fou.
 
 ### Signature de release
 
@@ -660,8 +745,10 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 - Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
-- La synchronisation hors-ligne ne couvre que les personnages (stats, ressources, inventaire). Les tables, sessions et notifications sont lues et écrites en ligne : sans réseau, l'onglet Tables est vide.
-- La connexion Google n'est câblée que pour Android : `ios/Runner/Info.plist` n'a pas encore de `CFBundleURLTypes`, et il manque un client OAuth iOS. Un build iOS lancé sans `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` reste utilisable, mais hors ligne. Voir [Compte Google et synchronisation](#compte-google-et-synchronisation).
+- L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
+- Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
+- La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.
+- La connexion Google n'est câblée que pour Android : `ios/Runner/Info.plist` n'a pas encore de `CFBundleURLTypes`, et il manque un client OAuth iOS. Un build iOS lancé sans `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` ne peut donc pas dépasser l'écran de connexion. Voir [Compte Google et synchronisation](#compte-google-et-synchronisation).
 - Les notifications push ne sont câblées que pour Android : le projet Firebase n'a pas d'app iOS, et l'envoi APNs demanderait une clé Apple. Sur iOS, seul l'historique in-app fonctionne.
 - Pas de relance en cas d'échec d'envoi d'un e-mail ou d'un push : les deux partent au mieux après le commit. La ligne de notification, elle, est écrite dans la transaction, donc l'historique in-app reste juste. Une table d'outbox avec relance reste un ajout simple si le besoin apparaît.
 - Distribution actuelle limitée à Firebase App Distribution (bêta-testeurs) ; pas encore de publication Play Store, ni de Play App Signing (la clé de signature `upload` est gérée manuellement — voir [Distribution Android](#distribution-android-signature-firebase-cicd)).

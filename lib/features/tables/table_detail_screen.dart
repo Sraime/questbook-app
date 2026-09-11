@@ -19,8 +19,6 @@ import 'table_formatting.dart';
 import 'widgets/attendee_character_sheet.dart';
 import 'widgets/invite_player_dialog.dart';
 import 'widgets/session_character_dialog.dart';
-import 'widgets/session_form_dialog.dart';
-
 /// Everything about one table: who is at it, who has been invited, and what is
 /// planned. Game-master controls appear only when the server says the viewer
 /// is one, so a player never sees a button that would come back a 403.
@@ -57,6 +55,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final table = detail.table;
+    final canWrite = ref.watch(canWriteProvider);
 
     return RefreshIndicator(
       onRefresh: () async => refreshTables(ref, tableId: table.id),
@@ -96,16 +95,17 @@ class _Body extends ConsumerWidget {
               ),
             ],
           ),
+          if (detail.cachedAt case final fetchedAt?) ...[
+            const SizedBox(height: QBSpace.s3),
+            _MutedText('Dernière mise à jour ${formatRelative(fetchedAt)}.'),
+          ],
           const SizedBox(height: QBSpace.s5),
           _SectionTitle(
             title: 'Sessions',
-            action: table.isGameMaster
+            action: table.isGameMaster && canWrite
                 ? _SectionAction(
                     label: '+ Proposer',
-                    onTap: () => showSessionFormDialog(
-                      context,
-                      tableId: table.id,
-                    ),
+                    onTap: () => context.go('/tables/${table.id}/sessions/new'),
                   )
                 : null,
           ),
@@ -133,7 +133,7 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: QBSpace.s6),
           _SectionTitle(
             title: 'Joueurs',
-            action: table.isGameMaster
+            action: table.isGameMaster && canWrite
                 ? _SectionAction(
                     label: '+ Inviter',
                     onTap: () =>
@@ -155,8 +155,10 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: QBSpace.s2),
             ],
           ],
-          const SizedBox(height: QBSpace.s6),
-          _DangerZone(table: table),
+          if (canWrite) ...[
+            const SizedBox(height: QBSpace.s6),
+            _DangerZone(table: table),
+          ],
         ],
       ),
     );
@@ -225,6 +227,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
+    final canWrite = ref.watch(canWriteProvider);
 
     // The game master runs the evening rather than attending it, so they are
     // neither expected to answer nor counted among those who have not.
@@ -253,15 +256,13 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                   ),
                 ),
               ),
-              if (widget.table.isGameMaster) ...[
+              if (widget.table.isGameMaster && canWrite) ...[
                 QBIconButton(
                   icon: const Icon(LucideIcons.pencil, size: 16),
                   label: 'Modifier la session',
                   size: 32,
-                  onPressed: () => showSessionFormDialog(
-                    context,
-                    tableId: widget.table.id,
-                    existing: session,
+                  onPressed: () => context.go(
+                    '/tables/${widget.table.id}/sessions/${session.id}',
                   ),
                 ),
                 QBIconButton(
@@ -292,7 +293,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
           ],
           const SizedBox(height: QBSpace.s3),
           _AttendanceSummary(session: session, pendingCount: pending),
-          if (!widget.table.isGameMaster) ...[
+          if (!widget.table.isGameMaster && canWrite) ...[
             const SizedBox(height: QBSpace.s3),
             Row(
               children: [
@@ -525,7 +526,9 @@ class _MemberRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // The game master is the one member who cannot be removed: the table would
     // be left with nobody able to schedule anything.
-    final canRemove = table.isGameMaster && !member.role.isGameMaster;
+    final canRemove = table.isGameMaster &&
+        !member.role.isGameMaster &&
+        ref.watch(canWriteProvider);
 
     return Row(
       children: [
@@ -641,22 +644,23 @@ class _PendingInvitationRow extends ConsumerWidget {
             ),
           ),
         ),
-        QBIconButton(
-          icon: const Icon(LucideIcons.x, size: 16),
-          label: 'Annuler l’invitation',
-          size: 32,
-          onPressed: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            try {
-              await ref
-                  .read(tableApiProvider)
-                  .revokeInvitation(tableId, invitation.id);
-              refreshTables(ref, tableId: tableId);
-            } on ApiException catch (error) {
-              messenger.showSnackBar(SnackBar(content: Text(error.message)));
-            }
-          },
-        ),
+        if (ref.watch(canWriteProvider))
+          QBIconButton(
+            icon: const Icon(LucideIcons.x, size: 16),
+            label: 'Annuler l’invitation',
+            size: 32,
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await ref
+                    .read(tableApiProvider)
+                    .revokeInvitation(tableId, invitation.id);
+                refreshTables(ref, tableId: tableId);
+              } on ApiException catch (error) {
+                messenger.showSnackBar(SnackBar(content: Text(error.message)));
+              }
+            },
+          ),
       ],
     );
   }

@@ -52,6 +52,9 @@ class StubApi {
   /// Paths served, in order, so a test can count refreshes and retries.
   final List<String> hits = [];
 
+  /// The media type each request declared, in the same order as [hits].
+  final List<String?> contentTypes = [];
+
   /// Held open while set, to line several requests up on the same 401.
   Completer<void>? gate;
 
@@ -62,6 +65,7 @@ class StubApi {
   Future<void> _serve() async {
     await for (final request in _server) {
       hits.add(request.uri.path);
+      contentTypes.add(request.headers.value('content-type'));
 
       if (request.uri.path.endsWith('/auth/refresh')) {
         await _handleRefresh(request);
@@ -169,6 +173,31 @@ void main() {
 
     expect(store.tokens, isNull);
     expect(expiredSessions, 1);
+  });
+
+  /// Claiming `application/json` on a request that carries nothing makes a
+  /// strict server wait for a payload: Fastify answers it with a 400, which is
+  /// how cancelling a session came back as "Body cannot be empty".
+  test('declares no media type on a request without a body', () async {
+    api.validAccessToken = 'access-1';
+
+    await client.send<void>(
+      (dio) => dio.delete<dynamic>('/sessions/abc'),
+      parse: (_) {},
+    );
+
+    expect(api.contentTypes, [null]);
+  });
+
+  test('still declares JSON when it does send a body', () async {
+    api.validAccessToken = 'access-1';
+
+    await client.send<void>(
+      (dio) => dio.post<dynamic>('/tables', data: {'title': 'Les Chavillois'}),
+      parse: (_) {},
+    );
+
+    expect(api.contentTypes.single, startsWith('application/json'));
   });
 
   test('burns a single refresh token when requests fail together', () async {

@@ -137,9 +137,15 @@ class _TablesBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canWrite = ref.watch(canWriteProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (overview.cachedAt case final fetchedAt?) ...[
+          _CachedNotice(fetchedAt: fetchedAt),
+          const SizedBox(height: QBSpace.s3),
+        ],
         for (final invitation in overview.invitations) ...[
           _InvitationCard(invitation: invitation),
           const SizedBox(height: QBSpace.s3),
@@ -161,25 +167,26 @@ class _TablesBody extends ConsumerWidget {
             _TableCard(table: table),
             const SizedBox(height: QBSpace.s3),
           ],
-        GestureDetector(
-          onTap: () => _NewTableDialog.show(context, ref),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              border: Border.all(color: QBColors.borderStrong, width: 3),
-              borderRadius: BorderRadius.circular(QBRadius.lg),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '+ Nouvelle table',
-              style: QBType.game().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: 15,
-                color: QBColors.leather700,
+        if (canWrite)
+          GestureDetector(
+            onTap: () => _NewTableDialog.show(context, ref),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                border: Border.all(color: QBColors.borderStrong, width: 3),
+                borderRadius: BorderRadius.circular(QBRadius.lg),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '+ Nouvelle table',
+                style: QBType.game().copyWith(
+                  fontWeight: QBType.weightSemibold,
+                  fontSize: 15,
+                  color: QBColors.leather700,
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -315,37 +322,39 @@ class _InvitationCardState extends ConsumerState<_InvitationCard> {
               color: QBColors.textMuted,
             ),
           ),
-          const SizedBox(height: QBSpace.s3),
-          Row(
-            children: [
-              Expanded(
-                child: QBButton(
-                  label: 'Rejoindre',
-                  size: QBButtonSize.sm,
-                  expand: true,
-                  onPressed: _busy ? null : () => _respond(accept: true),
+          if (ref.watch(canWriteProvider)) ...[
+            const SizedBox(height: QBSpace.s3),
+            Row(
+              children: [
+                Expanded(
+                  child: QBButton(
+                    label: 'Rejoindre',
+                    size: QBButtonSize.sm,
+                    expand: true,
+                    onPressed: _busy ? null : () => _respond(accept: true),
+                  ),
                 ),
-              ),
-              const SizedBox(width: QBSpace.s2),
-              Expanded(
-                child: QBButton(
-                  label: 'Refuser',
-                  variant: QBButtonVariant.ghost,
-                  size: QBButtonSize.sm,
-                  expand: true,
-                  onPressed: _busy ? null : () => _respond(accept: false),
+                const SizedBox(width: QBSpace.s2),
+                Expanded(
+                  child: QBButton(
+                    label: 'Refuser',
+                    variant: QBButtonVariant.ghost,
+                    size: QBButtonSize.sm,
+                    expand: true,
+                    onPressed: _busy ? null : () => _respond(accept: false),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Tables cannot work offline: they are a shared object, and there is nothing
-/// sensible to show or let the user change without the server.
+/// Tables are a shared object: without an account there is nobody to share
+/// them with, and nothing to show.
 class _SignInRequired extends StatelessWidget {
   const _SignInRequired();
 
@@ -367,14 +376,33 @@ class _SignInRequired extends StatelessWidget {
           const SizedBox(height: QBSpace.s2),
           Text(
             'Les tables sont partagées avec tes joueurs : il faut un compte '
-            'Google et une connexion pour les consulter. Tes personnages, eux, '
-            'restent accessibles hors ligne.',
+            'Google pour les rejoindre.',
             style: QBType.body().copyWith(
               fontSize: QBType.sm,
               color: QBColors.textMuted,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Says how old the archive is. A table read from the cache looks exactly like
+/// a fresh one, and a séance may well have moved since — the reader has to be
+/// able to judge for themselves how much to trust it.
+class _CachedNotice extends StatelessWidget {
+  const _CachedNotice({required this.fetchedAt});
+
+  final DateTime fetchedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Dernière mise à jour ${formatRelative(fetchedAt)}.',
+      style: QBType.body().copyWith(
+        fontSize: QBType.xs,
+        color: QBColors.textMuted,
       ),
     );
   }

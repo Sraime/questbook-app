@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/remote_providers.dart';
 import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_page_background.dart';
@@ -65,13 +66,14 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _CharacterList extends StatelessWidget {
+class _CharacterList extends ConsumerWidget {
   const _CharacterList({required this.characters});
 
   final List<Character> characters;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canWrite = ref.watch(canWriteProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -128,27 +130,31 @@ class _CharacterList extends StatelessWidget {
             ),
             const SizedBox(height: QBSpace.s4 - 2),
           ],
-        GestureDetector(
-          onTap: () => context.go('/perso/create'),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              // Mockup uses a dashed border; Flutter has no built-in dashed
-              // BoxBorder, so this uses a solid one at the same weight/color.
-              border: Border.all(color: QBColors.borderStrong, width: 3),
-              borderRadius: BorderRadius.circular(QBRadius.lg),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '+ Nouvelle légende',
-              style: QBType.game().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: 15,
-                color: QBColors.leather700,
+        // A character created without a network could not be attributed to
+        // the account until the next sync, and the session it was meant for
+        // would have started by then.
+        if (canWrite)
+          GestureDetector(
+            onTap: () => context.go('/perso/create'),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                // Mockup uses a dashed border; Flutter has no built-in dashed
+                // BoxBorder, so this uses a solid one at the same weight/color.
+                border: Border.all(color: QBColors.borderStrong, width: 3),
+                borderRadius: BorderRadius.circular(QBRadius.lg),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '+ Nouvelle légende',
+                style: QBType.game().copyWith(
+                  fontWeight: QBType.weightSemibold,
+                  fontSize: 15,
+                  color: QBColors.leather700,
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

@@ -13,7 +13,8 @@ import 'token_store.dart';
 /// a single retry.
 class ApiClient {
   ApiClient(String baseUrl, this._tokenStore)
-      : _dio = Dio(_optionsFor(baseUrl)),
+      : _origin = baseUrl,
+        _dio = Dio(_optionsFor(baseUrl)),
         _plain = Dio(_optionsFor(baseUrl)) {
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -26,6 +27,23 @@ class ApiClient {
         },
       ),
     );
+
+    // A request with no body has no media type to declare, and saying
+    // `application/json` anyway makes a strict server look for a payload that
+    // was never coming. Dio sets the header from [BaseOptions] whatever the
+    // body, so dropping it here is the only place the distinction can be made.
+    for (final dio in [_dio, _plain]) {
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.data == null) {
+              options.headers.remove(Headers.contentTypeHeader);
+            }
+            handler.next(options);
+          },
+        ),
+      );
+    }
   }
 
   static BaseOptions _optionsFor(String baseUrl) => BaseOptions(
@@ -38,6 +56,9 @@ class ApiClient {
         // Dio must not reject them before we get a chance to read it.
         validateStatus: (status) => status != null && status < 500,
       );
+
+  /// The API root, without the `/api/v1` suffix the two clients carry.
+  final String _origin;
 
   final Dio _dio;
 
@@ -53,6 +74,22 @@ class ApiClient {
   /// Called when the refresh token is rejected and the session cannot be
   /// recovered, so the app can send the user back to the sign-in screen.
   void Function()? onSessionExpired;
+
+  /// Called after every request with whether the server answered at all. A
+  /// 4xx or a 5xx still counts as reachable — it is an answer.
+  void Function(bool reachable)? onReachability;
+
+  /// Asks the server whether it is there, without touching the session. Used
+  /// to notice the network coming back while the user sits on a cached screen.
+  Future<bool> ping() async {
+    try {
+      // Absolute, so it escapes the /api/v1 base: `/health` sits at the root.
+      await _plain.getUri<dynamic>(Uri.parse('$_origin/health'));
+      return true;
+    } on DioException {
+      return false;
+    }
+  }
 
   Future<AuthTokens?> _tokens() async => _cached ??= await _tokenStore.read();
 
@@ -116,6 +153,7 @@ class ApiClient {
   }) async {
     try {
       var response = await request(authenticated ? _dio : _plain);
+      onReachability?.call(true);
 
       if (authenticated &&
           response.statusCode == 401 &&
@@ -136,7 +174,9 @@ class ApiClient {
 
       return parse(response.data);
     } on DioException catch (error) {
-      throw ApiException.from(error);
+      final failure = ApiException.from(error);
+      onReachability?.call(failure.code != 'NETWORK_ERROR');
+      throw failure;
     }
   }
 }

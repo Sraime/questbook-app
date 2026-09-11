@@ -17,6 +17,7 @@ class QBInput extends StatelessWidget {
     this.focusNode,
     this.onChanged,
     this.keyboardType,
+    this.textInputAction,
     this.inputFormatters,
     this.readOnly = false,
     this.maxLines = 1,
@@ -30,6 +31,10 @@ class QBInput extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
+
+  /// Drives the keyboard's action key. `next` turns it into a way to walk down
+  /// a form without reaching for the fields themselves.
+  final TextInputAction? textInputAction;
   final List<TextInputFormatter>? inputFormatters;
   final bool readOnly;
   final int maxLines;
@@ -58,6 +63,7 @@ class QBInput extends StatelessWidget {
           focusNode: focusNode,
           onChanged: onChanged,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
           inputFormatters: inputFormatters,
           readOnly: readOnly,
           maxLines: maxLines,

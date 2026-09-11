@@ -5,6 +5,7 @@ import '../features/character_sheet/character_sheet_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/tables/notifications_screen.dart';
+import '../features/tables/session_form_screen.dart';
 import '../features/tables/table_detail_screen.dart';
 import '../features/tables/tables_screen.dart';
 
@@ -48,6 +49,21 @@ final appRouter = GoRouter(
                 builder: (context, state) => TableDetailScreen(
                   tableId: state.pathParameters['id']!,
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'sessions/new',
+                    builder: (context, state) => SessionFormScreen(
+                      tableId: state.pathParameters['id']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'sessions/:sessionId',
+                    builder: (context, state) => SessionFormScreen(
+                      tableId: state.pathParameters['id']!,
+                      sessionId: state.pathParameters['sessionId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

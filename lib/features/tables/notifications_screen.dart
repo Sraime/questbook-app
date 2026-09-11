@@ -56,7 +56,8 @@ class NotificationsScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if ((page.value?.unreadCount ?? 0) > 0)
+                  if ((page.value?.unreadCount ?? 0) > 0 &&
+                      ref.watch(canWriteProvider))
                     GestureDetector(
                       onTap: () async {
                         final messenger = ScaffoldMessenger.of(context);

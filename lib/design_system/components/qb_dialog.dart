@@ -25,50 +25,56 @@ class QBDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      // Material-dependent descendants (QBSelect's DropdownButton, text
-      // field ink effects, etc.) need a Material ancestor — showDialog's
-      // route doesn't provide one on its own.
-      child: Material(
-        type: MaterialType.transparency,
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.all(QBSpace.s6),
-          decoration: BoxDecoration(
-            color: QBColors.surfaceCard,
-            borderRadius: BorderRadius.circular(QBRadius.lg),
-            border: Border.all(color: QBColors.leather800, width: 3),
-            boxShadow: QBShadows.paperLg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: QBType.game().copyWith(
-                        fontWeight: QBType.weightBold,
-                        fontSize: QBType.lg,
-                        letterSpacing: QBType.lg * 0.02,
-                        color: QBColors.ink900,
+    return Padding(
+      // Flutter's own Dialog does this; this shell is built from a plain
+      // Container, so without it the soft keyboard simply covers the lower
+      // fields and taps aimed at them land on the keyboard instead.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Center(
+        // Material-dependent descendants (QBSelect's DropdownButton, text
+        // field ink effects, etc.) need a Material ancestor — showDialog's
+        // route doesn't provide one on its own.
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(QBSpace.s6),
+            decoration: BoxDecoration(
+              color: QBColors.surfaceCard,
+              borderRadius: BorderRadius.circular(QBRadius.lg),
+              border: Border.all(color: QBColors.leather800, width: 3),
+              boxShadow: QBShadows.paperLg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: QBType.game().copyWith(
+                          fontWeight: QBType.weightBold,
+                          fontSize: QBType.lg,
+                          letterSpacing: QBType.lg * 0.02,
+                          color: QBColors.ink900,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: onClose ?? () => Navigator.of(context).maybePop(),
-                    child: const Text(
-                      '×',
-                      style: TextStyle(fontSize: 20, color: QBColors.ink500),
+                    GestureDetector(
+                      onTap: onClose ?? () => Navigator.of(context).maybePop(),
+                      child: const Text(
+                        '×',
+                        style: TextStyle(fontSize: 20, color: QBColors.ink500),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: QBSpace.s4),
-              child,
-            ],
+                  ],
+                ),
+                const SizedBox(height: QBSpace.s4),
+                child,
+              ],
+            ),
           ),
         ),
       ),

@@ -1,31 +1,130 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../app/remote_providers.dart';
-import '../../../data/remote/api_exception.dart';
-import '../../../data/remote/remote_table.dart';
-import '../../../design_system/components/qb_button.dart';
-import '../../../design_system/components/qb_dialog.dart';
-import '../../../design_system/components/qb_input.dart';
-import '../../../design_system/tokens/colors.dart';
-import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
-import '../providers/table_providers.dart';
-import '../table_formatting.dart';
+import '../../app/remote_providers.dart';
+import '../../data/remote/api_exception.dart';
+import '../../data/remote/remote_table.dart';
+import '../../design_system/components/qb_button.dart';
+import '../../design_system/components/qb_icon_button.dart';
+import '../../design_system/components/qb_input.dart';
+import '../../design_system/components/qb_page_background.dart';
+import '../../design_system/tokens/colors.dart';
+import '../../design_system/tokens/spacing.dart';
+import '../../design_system/tokens/typography.dart';
+import 'providers/table_providers.dart';
+import 'table_formatting.dart';
 
-/// Creates a session when [existing] is null, edits it otherwise. The two
+/// Creates a session when [sessionId] is null, edits it otherwise. The two
 /// share every field, and the difference that matters — moving the date or the
 /// place notifies the players — is the server's to make.
-Future<void> showSessionFormDialog(
-  BuildContext context, {
-  required String tableId,
-  RemoteGameSession? existing,
-}) {
-  return showQBDialog(
-    context: context,
-    title: existing == null ? 'Nouvelle session' : 'Modifier la session',
-    builder: (_) => _SessionForm(tableId: tableId, existing: existing),
-  );
+///
+/// A page rather than a modal: five fields and a soft keyboard do not fit in a
+/// centred dialog on a phone, and scrolling inside a modal is a poor trade.
+class SessionFormScreen extends ConsumerWidget {
+  const SessionFormScreen({super.key, required this.tableId, this.sessionId});
+
+  final String tableId;
+  final String? sessionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (sessionId == null) {
+      return _Scaffold(
+        tableId: tableId,
+        title: 'Nouvelle session',
+        child: _SessionForm(tableId: tableId),
+      );
+    }
+
+    // Read from the table rather than carrying the session through the route:
+    // the page then survives a cold start on a deep link, and shows the
+    // session as it stands rather than as it was when the screen was opened.
+    final detail = ref.watch(tableDetailProvider(tableId));
+
+    return _Scaffold(
+      tableId: tableId,
+      title: 'Modifier la session',
+      child: detail.when(
+        data: (data) {
+          final session = data.sessions
+              .where((candidate) => candidate.id == sessionId)
+              .firstOrNull;
+
+          if (session == null) {
+            return const _Message('Cette session n’existe plus.');
+          }
+          return _SessionForm(tableId: tableId, existing: session);
+        },
+        loading: () => const Padding(
+          padding: EdgeInsets.only(top: QBSpace.s6),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => _Message(
+          error is ApiException ? error.message : 'Session indisponible.',
+        ),
+      ),
+    );
+  }
+}
+
+class _Scaffold extends StatelessWidget {
+  const _Scaffold({
+    required this.tableId,
+    required this.title,
+    required this.child,
+  });
+
+  final String tableId;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return QBPageBackground(
+      child: SafeArea(
+        bottom: false,
+        child: ListView(
+          // The soft keyboard eats the bottom of the viewport; padding by the
+          // inset is what lets the last field scroll into view above it.
+          padding: EdgeInsets.fromLTRB(
+            18,
+            12,
+            18,
+            90 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          children: [
+            Row(
+              children: [
+                QBIconButton(
+                  icon: const Icon(LucideIcons.arrowLeft, size: 18),
+                  label: 'Retour',
+                  size: 36,
+                  onPressed: () => context.go('/tables/$tableId'),
+                ),
+                const SizedBox(width: QBSpace.s2),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: QBType.game().copyWith(
+                      fontWeight: QBType.weightBold,
+                      fontSize: 20,
+                      color: QBColors.ink900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: QBSpace.s5),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SessionForm extends ConsumerStatefulWidget {
@@ -123,7 +222,7 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
       _error = null;
     });
 
-    final navigator = Navigator.of(context);
+    final router = GoRouter.of(context);
     final api = ref.read(sessionApiProvider);
     final description = _description.text.trim();
     final existing = widget.existing;
@@ -151,7 +250,7 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
       }
 
       refreshTables(ref, tableId: widget.tableId);
-      await navigator.maybePop();
+      router.go('/tables/${widget.tableId}');
     } on ApiException catch (error) {
       setState(() {
         _busy = false;
@@ -166,13 +265,20 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        QBInput(label: 'Titre', controller: _title, placeholder: 'Le manoir Corbitt'),
-        const SizedBox(height: QBSpace.s3),
         QBInput(
-          label: 'Description',
-          controller: _description,
-          placeholder: 'Apportez vos fiches…',
-          maxLines: 3,
+          label: 'Titre',
+          controller: _title,
+          placeholder: 'Le manoir Corbitt',
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: QBSpace.s3),
+        // Ahead of the description on purpose: a game master schedules a place
+        // and a date, and only then bothers to describe the evening.
+        QBInput(
+          label: 'Lieu',
+          controller: _location,
+          placeholder: 'Chez Robin',
+          textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: QBSpace.s3),
         Row(
@@ -196,11 +302,21 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
         ),
         const SizedBox(height: QBSpace.s3),
         QBInput(
-          label: 'Lieu',
-          controller: _location,
-          placeholder: 'Chez Robin',
-          error: _error,
+          label: 'Description',
+          controller: _description,
+          placeholder: 'Apportez vos fiches…',
+          maxLines: 3,
         ),
+        if (_error != null) ...[
+          const SizedBox(height: QBSpace.s3),
+          Text(
+            _error!,
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.semanticDanger,
+            ),
+          ),
+        ],
         const SizedBox(height: QBSpace.s4),
         QBButton(
           label: _busy
@@ -230,18 +346,20 @@ class _PickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: QBType.game().copyWith(
+          // Same label as QBInput's: stacked in a form, the two kinds of field
+          // should read as one list rather than as two styles.
+          style: QBType.body().copyWith(
+            fontSize: QBType.sm,
             fontWeight: QBType.weightSemibold,
-            fontSize: QBType.xs,
-            color: QBColors.ink700,
+            color: QBColors.ink800,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
           child: Container(
@@ -261,6 +379,23 @@ class _PickerField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Message extends StatelessWidget {
+  const _Message(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: QBType.body().copyWith(
+        fontSize: QBType.sm,
+        color: QBColors.textMuted,
+      ),
     );
   }
 }

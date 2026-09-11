@@ -41,6 +41,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions, et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Session (`/tables/:id/sessions/new`, `/tables/:id/sessions/:sessionId`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
@@ -108,7 +109,8 @@ lib/
 │   ├── home/                   # Écran « Mes personnages »
 │   ├── character_creation/     # Création de personnage + modale de jet de caractéristique
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
-│   ├── tables/                  # « Mes tables », détail d'une table, notifications
+│   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
+│   │                            # session, notifications
 │   ├── auth/                    # Écran de connexion Google et barre de compte
 │   └── shell/                   # AppShell : bottom nav bar persistante (StatefulShellRoute)
 ├── services/

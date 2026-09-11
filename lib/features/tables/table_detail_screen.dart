@@ -19,8 +19,6 @@ import 'table_formatting.dart';
 import 'widgets/attendee_character_sheet.dart';
 import 'widgets/invite_player_dialog.dart';
 import 'widgets/session_character_dialog.dart';
-import 'widgets/session_form_dialog.dart';
-
 /// Everything about one table: who is at it, who has been invited, and what is
 /// planned. Game-master controls appear only when the server says the viewer
 /// is one, so a player never sees a button that would come back a 403.
@@ -102,10 +100,7 @@ class _Body extends ConsumerWidget {
             action: table.isGameMaster
                 ? _SectionAction(
                     label: '+ Proposer',
-                    onTap: () => showSessionFormDialog(
-                      context,
-                      tableId: table.id,
-                    ),
+                    onTap: () => context.go('/tables/${table.id}/sessions/new'),
                   )
                 : null,
           ),
@@ -258,10 +253,8 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                   icon: const Icon(LucideIcons.pencil, size: 16),
                   label: 'Modifier la session',
                   size: 32,
-                  onPressed: () => showSessionFormDialog(
-                    context,
-                    tableId: widget.table.id,
-                    existing: session,
+                  onPressed: () => context.go(
+                    '/tables/${widget.table.id}/sessions/${session.id}',
                   ),
                 ),
                 QBIconButton(

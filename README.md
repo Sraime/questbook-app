@@ -26,6 +26,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Workflow git (branches)](#workflow-git-branches)
 - [Distribution Android (signature, Firebase, CI/CD)](#distribution-android-signature-firebase-cicd)
   - [Vue d'ensemble](#vue-densemble)
+  - [Numéro de version](#numéro-de-version)
   - [Signature de release](#signature-de-release)
   - [Firebase App Distribution](#firebase-app-distribution)
   - [CI GitHub Actions](#ci-github-actions)
@@ -517,11 +518,12 @@ git push origin dev
 
 ### Vue d'ensemble
 
-Le projet est connecté à un projet Firebase (**`questbook-48540`**) uniquement
-pour distribuer des builds de test aux beta-testeurs via **Firebase App
-Distribution** — il n'y a aujourd'hui aucun SDK Firebase (Auth, Analytics,
-Firestore…) intégré dans l'app elle-même, uniquement de l'outillage de
-distribution. Le flux complet, une fois poussé sur `main` :
+Le projet est connecté à un projet Firebase (**`questbook-48540`**) pour deux
+usages distincts : distribuer des builds de test aux beta-testeurs via **Firebase
+App Distribution**, et envoyer les notifications push via **Cloud Messaging**
+(`firebase_core` et `firebase_messaging` côté app). Aucun autre SDK Firebase
+n'est intégré : ni Auth, ni Analytics, ni Firestore. Le flux de distribution,
+une fois poussé sur `main` :
 
 ```
 Pull Request "dev → main" mergée sur GitHub
@@ -534,6 +536,25 @@ Pull Request "dev → main" mergée sur GitHub
 
 Trois briques composent ce dispositif, détaillées ci-dessous : la **signature
 release**, le **projet Firebase**, et le **workflow CI**.
+
+### Numéro de version
+
+**Monter `version` dans `pubspec.yaml` fait partie de la PR, pas de l'après.**
+Deux distributions sous le même numéro sont indiscernables pour un testeur, qui
+ne peut plus savoir laquelle il a installée, et le `versionCode` Android figé
+interdit toute publication ultérieure sur le Play Store.
+
+Le workflow refuse donc de distribuer une version déjà livrée. Chaque
+distribution réussie pose un tag `v<version>` — `v1.3.0+5`, par exemple — et le
+job échoue d'emblée si ce tag existe déjà. Les tags font office de registre : ce
+sont eux qui disent ce qui est réellement parti chez les testeurs.
+
+Le tag est posé **après** la distribution, pour qu'un build en échec ne brûle pas
+son numéro.
+
+> C'est arrivé le 11 septembre : la feature « Tables de jeu » est partie en
+> `1.2.0+4`, le numéro exact de la release du 5 septembre, sans que rien ne le
+> signale. D'où ce garde-fou.
 
 ### Signature de release
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
 import '../../data/remote/api_exception.dart';
@@ -10,7 +9,6 @@ import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_dialog.dart';
-import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_input.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
@@ -37,20 +35,13 @@ class TablesScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Mes tables',
-                      style: QBType.game().copyWith(
-                        fontWeight: QBType.weightBold,
-                        fontSize: 22,
-                        color: QBColors.ink900,
-                      ),
-                    ),
-                  ),
-                  if (ref.watch(isSignedInProvider)) const _NotificationsBell(),
-                ],
+              Text(
+                'Mes tables',
+                style: QBType.game().copyWith(
+                  fontWeight: QBType.weightBold,
+                  fontSize: 22,
+                  color: QBColors.ink900,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -79,53 +70,6 @@ class TablesScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Opens the notification history, with the unread count sitting on the bell
-/// the same way it sits on the navigation bar.
-class _NotificationsBell extends ConsumerWidget {
-  const _NotificationsBell();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadNotificationCountProvider);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        QBIconButton(
-          icon: const Icon(LucideIcons.bell, size: 18),
-          label: 'Notifications',
-          size: 38,
-          onPressed: () => context.go('/tables/notifications'),
-        ),
-        if (unread > 0)
-          Positioned(
-            top: -2,
-            right: -2,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: QBColors.wax500,
-                borderRadius: BorderRadius.circular(QBRadius.full),
-                border: Border.all(color: QBColors.paper50, width: 1.5),
-              ),
-              child: Text(
-                unread > 9 ? '9+' : '$unread',
-                style: QBType.game().copyWith(
-                  fontWeight: QBType.weightBold,
-                  fontSize: 9,
-                  height: 1,
-                  color: QBColors.paper50,
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

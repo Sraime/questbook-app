@@ -107,6 +107,10 @@ jobs:
       - name: Tag the distributed version
         run: |
           version="${{ steps.version.outputs.value }}"
+          # Un tag annote porte un auteur, et un runner neuf n'en a aucun : sans
+          # ces deux lignes, git refuse de le creer.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v$version" -m "Distribue aux testeurs le $(date -u +%Y-%m-%d)"
           git push origin "v$version"
 

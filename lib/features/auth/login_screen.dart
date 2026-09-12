@@ -55,6 +55,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Centred rather than stretched: the column stretches its
+                    // children, which would pull the mark out of square.
+                    const Center(
+                      child: Image(
+                        image: AssetImage('assets/brand/logo-mark.png'),
+                        width: 104,
+                        height: 104,
+                      ),
+                    ),
+                    const SizedBox(height: QBSpace.s2),
                     Text(
                       'Questbook',
                       textAlign: TextAlign.center,

@@ -15,21 +15,22 @@ import '../../design_system/tokens/typography.dart';
 class OfflineBanner extends ConsumerWidget {
   const OfflineBanner({super.key});
 
+  /// Fixed, because the shell has to reserve exactly this much room above the
+  /// page before the banner exists. A single line of notice is all it ever is.
+  static const double height = 36;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(connectivityProvider)) return const SizedBox.shrink();
 
     return Material(
       color: QBColors.leather800,
-      child: SafeArea(
-        bottom: false,
-        child: InkWell(
-          onTap: () => ref.read(connectivityProvider.notifier).recheck(),
+      child: InkWell(
+        onTap: () => ref.read(connectivityProvider.notifier).recheck(),
+        child: SizedBox(
+          height: height,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: QBSpace.s4,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: QBSpace.s4),
             child: Row(
               children: [
                 const Icon(
@@ -41,6 +42,8 @@ class OfflineBanner extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     'Hors ligne — consultation seule',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: QBType.game().copyWith(
                       fontWeight: QBType.weightSemibold,
                       fontSize: QBType.xs,

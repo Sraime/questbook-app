@@ -98,9 +98,10 @@ Le projet suit une architecture en couches façon *clean architecture* simplifi�
 
 ```
 assets/
-├── brand/                      # logo-mark.png (le sigle découpé que porte la barre
-│                               # haute) et app-icon.png (le badge opaque, lu
-│                               # uniquement par flutter_launcher_icons)
+├── brand/                      # logo-mark.png (le sigle découpé, porté par la barre
+│                               # haute et la carte de connexion) et app-icon.png
+│                               # (le badge opaque, lu uniquement par
+│                               # flutter_launcher_icons)
 └── universes/                  # Un fichier universe_<id>.json par univers (métadonnées +
                                  # tronc commun general_configuration + index des modes)
                                  # et un fichier de surcharges par mode de création qu'il

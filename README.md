@@ -14,6 +14,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Configuration d'un univers (`assets/universes/universe_*.json`)](#configuration-dun-univers-assetsuniversesuniverse_json)
   - [Configuration d'un mode de création (`assets/universes/*.json`)](#configuration-dun-mode-de-création-assetsuniversesjson)
   - [Extensibilité multi-système](#extensibilité-multi-système)
+  - [Navigation](#navigation)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Génération de code](#génération-de-code)
@@ -28,6 +29,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Workflow git (branches)](#workflow-git-branches)
 - [Distribution Android (signature, Firebase, CI/CD)](#distribution-android-signature-firebase-cicd)
   - [Vue d'ensemble](#vue-densemble)
+  - [Icône de l'application](#icône-de-lapplication)
   - [Numéro de version](#numéro-de-version)
   - [Signature de release](#signature-de-release)
   - [Firebase App Distribution](#firebase-app-distribution)
@@ -47,7 +49,9 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Notifications (`/tables/notifications`)** : historique des invitations, sessions et réponses, avec pastille de non-lus sur la barre de navigation. Doublé de notifications push (Firebase Cloud Messaging).
+- **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
+- **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
+- **Livre de règle (`/regles`)** : écran d'attente pour l'instant, voir [Limitations connues](#limitations-connues).
 
 - **Connexion (obligatoire)** : l'app démarre sur l'écran de connexion Google tant qu'aucun compte n'a été utilisé sur l'appareil. Il n'y a plus de « Continuer hors ligne ».
 
@@ -55,13 +59,31 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 Toute l'interface utilise un design system interne « juicy » (boutons/cartes/dés avec relief, ombres et dégradés) inspiré d'une maquette produit, situé dans `lib/design_system/`.
 
+### Navigation
+
+Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une seule règle les départage : **le bas est pour les deux endroits où l'on travaille, le haut pour tout le reste.**
+
+- **En bas**, les deux onglets persistants : Perso et Tables. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
+- **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
+
+Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Profil, Livre de règle, et la déconnexion en bas du panneau.
+
+Trois conséquences valent d'être notées, parce que ce sont elles qui ont dicté la structure du routeur :
+
+- **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
+- Notifications, Profil et Livre de règle vivent donc dans une **troisième branche sans onglet** (`StatefulShellBranch`) : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des deux.
+- Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
+- Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
+
+L'`AccountBar` qui coiffait la liste des personnages a disparu : le compte est passé dans le volet, son état de synchronisation dans Profil. Le bouton « Synchroniser » n'a pas été déplacé, il a été **supprimé** — une passe part déjà à la connexion et à chaque retour au premier plan, si bien que le bouton n'offrait qu'une illusion de contrôle, et laissait croire que ce qu'on n'avait pas pressé n'était pas enregistré.
+
 ## Stack technique
 
 | Domaine | Choix |
 | --- | --- |
 | Framework | Flutter (SDK Dart `^3.12.2`, canal stable) |
 | État / DI | [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) (`Notifier`, `Provider`, `FutureProvider`) |
-| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` pour la barre de navigation basse) |
+| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` : deux onglets, plus une branche sans onglet pour ce qu'ouvre la barre haute) |
 | Persistance locale | [`drift`](https://pub.dev/packages/drift) + [`drift_flutter`](https://pub.dev/packages/drift_flutter) (SQLite embarqué) |
 | Modèles immuables | [`freezed`](https://pub.dev/packages/freezed) / `freezed_annotation` |
 | Sérialisation | `json_annotation` / `json_serializable` |
@@ -76,6 +98,9 @@ Le projet suit une architecture en couches façon *clean architecture* simplifi�
 
 ```
 assets/
+├── brand/                      # logo-mark.png (le sigle découpé que porte la barre
+│                               # haute) et app-icon.png (le badge opaque, lu
+│                               # uniquement par flutter_launcher_icons)
 └── universes/                  # Un fichier universe_<id>.json par univers (métadonnées +
                                  # tronc commun general_configuration + index des modes)
                                  # et un fichier de surcharges par mode de création qu'il
@@ -115,8 +140,12 @@ lib/
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
-│   ├── auth/                    # Écran de connexion Google et barre de compte
-│   └── shell/                   # AppShell : bottom nav bar persistante (StatefulShellRoute)
+│   ├── profile/                 # Compte connecté et état de la synchronisation
+│   ├── rulebook/                # Livre de règle (écran d'attente)
+│   ├── auth/                    # Écran de connexion Google
+│   └── shell/                   # AppShell : les deux barres de chrome
+│                                # (StatefulShellRoute), le volet du burger,
+│                                # le bandeau hors ligne et l'onglet d'où l'on vient
 ├── services/
 │   └── dice_service.dart       # Primitives de lancer de dés (dNombre, dPourcent), testable isolément
 └── main.dart                    # Point d'entrée : ProviderScope + MaterialApp.router
@@ -590,6 +619,26 @@ Pull Request "dev → main" mergée sur GitHub
 Trois briques composent ce dispositif, détaillées ci-dessous : la **signature
 release**, le **projet Firebase**, et le **workflow CI**.
 
+### Icône de l'application
+
+Les mipmaps Android et l'`AppIcon.appiconset` iOS sont **générés puis
+versionnés** :
+
+```bash
+dart run flutter_launcher_icons
+```
+
+La commande se lance à la main, quand la marque change ; la CI n'a rien à
+refaire. Sa configuration vit dans `pubspec.yaml`, et elle lit deux fichiers
+plutôt qu'un, parce qu'Android compose sa propre icône : `app-icon.png` est le
+badge arrondi et opaque que servent les lanceurs anciens tel quel, tandis que
+`logo-mark.png` — le sigle découpé, sur fond `#001712` — est la couche qu'un
+lanceur moderne masque et fait bouger en parallaxe.
+
+Ce sigle est inséré de 20 % : Android ne garantit que les **66 % centraux**
+d'une couche adaptative, et sans cet inset les ailes et les tentacules du bas
+se font couper par tout masque rond ou en squircle.
+
 ### Numéro de version
 
 **Monter `version` dans `pubspec.yaml` fait partie de la PR, pas de l'après.**
@@ -745,6 +794,7 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 - Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
+- Le **Livre de règle** du volet n'est qu'un écran d'attente : lire les règles de l'univers demande d'afficher compétences, occupations, jets et seuils, c'est une feature à part entière. L'entrée est livrée avant son contenu, en le disant.
 - L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
 - Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
 - La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.

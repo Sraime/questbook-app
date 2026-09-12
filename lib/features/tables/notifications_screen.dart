@@ -12,6 +12,7 @@ import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../shell/last_tab.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
 
@@ -39,7 +40,11 @@ class NotificationsScreen extends ConsumerWidget {
                     icon: const Icon(LucideIcons.arrowLeft, size: 18),
                     label: 'Retour',
                     size: 36,
-                    onPressed: () => context.go('/tables'),
+                    // The bell is reachable from anywhere, so "back" means the
+                    // tab the reader left — not the tables, which is merely
+                    // where this screen used to be filed.
+                    onPressed: () => StatefulNavigationShell.of(context)
+                        .goBranch(ref.read(lastTabProvider)),
                   ),
                   const SizedBox(width: QBSpace.s2),
                   Expanded(

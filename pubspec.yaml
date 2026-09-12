@@ -80,6 +80,23 @@ dev_dependencies:
   json_serializable: ^6.14.0
   # Lets the migration test build a genuine v1 database file outside of drift.
   sqlite3: ^3.0.0
+  # Ran by hand (`dart run flutter_launcher_icons`) rather than at build time:
+  # the generated mipmaps are committed, so the CI has nothing to redo.
+  flutter_launcher_icons: ^0.14.4
+
+# Two files rather than one because Android composites its own icon: the
+# rounded, opaque badge is what old launchers show as-is, while the cut-out
+# mark is the layer a modern launcher masks and parallaxes over the ink.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/brand/app-icon.png
+  adaptive_icon_background: "#001712"
+  adaptive_icon_foreground: assets/brand/logo-mark.png
+  # The mark fills its canvas, and Android only guarantees the middle 66% of an
+  # adaptive layer: without this inset the wings and lower tentacles get cropped
+  # by any round or squircle mask.
+  adaptive_icon_foreground_inset: 20
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -100,6 +117,9 @@ flutter:
   # lib/domain/models/universe_config.dart.
   assets:
     - assets/universes/
+    # The cut-out mark the top bar centres on itself. The opaque badge next to
+    # it is only ever read by flutter_launcher_icons, never at runtime.
+    - assets/brand/logo-mark.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

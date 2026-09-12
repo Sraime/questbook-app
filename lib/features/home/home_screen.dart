@@ -11,7 +11,6 @@ import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 import '../../domain/models/character.dart';
 import '../../domain/models/tone.dart';
-import '../auth/widgets/account_bar.dart';
 import 'providers/character_list_provider.dart';
 
 /// Screen 1a — Accueil.
@@ -44,9 +43,7 @@ class HomeScreen extends ConsumerWidget {
                 color: QBColors.textMuted,
               ),
             ),
-            const SizedBox(height: 14),
-            const AccountBar(),
-            const SizedBox(height: 14),
+            const SizedBox(height: QBSpace.s5),
             charactersAsync.when(
               data: (characters) => _CharacterList(characters: characters),
               loading: () =>

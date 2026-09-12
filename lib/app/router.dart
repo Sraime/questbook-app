@@ -4,6 +4,7 @@ import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/rulebook/rulebook_chapter_screen.dart';
 import '../features/rulebook/rulebook_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/tables/notifications_screen.dart';
@@ -85,6 +86,14 @@ final appRouter = GoRouter(
           GoRoute(
             path: '/regles',
             builder: (context, state) => const RulebookScreen(),
+            routes: [
+              GoRoute(
+                path: ':chapterId',
+                builder: (context, state) => RulebookChapterScreen(
+                  chapterId: state.pathParameters['chapterId']!,
+                ),
+              ),
+            ],
           ),
         ]),
       ],

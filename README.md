@@ -142,7 +142,9 @@ lib/
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
 │   ├── profile/                 # Compte connecté et état de la synchronisation
-│   ├── rulebook/                # Livre de règle (écran d'attente)
+│   ├── rulebook/                # Livre de règle : sommaire + chapitres
+│   │                            # (7e éd. Cthulhu : Tests, Combat, Santé,
+│   │                            # Folie, Poursuites)
 │   ├── auth/                    # Écran de connexion Google
 │   └── shell/                   # AppShell : les deux barres de chrome
 │                                # (StatefulShellRoute), le volet du burger,

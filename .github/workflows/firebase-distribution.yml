@@ -194,17 +194,22 @@ jobs:
           echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
 
+          # flutter build ipa treats args after `--` as a target file, not as
+          # xcodebuild settings. The Release xcconfig is what Xcode actually
+          # reads during the archive.
+          {
+            echo "CODE_SIGN_STYLE=Manual"
+            echo "DEVELOPMENT_TEAM=${TEAM_ID}"
+            echo "PROVISIONING_PROFILE_SPECIFIER=${PROFILE_NAME}"
+            echo "CODE_SIGN_IDENTITY=Apple Distribution"
+          } >> ios/Flutter/Release.xcconfig
+
       - name: Build release IPA
         run: |
           flutter build ipa --release \
             --export-options-plist="$EXPORT_OPTIONS" \
             --dart-define=QUESTBOOK_API_URL="$QUESTBOOK_API_URL" \
-            --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID" \
-            -- \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            CODE_SIGN_IDENTITY="Apple Distribution"
+            --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4

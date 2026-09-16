@@ -54,7 +54,7 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
 - Le keystore de release (`upload-keystore.jks`, alias `upload`) ne doit
   **jamais être régénéré** une fois des builds distribués avec — ça
   casserait la continuité des mises à jour. Voir README →
-  [Signature de release](README.md#signature-de-release).
+  [Signature de release Android](README.md#signature-de-release-android).
 
 ## Git flow — important pour toute future contribution
 
@@ -238,9 +238,11 @@ du README pour le détail.
   **sans** ancre `^` : en Dart, `^` vise le tout début de la chaîne, pas le
   paramètre `start` — un piège déjà rencontré en écrivant ce fichier.
 
-## Firebase (App Distribution uniquement, pas de SDK dans l'app)
+## Firebase (App Distribution + Cloud Messaging)
 
-- Projet `questbook-48540`, app Android
-  `1:56734402863:android:8f12f08f8eff13a8e2b9da`, groupe de testeurs
-  `testeurs`. Détails complets dans README →
-  [Distribution Android](README.md#distribution-android-signature-firebase-cicd).
+- Projet `questbook-48540`, groupe de testeurs `testeurs`.
+- App Android `1:56734402863:android:8f12f08f8eff13a8e2b9da`.
+- App iOS `1:56734402863:ios:b0ba4650fb4476f3e2b9da` (bundle
+  `com.questbook.questbook`).
+- Détails complets dans README →
+  [Distribution](README.md#distribution-signature-firebase-cicd).

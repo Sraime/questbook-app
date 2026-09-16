@@ -27,11 +27,12 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Consultation seule (hors ligne)](#consultation-seule-hors-ligne)
 - [Tests](#tests)
 - [Workflow git (branches)](#workflow-git-branches)
-- [Distribution Android (signature, Firebase, CI/CD)](#distribution-android-signature-firebase-cicd)
+- [Distribution (signature, Firebase, CI/CD)](#distribution-signature-firebase-cicd)
   - [Vue d'ensemble](#vue-densemble)
   - [Icône de l'application](#icône-de-lapplication)
   - [Numéro de version](#numéro-de-version)
-  - [Signature de release](#signature-de-release)
+  - [Signature de release Android](#signature-de-release-android)
+  - [Signature de release iOS](#signature-de-release-ios)
   - [Firebase App Distribution](#firebase-app-distribution)
   - [CI GitHub Actions](#ci-github-actions)
   - [Déployer manuellement (sans la CI)](#déployer-manuellement-sans-la-ci)
@@ -403,13 +404,21 @@ Si `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` est vide, le build est purement hors
 ligne : ni écran de connexion, ni bandeau de compte, plutôt qu'un bouton qui ne
 peut pas marcher.
 
-Côté Google Cloud, il faut **deux** clients OAuth dans le même projet : un client
-Web (dont l'id est le define ci-dessus, et le seul que l'API accepte) et un
-client Android déclarant le `applicationId` et l'empreinte SHA-1 de la clé de
-signature — celle de debug pour `flutter run`, celle du keystore de release
-(voir [Signature de release](#signature-de-release)) pour les builds distribués.
-Un SHA-1 manquant est la cause la plus fréquente d'une connexion qui échoue avec
-« Google n'a pas renvoyé de jeton d'identité ».
+Côté Google Cloud, il faut **trois** clients OAuth dans le même projet :
+
+- un client **Web** (dont l'id est le define ci-dessus, et le seul que l'API
+  accepte) ;
+- un client **Android** déclarant le `applicationId` et l'empreinte SHA-1 de la
+  clé de signature — celle de debug pour `flutter run`, celle du keystore de
+  release (voir [Signature de release Android](#signature-de-release-android))
+  pour les builds distribués ;
+- un client **iOS** déclarant le bundle `com.questbook.questbook`. Son
+  identifiant inversé est le schéma d'URL dans `ios/Runner/Info.plist`
+  (`GIDClientID` / `CFBundleURLTypes`).
+
+Un SHA-1 Android manquant, ou un schéma d'URL iOS absent, est la cause la plus
+fréquente d'une connexion qui échoue avec « Google n'a pas renvoyé de jeton
+d'identité ».
 
 ### Lancer contre le backend local
 
@@ -523,15 +532,16 @@ la justifie. Un appareil sans Play Services, ou un build sans Firebase, voit
 donc tout — simplement plus tard. C'est pourquoi `Firebase.initializeApp` est
 enveloppé dans un `try` au démarrage.
 
-`android/app/google-services.json` et `lib/firebase_options.dart` sont
-**versionnés volontairement** : ils ne contiennent pas de secret (ils sont de
-toute façon embarqués dans l'APK) et la CI en a besoin pour construire le
-release. Pour les régénérer :
+`android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist` et
+`lib/firebase_options.dart` sont **versionnés volontairement** : ils ne
+contiennent pas de secret (ils sont de toute façon embarqués dans l'APK/IPA)
+et la CI en a besoin pour construire le release. Pour les régénérer :
 
 ```bash
 dart pub global activate flutterfire_cli
-flutterfire configure --project=questbook-48540 --platforms=android \
-  --android-package-name=com.questbook.questbook
+flutterfire configure --project=questbook-48540 --platforms=android,ios \
+  --android-package-name=com.questbook.questbook \
+  --ios-bundle-id=com.questbook.questbook
 ```
 
 Côté serveur, l'envoi demande une clé de compte de service Firebase
@@ -599,7 +609,7 @@ git push origin dev
 > workflow n'écoute que l'événement « Pull Request fermée en tant que
 > merged », pas les push) — mais court-circuiterait la revue de code.
 
-## Distribution Android (signature, Firebase, CI/CD)
+## Distribution (signature, Firebase, CI/CD)
 
 ### Vue d'ensemble
 
@@ -613,14 +623,19 @@ une fois poussé sur `main` :
 ```
 Pull Request "dev → main" mergée sur GitHub
    └─▶ GitHub Actions (.github/workflows/firebase-distribution.yml)
-          ├─ flutter build apk --release   (signé avec la clé "upload")
-          └─ firebase appdistribution:distribute
-                 └─▶ groupe de testeurs "testeurs" sur Firebase App Distribution
+          ├─ ubuntu : flutter build apk --release   (keystore "upload")
+          ├─ macos  : flutter build ipa --release    (certificat Ad Hoc)
+          └─ ubuntu : firebase appdistribution:distribute des deux binaires
+                 └─▶ groupe de testeurs "testeurs"
                         └─▶ email + lien de téléchargement pour chaque testeur
 ```
 
-Trois briques composent ce dispositif, détaillées ci-dessous : la **signature
-release**, le **projet Firebase**, et le **workflow CI**.
+Android et iOS partent **ensemble**. Si l'IPA ne se signe pas, l'APK n'est pas
+envoyé non plus, et le tag de version n'est pas posé : un retry peut
+repartir sur le même numéro.
+
+Quatre briques composent ce dispositif, détaillées ci-dessous : la **signature
+Android**, la **signature iOS**, le **projet Firebase**, et le **workflow CI**.
 
 ### Icône de l'application
 
@@ -661,7 +676,7 @@ son numéro.
 > `1.2.0+4`, le numéro exact de la release du 5 septembre, sans que rien ne le
 > signale. D'où ce garde-fou.
 
-### Signature de release
+### Signature de release Android
 
 Par défaut, un projet Flutter fraîchement créé signe ses builds `release`
 avec la clé de debug (`android/app/build.gradle.kts` originel) — ce qui
@@ -700,6 +715,90 @@ git** :
 > `applicationId`. Sauvegarde `.secrets/upload-keystore.jks` dans un
 > gestionnaire de mots de passe/coffre-fort d'équipe.
 
+### Signature de release iOS
+
+Firebase App Distribution n'accepte pas un IPA « App Store » : il faut un
+export **Ad Hoc**, signé avec un certificat Apple Distribution et un profil
+de provisioning qui liste les UDID des appareils testeurs.
+
+Rien de tout ça n'est dans git. La CI importe le `.p12` et le
+`.mobileprovision` depuis des secrets, en extrait toute seule le Team ID et
+le nom du profil, et lance :
+
+```bash
+flutter build ipa --release --export-options-plist=ExportOptions.plist
+```
+
+#### Créer le certificat et le profil (une fois)
+
+1. Dans [developer.apple.com](https://developer.apple.com/account) →
+   Identifiers : un App ID **explicit** `com.questbook.questbook`.
+2. Certificates : **Apple Distribution**. Apple demande un CSR :
+   - **Sur Mac** : Keychain Access → Certificate Assistant → Request a
+     Certificate From a Certificate Authority, puis uploader le `.certSigningRequest`.
+   - **Sans Mac** (OpenSSL) :
+
+     ```bash
+     openssl genrsa -out ios-distribution.key 2048
+     openssl req -new -key ios-distribution.key -out ios-distribution.csr \
+       -subj "/CN=Questbook Distribution/O=Questbook/C=FR"
+     ```
+
+     Uploader le `.csr`, télécharger le `.cer`, puis :
+
+     ```bash
+     openssl x509 -in ios_distribution.cer -inform DER -out ios_distribution.pem
+     openssl pkcs12 -export -inkey ios-distribution.key -in ios_distribution.pem \
+       -out ios-distribution.p12
+     ```
+
+     Garder la clé `.key` et le `.p12` dans le coffre-fort d'équipe, jamais
+     dans git. Sans la clé privée, le `.cer` Apple ne sert à rien.
+3. Devices : enregistrer au moins un iPhone (UDID). Les suivants arriveront
+   via Firebase — voir plus bas.
+4. Profiles : **Ad Hoc**, bundle `com.questbook.questbook`, le certificat
+   Distribution, les appareils choisis. Télécharger le `.mobileprovision`.
+
+#### Secrets GitHub
+
+Sur une machine qui a les fichiers (PowerShell) :
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("ios-distribution.p12")) | Set-Clipboard
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("Questbook_AdHoc.mobileprovision")) | Set-Clipboard
+```
+
+Sur macOS : `base64 -i ios-distribution.p12 | pbcopy`.
+
+Coller dans `Settings → Secrets and variables → Actions` :
+
+| Secret                              | Contenu                                      |
+| ----------------------------------- | -------------------------------------------- |
+| `IOS_BUILD_CERTIFICATE_BASE64`      | Le `.p12` en une seule ligne base64          |
+| `IOS_P12_PASSWORD`                  | Mot de passe choisi à l'export du `.p12`     |
+| `IOS_BUILD_PROVISION_PROFILE_BASE64`| Le `.mobileprovision` Ad Hoc en base64       |
+
+Le Team ID n'est pas un secret : le job le lit dans le profil.
+
+> ⚠️ **Ne perds pas la clé privée du certificat Distribution.** Un nouveau
+> certificat se crée, mais il faudra régénérer le profil et mettre à jour
+> les secrets. Sauvegarde `ios-distribution.key` / `.p12` dans le même
+> coffre-fort que le keystore Android.
+
+#### UDID des testeurs iOS
+
+Un IPA Ad Hoc n'installe que sur les appareils listés dans le profil. Le
+cycle, la première fois et à chaque nouveau testeur :
+
+1. Distribuer un build (même s'il ne s'installe encore que sur ton iPhone).
+2. Le testeur ouvre le lien Firebase, enregistre son appareil : Firebase
+   affiche l'UDID.
+3. Ajouter l'UDID dans Devices, régénérer le profil Ad Hoc, mettre à jour
+   `IOS_BUILD_PROVISION_PROFILE_BASE64`, relancer le workflow.
+
+Android n'a pas cet aller-retour : n'importe quel testeur du groupe
+télécharge l'APK. iOS, si.
+
 ### Firebase App Distribution
 
 - **Projet Firebase** : `questbook-48540` (console :
@@ -707,13 +806,17 @@ git** :
 - **App Android enregistrée** : package `com.questbook.questbook`, App ID
   Firebase `1:56734402863:android:8f12f08f8eff13a8e2b9da` (visible dans
   Project settings → General, ou via `firebase apps:list`).
+- **App iOS enregistrée** : bundle `com.questbook.questbook`, App ID
+  Firebase `1:56734402863:ios:b0ba4650fb4476f3e2b9da`.
 - **Groupe de testeurs** : alias `testeurs` (affiché « Testeurs Questbook »
-  dans la console). Ajouter un testeur :
+  dans la console). Le même groupe reçoit l'APK et l'IPA. Ajouter un testeur :
   ```bash
   firebase appdistribution:testers:add nouveau.testeur@example.com --group-alias testeurs --project questbook-48540
   ```
 - Chaque testeur reçoit un email d'invitation avec un lien de téléchargement
-  direct (aucun compte Google Play/bêta-test public requis).
+  direct (aucun compte Google Play / TestFlight requis). Sur iOS, l'appareil
+  doit figurer dans le profil Ad Hoc — voir
+  [Signature de release iOS](#signature-de-release-ios).
 
 ### CI GitHub Actions
 
@@ -730,24 +833,26 @@ Volontairement, un simple `push` sur `main` (ou sur toute autre branche) ne
 déclenche **rien** : ça évite de redéployer un build de test à chaque petit
 commit (doc, refactor…) qui n'apporte aucune évolution fonctionnelle.
 
-Il enchaîne : checkout → setup Flutter/JDK → `flutter pub get` → décodage du
-keystore + écriture de `key.properties` à partir des secrets → 
-`flutter build apk --release` → installation de `firebase-tools` →
-`firebase appdistribution:distribute` vers le groupe `testeurs` → nettoyage
-des fichiers de signature sur le runner.
+Il enchaîne quatre jobs : vérification du numéro de version → build Android
+(ubuntu) et build iOS (macos) **en parallèle** → distribution des deux
+binaires vers le groupe `testeurs` puis pose du tag. L'APK n'est envoyé
+qu'une fois l'IPA signé, pour qu'un échec iOS ne brûle pas le numéro.
 
-Il a besoin de **5 secrets** définis dans
+Il a besoin de **8 secrets** définis dans
 `Settings → Secrets and variables → Actions` du repo GitHub :
 
-| Secret                      | Contenu                                                              |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `ANDROID_KEYSTORE_BASE64`   | Le fichier `upload-keystore.jks` encodé en base64 (une seule ligne)   |
-| `ANDROID_KEYSTORE_PASSWORD` | Mot de passe du keystore (`storePassword`)                            |
-| `ANDROID_KEY_PASSWORD`      | Idem (même valeur, voir note PKCS12 ci-dessus)                        |
-| `ANDROID_KEY_ALIAS`         | `upload`                                                               |
-| `FIREBASE_TOKEN`            | Token CI généré via `firebase login:ci` (voir note de dépréciation ci-dessous) |
+| Secret                               | Contenu                                                              |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| `ANDROID_KEYSTORE_BASE64`            | Le fichier `upload-keystore.jks` encodé en base64 (une seule ligne)   |
+| `ANDROID_KEYSTORE_PASSWORD`          | Mot de passe du keystore (`storePassword`)                            |
+| `ANDROID_KEY_PASSWORD`               | Idem (même valeur, voir note PKCS12 ci-dessus)                        |
+| `ANDROID_KEY_ALIAS`                  | `upload`                                                               |
+| `IOS_BUILD_CERTIFICATE_BASE64`       | Certificat Apple Distribution (`.p12`) en base64                      |
+| `IOS_P12_PASSWORD`                   | Mot de passe du `.p12`                                                |
+| `IOS_BUILD_PROVISION_PROFILE_BASE64` | Profil Ad Hoc (`.mobileprovision`) en base64                          |
+| `FIREBASE_TOKEN`                     | Token CI généré via `firebase login:ci` (voir note de dépréciation ci-dessous) |
 
-L'App ID Firebase et le Project ID ne sont *pas* secrets — ils sont en dur
+Les App ID Firebase et le Project ID ne sont *pas* secrets — ils sont en dur
 dans le workflow (`env:` en tête de fichier).
 
 > ⚠️ `firebase login:ci` / l'option `--token` de `firebase-tools` sont
@@ -760,13 +865,26 @@ dans le workflow (`env:` en tête de fichier).
 
 ### Déployer manuellement (sans la CI)
 
-Utile en local si tu as le keystore et que tu veux tester une distribution
-avant de pousser :
+Utile en local si tu as le keystore / le certificat et que tu veux tester une
+distribution avant de pousser.
+
+Android (Windows compris) :
 
 ```bash
 flutter build apk --release
 firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk \
   --app 1:56734402863:android:8f12f08f8eff13a8e2b9da \
+  --project questbook-48540 \
+  --groups "testeurs" \
+  --release-notes "Description de ce build"
+```
+
+iOS (macOS uniquement, Xcode + le profil Ad Hoc installé) :
+
+```bash
+flutter build ipa --release --export-method=ad-hoc
+firebase appdistribution:distribute build/ios/ipa/*.ipa \
+  --app 1:56734402863:ios:b0ba4650fb4476f3e2b9da \
   --project questbook-48540 \
   --groups "testeurs" \
   --release-notes "Description de ce build"
@@ -778,18 +896,21 @@ politique d'exécution).
 
 ### Reprendre ce setup sur une nouvelle machine
 
-Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
-(volontairement, ils sont gitignorés). Deux cas :
+Un `git clone` frais **n'inclut ni le keystore Android, ni le certificat iOS,
+ni les mots de passe** (volontairement, ils sont gitignorés). Deux cas :
 
-- **Tu veux juste lancer/développer l'app** : rien à faire, les builds
-  `debug` et même `release` fonctionnent (signature debug de repli — voir
-  [Signature de release](#signature-de-release)).
-- **Tu veux publier/distribuer un vrai build** : il te faut le fichier
-  `upload-keystore.jks` existant (demande-le à un mainteneur ayant accès à
-  `.secrets/`, ne le régénère surtout pas — un nouveau keystore ne
-  correspondrait plus à ce qui a déjà été distribué) et recréer localement
-  un `android/key.properties` qui pointe dessus, avec les mêmes valeurs que
-  celles utilisées dans les secrets GitHub `ANDROID_KEYSTORE_*`.
+- **Tu veux juste lancer/développer l'app** : rien à faire côté Android, les
+  builds `debug` et même `release` fonctionnent (signature debug de repli —
+  voir [Signature de release Android](#signature-de-release-android)). Sur
+  iOS, Xcode demandera le Team ID du compte Apple pour signer en automatique.
+- **Tu veux publier/distribuer un vrai build** :
+  - Android : le fichier `upload-keystore.jks` existant (demande-le à un
+    mainteneur ayant accès à `.secrets/`, ne le régénère surtout pas — un
+    nouveau keystore ne correspondrait plus à ce qui a déjà été distribué)
+    et un `android/key.properties` qui pointe dessus, avec les mêmes valeurs
+    que les secrets GitHub `ANDROID_KEYSTORE_*`.
+  - iOS : le `.p12` Distribution et le profil Ad Hoc déjà utilisés par la CI,
+    pas un nouveau certificat. Les secrets `IOS_*` du dépôt font foi.
 
 ## Limitations connues
 
@@ -801,8 +922,9 @@ Un `git clone` frais **n'inclut ni le keystore ni les mots de passe**
 - L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
 - Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
 - La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.
-- La connexion Google n'est câblée que pour Android : `ios/Runner/Info.plist` n'a pas encore de `CFBundleURLTypes`, et il manque un client OAuth iOS. Un build iOS lancé sans `QUESTBOOK_GOOGLE_SERVER_CLIENT_ID` ne peut donc pas dépasser l'écran de connexion. Voir [Compte Google et synchronisation](#compte-google-et-synchronisation).
-- Les notifications push ne sont câblées que pour Android : le projet Firebase n'a pas d'app iOS, et l'envoi APNs demanderait une clé Apple. Sur iOS, seul l'historique in-app fonctionne.
+- Les notifications push iOS s'initialisent (Firebase a une app iOS) mais
+  l'envoi APNs demande une clé Apple déposée dans la console Firebase. Sans
+  elle, seul l'historique in-app fonctionne sur iPhone.
 - Pas de relance en cas d'échec d'envoi d'un e-mail ou d'un push : les deux partent au mieux après le commit. La ligne de notification, elle, est écrite dans la transaction, donc l'historique in-app reste juste. Une table d'outbox avec relance reste un ajout simple si le besoin apparaît.
-- Distribution actuelle limitée à Firebase App Distribution (bêta-testeurs) ; pas encore de publication Play Store, ni de Play App Signing (la clé de signature `upload` est gérée manuellement — voir [Distribution Android](#distribution-android-signature-firebase-cicd)).
+- Distribution actuelle limitée à Firebase App Distribution (bêta-testeurs) ; pas encore de publication Play Store ni App Store, ni de Play App Signing (la clé de signature `upload` est gérée manuellement — voir [Distribution](#distribution-signature-firebase-cicd)).
 - L'authentification CI Firebase (`firebase login:ci` / `--token`) repose sur un mécanisme déprécié par Google ; à migrer vers un compte de service GCP si `firebase-tools` le retire dans une future version majeure.

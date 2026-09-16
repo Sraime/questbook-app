@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../config/app_config.dart';
+import '../../firebase_options.dart';
 import '../remote/api_client.dart';
 import '../remote/api_exception.dart';
 import '../remote/auth_api.dart';
@@ -36,6 +37,11 @@ class AuthRepository {
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     await GoogleSignIn.instance.initialize(
+      // iOS reads GIDClientID from Info.plist too; passing it here keeps the
+      // Dart init self-contained if a future plugin version stops doing that.
+      clientId: defaultTargetPlatform == TargetPlatform.iOS
+          ? DefaultFirebaseOptions.ios.iosClientId
+          : null,
       serverClientId: AppConfig.googleServerClientId,
     );
     _initialized = true;
@@ -82,7 +88,8 @@ class AuthRepository {
       // client whose SHA-1 does not match the signing key of this build.
       throw const AuthFailure(
         'Google n’a pas renvoyé de jeton d’identité. Vérifie la configuration '
-        'du client OAuth (identifiant client web et empreinte SHA-1).',
+        'du client OAuth (identifiant client web, empreinte SHA-1 Android, '
+        'schéma d’URL iOS).',
       );
     }
 

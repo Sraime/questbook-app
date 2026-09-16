@@ -1,4 +1,4 @@
-name: Build & distribute Android (Firebase App Distribution)
+name: Build & distribute (Firebase App Distribution)
 
 # Deliberately NOT triggered on every push — only when a pull request into
 # `main` is actually merged (git-flow: `dev` is the working branch, `main`
@@ -15,24 +15,26 @@ on:
         default: "Build manuel depuis GitHub Actions"
 
 env:
-  FIREBASE_APP_ID: "1:56734402863:android:8f12f08f8eff13a8e2b9da"
+  FIREBASE_ANDROID_APP_ID: "1:56734402863:android:8f12f08f8eff13a8e2b9da"
+  FIREBASE_IOS_APP_ID: "1:56734402863:ios:b0ba4650fb4476f3e2b9da"
   FIREBASE_PROJECT_ID: "questbook-48540"
   # Injectés au build via --dart-define (voir lib/config/app_config.dart).
   # Sans eux le binaire est hors ligne : ni connexion, ni synchronisation.
   # Ce ne sont pas des secrets — l'identifiant client est de toute façon
-  # embarqué en clair dans l'APK, ce qui est le modèle prévu par Google.
+  # embarqué en clair dans l'APK/IPA, ce qui est le modèle prévu par Google.
   QUESTBOOK_API_URL: "https://questbook.nextuscorp.com"
   QUESTBOOK_GOOGLE_SERVER_CLIENT_ID: "56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf.apps.googleusercontent.com"
 
 jobs:
-  build-and-distribute:
+  version:
+    name: Vérifier la version
     runs-on: ubuntu-latest
     # `pull_request: closed` fires on both merged AND declined/closed PRs —
     # skip the whole job unless it was actually merged (manual runs always go).
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
-    # Pour poser le tag de distribution en fin de job.
-    permissions:
-      contents: write
+    outputs:
+      value: ${{ steps.version.outputs.value }}
+      notes: ${{ steps.notes.outputs.value }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -54,6 +56,34 @@ jobs:
             exit 1
           fi
           echo "Version a distribuer : $version"
+
+      - name: Compose release notes
+        id: notes
+        env:
+          MANUAL_NOTES: ${{ github.event.inputs.release_notes }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ -n "$MANUAL_NOTES" ]; then
+            notes="$MANUAL_NOTES"
+          else
+            notes="PR #${PR_NUMBER} mergee : ${PR_TITLE}"
+          fi
+          {
+            echo "value<<NOTES_EOF"
+            echo "$notes"
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Build Android
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -88,32 +118,171 @@ jobs:
             --dart-define=QUESTBOOK_API_URL="$QUESTBOOK_API_URL" \
             --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID"
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Clean up signing secrets from runner
+        if: always()
+        run: rm -f android/app/upload-keystore.jks android/key.properties
+
+  ios:
+    name: Build iOS
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Certificat Apple Distribution (.p12) + profil Ad Hoc. Le mot de passe
+      # du keychain temporaire n'a pas besoin d'etre un secret : il ne vit
+      # que le temps du job sur un runner jete ensuite.
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+        run: |
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ] || [ -z "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+            echo "::error::Secrets iOS manquants (IOS_BUILD_CERTIFICATE_BASE64, IOS_P12_PASSWORD, IOS_BUILD_PROVISION_PROFILE_BASE64). Voir le README."
+            exit 1
+          fi
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$PP_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$PROFILE_PLIST")
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$PROFILE_PLIST")
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+
+          EXPORT_OPTIONS="$RUNNER_TEMP/ExportOptions.plist"
+          TEAM_ID="$TEAM_ID" PROFILE_NAME="$PROFILE_NAME" EXPORT_OPTIONS="$EXPORT_OPTIONS" \
+            python3 -c "import os,plistlib; plistlib.dump({'method':'ad-hoc','teamID':os.environ['TEAM_ID'],'signingStyle':'manual','compileBitcode':False,'provisioningProfiles':{'com.questbook.questbook':os.environ['PROFILE_NAME']}}, open(os.environ['EXPORT_OPTIONS'],'wb'))"
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "EXPORT_OPTIONS=$EXPORT_OPTIONS" >> "$GITHUB_ENV"
+          echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+
+      - name: Build release IPA
+        run: |
+          flutter build ipa --release \
+            --export-options-plist="$EXPORT_OPTIONS" \
+            --dart-define=QUESTBOOK_API_URL="$QUESTBOOK_API_URL" \
+            --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID" \
+            -- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_IDENTITY="Apple Distribution"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Clean up keychain and signing files
+        if: always()
+        run: |
+          if [ -n "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+          rm -f "$RUNNER_TEMP/build_certificate.p12" "$RUNNER_TEMP/build_pp.mobileprovision"
+
+  distribute:
+    name: Distribute and tag
+    needs: [version, android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist/android
+
+      - name: Download IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+          path: dist/ios
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Distribute to Firebase App Distribution
+      - name: Distribute Android to Firebase App Distribution
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          RELEASE_NOTES: ${{ needs.version.outputs.notes }}
         run: |
           firebase appdistribution:distribute \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --app "$FIREBASE_APP_ID" \
+            dist/android/app-release.apk \
+            --app "$FIREBASE_ANDROID_APP_ID" \
             --project "$FIREBASE_PROJECT_ID" \
             --groups "testeurs" \
-            --release-notes "${{ github.event.inputs.release_notes || format('PR #{0} mergee : {1}', github.event.pull_request.number, github.event.pull_request.title) }}" \
+            --release-notes "$RELEASE_NOTES" \
+            --token "$FIREBASE_TOKEN"
+
+      - name: Distribute iOS to Firebase App Distribution
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          RELEASE_NOTES: ${{ needs.version.outputs.notes }}
+        run: |
+          ipa=$(ls dist/ios/*.ipa | head -n1)
+          firebase appdistribution:distribute \
+            "$ipa" \
+            --app "$FIREBASE_IOS_APP_ID" \
+            --project "$FIREBASE_PROJECT_ID" \
+            --groups "testeurs" \
+            --release-notes "$RELEASE_NOTES" \
             --token "$FIREBASE_TOKEN"
 
       # Pose apres coup : un build qui echoue ne doit pas bruler son numero.
       - name: Tag the distributed version
         run: |
-          version="${{ steps.version.outputs.value }}"
+          version="${{ needs.version.outputs.value }}"
           # Un tag annote porte un auteur, et un runner neuf n'en a aucun : sans
           # ces deux lignes, git refuse de le creer.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v$version" -m "Distribue aux testeurs le $(date -u +%Y-%m-%d)"
           git push origin "v$version"
-
-      - name: Clean up signing secrets from runner
-        if: always()
-        run: rm -f android/app/upload-keystore.jks android/key.properties

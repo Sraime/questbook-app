@@ -13,6 +13,7 @@ class RemoteCacheDao {
   final AppDatabase _db;
 
   static const overviewKey = 'tables.overview';
+  static const scenariosOverviewKey = 'scenarios.overview';
 
   static String detailKey(String tableId) => 'tables.detail.$tableId';
 

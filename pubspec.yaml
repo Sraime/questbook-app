@@ -63,6 +63,7 @@ dependencies:
   # joueurs. L'historique consultable dans l'app vient de l'API, pas de FCM.
   firebase_core: ^4.4.0
   firebase_messaging: ^16.1.0
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:

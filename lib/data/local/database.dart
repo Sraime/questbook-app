@@ -126,6 +126,19 @@ class InventoryItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Full copy of a scenario the user asked to keep on the device, so the
+/// rundown and annexes stay readable without a network.
+@DataClassName('DownloadedScenarioRow')
+class DownloadedScenarios extends Table {
+  TextColumn get scenarioId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get downloadedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {scenarioId, accountId};
+}
+
 @DriftDatabase(
   tables: [
     GameSystems,
@@ -135,6 +148,7 @@ class InventoryItems extends Table {
     InventoryItems,
     SyncMetadata,
     RemoteCache,
+    DownloadedScenarios,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -143,7 +157,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -171,6 +185,9 @@ class AppDatabase extends _$AppDatabase {
             // Tables come back to the device, but as a read-only copy of what
             // the server last said — not as the local mockup dropped in v3.
             await m.createTable(remoteCache);
+          }
+          if (from < 5) {
+            await m.createTable(downloadedScenarios);
           }
         },
       );

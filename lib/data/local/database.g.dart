@@ -2742,6 +2742,335 @@ class RemoteCacheCompanion extends UpdateCompanion<RemoteCacheRow> {
   }
 }
 
+class $DownloadedScenariosTable extends DownloadedScenarios
+    with TableInfo<$DownloadedScenariosTable, DownloadedScenarioRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedScenariosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scenarioIdMeta = const VerificationMeta(
+    'scenarioId',
+  );
+  @override
+  late final GeneratedColumn<String> scenarioId = GeneratedColumn<String>(
+    'scenario_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downloadedAtMeta = const VerificationMeta(
+    'downloadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> downloadedAt = GeneratedColumn<DateTime>(
+    'downloaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    scenarioId,
+    accountId,
+    payload,
+    downloadedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_scenarios';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedScenarioRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('scenario_id')) {
+      context.handle(
+        _scenarioIdMeta,
+        scenarioId.isAcceptableOrUnknown(data['scenario_id']!, _scenarioIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scenarioIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('downloaded_at')) {
+      context.handle(
+        _downloadedAtMeta,
+        downloadedAt.isAcceptableOrUnknown(
+          data['downloaded_at']!,
+          _downloadedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_downloadedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scenarioId, accountId};
+  @override
+  DownloadedScenarioRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedScenarioRow(
+      scenarioId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scenario_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      downloadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}downloaded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedScenariosTable createAlias(String alias) {
+    return $DownloadedScenariosTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedScenarioRow extends DataClass
+    implements Insertable<DownloadedScenarioRow> {
+  final String scenarioId;
+  final String accountId;
+  final String payload;
+  final DateTime downloadedAt;
+  const DownloadedScenarioRow({
+    required this.scenarioId,
+    required this.accountId,
+    required this.payload,
+    required this.downloadedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['scenario_id'] = Variable<String>(scenarioId);
+    map['account_id'] = Variable<String>(accountId);
+    map['payload'] = Variable<String>(payload);
+    map['downloaded_at'] = Variable<DateTime>(downloadedAt);
+    return map;
+  }
+
+  DownloadedScenariosCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedScenariosCompanion(
+      scenarioId: Value(scenarioId),
+      accountId: Value(accountId),
+      payload: Value(payload),
+      downloadedAt: Value(downloadedAt),
+    );
+  }
+
+  factory DownloadedScenarioRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedScenarioRow(
+      scenarioId: serializer.fromJson<String>(json['scenarioId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      downloadedAt: serializer.fromJson<DateTime>(json['downloadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scenarioId': serializer.toJson<String>(scenarioId),
+      'accountId': serializer.toJson<String>(accountId),
+      'payload': serializer.toJson<String>(payload),
+      'downloadedAt': serializer.toJson<DateTime>(downloadedAt),
+    };
+  }
+
+  DownloadedScenarioRow copyWith({
+    String? scenarioId,
+    String? accountId,
+    String? payload,
+    DateTime? downloadedAt,
+  }) => DownloadedScenarioRow(
+    scenarioId: scenarioId ?? this.scenarioId,
+    accountId: accountId ?? this.accountId,
+    payload: payload ?? this.payload,
+    downloadedAt: downloadedAt ?? this.downloadedAt,
+  );
+  DownloadedScenarioRow copyWithCompanion(DownloadedScenariosCompanion data) {
+    return DownloadedScenarioRow(
+      scenarioId: data.scenarioId.present
+          ? data.scenarioId.value
+          : this.scenarioId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      downloadedAt: data.downloadedAt.present
+          ? data.downloadedAt.value
+          : this.downloadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedScenarioRow(')
+          ..write('scenarioId: $scenarioId, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('downloadedAt: $downloadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(scenarioId, accountId, payload, downloadedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedScenarioRow &&
+          other.scenarioId == this.scenarioId &&
+          other.accountId == this.accountId &&
+          other.payload == this.payload &&
+          other.downloadedAt == this.downloadedAt);
+}
+
+class DownloadedScenariosCompanion
+    extends UpdateCompanion<DownloadedScenarioRow> {
+  final Value<String> scenarioId;
+  final Value<String> accountId;
+  final Value<String> payload;
+  final Value<DateTime> downloadedAt;
+  final Value<int> rowid;
+  const DownloadedScenariosCompanion({
+    this.scenarioId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.downloadedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadedScenariosCompanion.insert({
+    required String scenarioId,
+    required String accountId,
+    required String payload,
+    required DateTime downloadedAt,
+    this.rowid = const Value.absent(),
+  }) : scenarioId = Value(scenarioId),
+       accountId = Value(accountId),
+       payload = Value(payload),
+       downloadedAt = Value(downloadedAt);
+  static Insertable<DownloadedScenarioRow> custom({
+    Expression<String>? scenarioId,
+    Expression<String>? accountId,
+    Expression<String>? payload,
+    Expression<DateTime>? downloadedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scenarioId != null) 'scenario_id': scenarioId,
+      if (accountId != null) 'account_id': accountId,
+      if (payload != null) 'payload': payload,
+      if (downloadedAt != null) 'downloaded_at': downloadedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadedScenariosCompanion copyWith({
+    Value<String>? scenarioId,
+    Value<String>? accountId,
+    Value<String>? payload,
+    Value<DateTime>? downloadedAt,
+    Value<int>? rowid,
+  }) {
+    return DownloadedScenariosCompanion(
+      scenarioId: scenarioId ?? this.scenarioId,
+      accountId: accountId ?? this.accountId,
+      payload: payload ?? this.payload,
+      downloadedAt: downloadedAt ?? this.downloadedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scenarioId.present) {
+      map['scenario_id'] = Variable<String>(scenarioId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (downloadedAt.present) {
+      map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedScenariosCompanion(')
+          ..write('scenarioId: $scenarioId, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('downloadedAt: $downloadedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2753,6 +3082,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final $RemoteCacheTable remoteCache = $RemoteCacheTable(this);
+  late final $DownloadedScenariosTable downloadedScenarios =
+      $DownloadedScenariosTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2765,6 +3096,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     inventoryItems,
     syncMetadata,
     remoteCache,
+    downloadedScenarios,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5167,6 +5499,207 @@ typedef $$RemoteCacheTableProcessedTableManager =
       RemoteCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$DownloadedScenariosTableCreateCompanionBuilder =
+    DownloadedScenariosCompanion Function({
+      required String scenarioId,
+      required String accountId,
+      required String payload,
+      required DateTime downloadedAt,
+      Value<int> rowid,
+    });
+typedef $$DownloadedScenariosTableUpdateCompanionBuilder =
+    DownloadedScenariosCompanion Function({
+      Value<String> scenarioId,
+      Value<String> accountId,
+      Value<String> payload,
+      Value<DateTime> downloadedAt,
+      Value<int> rowid,
+    });
+
+class $$DownloadedScenariosTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DownloadedScenariosTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadedScenariosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DownloadedScenariosTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadedScenariosTable,
+          DownloadedScenarioRow,
+          $$DownloadedScenariosTableFilterComposer,
+          $$DownloadedScenariosTableOrderingComposer,
+          $$DownloadedScenariosTableAnnotationComposer,
+          $$DownloadedScenariosTableCreateCompanionBuilder,
+          $$DownloadedScenariosTableUpdateCompanionBuilder,
+          (
+            DownloadedScenarioRow,
+            BaseReferences<
+              _$AppDatabase,
+              $DownloadedScenariosTable,
+              DownloadedScenarioRow
+            >,
+          ),
+          DownloadedScenarioRow,
+          PrefetchHooks Function()
+        > {
+  $$DownloadedScenariosTableTableManager(
+    _$AppDatabase db,
+    $DownloadedScenariosTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedScenariosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedScenariosTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DownloadedScenariosTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> scenarioId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> downloadedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedScenariosCompanion(
+                scenarioId: scenarioId,
+                accountId: accountId,
+                payload: payload,
+                downloadedAt: downloadedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String scenarioId,
+                required String accountId,
+                required String payload,
+                required DateTime downloadedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedScenariosCompanion.insert(
+                scenarioId: scenarioId,
+                accountId: accountId,
+                payload: payload,
+                downloadedAt: downloadedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DownloadedScenariosTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadedScenariosTable,
+      DownloadedScenarioRow,
+      $$DownloadedScenariosTableFilterComposer,
+      $$DownloadedScenariosTableOrderingComposer,
+      $$DownloadedScenariosTableAnnotationComposer,
+      $$DownloadedScenariosTableCreateCompanionBuilder,
+      $$DownloadedScenariosTableUpdateCompanionBuilder,
+      (
+        DownloadedScenarioRow,
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadedScenariosTable,
+          DownloadedScenarioRow
+        >,
+      ),
+      DownloadedScenarioRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5185,4 +5718,6 @@ class $AppDatabaseManager {
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
   $$RemoteCacheTableTableManager get remoteCache =>
       $$RemoteCacheTableTableManager(_db, _db.remoteCache);
+  $$DownloadedScenariosTableTableManager get downloadedScenarios =>
+      $$DownloadedScenariosTableTableManager(_db, _db.downloadedScenarios);
 }

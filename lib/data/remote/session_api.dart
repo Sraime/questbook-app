@@ -43,6 +43,7 @@ class SessionApi {
     String? description,
     required DateTime startsAt,
     required String location,
+    String? scenarioId,
   }) {
     return _client.send(
       (dio) => dio.post<dynamic>(
@@ -52,6 +53,7 @@ class SessionApi {
           'description': description,
           'startsAt': startsAt.toUtc().toIso8601String(),
           'location': location,
+          'scenarioId': ?scenarioId,
         },
       ),
       parse: _parseSession,
@@ -67,6 +69,8 @@ class SessionApi {
     String? description,
     DateTime? startsAt,
     String? location,
+    String? scenarioId,
+    bool clearScenario = false,
   }) {
     return _client.send(
       (dio) => dio.patch<dynamic>(
@@ -76,6 +80,8 @@ class SessionApi {
           'description': ?description,
           if (startsAt != null) 'startsAt': startsAt.toUtc().toIso8601String(),
           'location': ?location,
+          if (clearScenario) 'scenarioId': null,
+          if (!clearScenario) 'scenarioId': ?scenarioId,
         },
       ),
       parse: _parseSession,

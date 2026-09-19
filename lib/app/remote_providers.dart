@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../data/auth/auth_repository.dart';
 import '../data/local/remote_cache_dao.dart';
+import '../data/local/downloaded_scenario_dao.dart';
 import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
@@ -13,6 +14,7 @@ import '../data/remote/auth_tokens.dart';
 import '../data/remote/character_api.dart';
 import '../data/remote/notification_api.dart';
 import '../data/remote/session_api.dart';
+import '../data/remote/scenario_api.dart';
 import '../data/remote/table_api.dart';
 import '../data/remote/token_store.dart';
 import '../data/sync/character_sync_dao.dart';
@@ -60,6 +62,10 @@ final sessionApiProvider = Provider<SessionApi>(
   (ref) => SessionApi(ref.watch(apiClientProvider)),
 );
 
+final scenarioApiProvider = Provider<ScenarioApi>(
+  (ref) => ScenarioApi(ref.watch(apiClientProvider)),
+);
+
 final notificationApiProvider = Provider<NotificationApi>(
   (ref) => NotificationApi(ref.watch(apiClientProvider)),
 );
@@ -105,6 +111,7 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     // by it and so could never be shown to anyone else, but keeping another
     // player's table around on a shared device serves no one.
     await RemoteCacheDao(ref.read(appDatabaseProvider)).clear();
+    await DownloadedScenarioDao(ref.read(appDatabaseProvider)).clear();
     state = const AsyncValue.data(null);
   }
 }

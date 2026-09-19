@@ -751,16 +751,10 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
         if (action != null)
-          GestureDetector(
-            onTap: action!.onTap,
-            child: Text(
-              action!.label,
-              style: QBType.game().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: QBType.sm,
-                color: QBColors.leather700,
-              ),
-            ),
+          QBButton(
+            label: action!.label,
+            size: QBButtonSize.sm,
+            onPressed: action!.onTap,
           ),
       ],
     );

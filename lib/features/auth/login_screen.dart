@@ -32,7 +32,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
-    final message = await ref.read(authControllerProvider.notifier).signIn();
+    String? message;
+    try {
+      message = await ref.read(authControllerProvider.notifier).signIn();
+    } catch (error) {
+      // The controller turns failures into messages already; this is the net
+      // that keeps an unforeseen one from freezing the button for good.
+      message = 'La connexion a échoué : $error';
+    }
 
     if (!mounted) return;
     setState(() {

@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
+import '../features/game_master/game_master_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/rulebook/rulebook_chapter_screen.dart';
@@ -114,6 +115,15 @@ final appRouter = GoRouter(
           ),
         ]),
       ],
+    ),
+    // Hors du shell, seul écran dans ce cas : animer une session prend la
+    // tablette entière, et la barre d'onglets n'y mène nulle part.
+    GoRoute(
+      path: '/tables/:id/sessions/:sessionId/mj',
+      builder: (context, state) => GameMasterScreen(
+        tableId: state.pathParameters['id']!,
+        sessionId: state.pathParameters['sessionId']!,
+      ),
     ),
   ],
 );

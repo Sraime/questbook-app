@@ -54,6 +54,7 @@ void main() {
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
     db.execute('DROP TABLE sync_metadata');
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
 
@@ -147,7 +148,7 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 5);
+    expect(version.data.values.first, 6);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
@@ -155,6 +156,7 @@ void main() {
   void downgradeToV2() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
     db.execute('PRAGMA user_version = 2');
@@ -166,6 +168,7 @@ void main() {
   void downgradeToV3() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
     db.execute('PRAGMA user_version = 3');
     db.close();
@@ -229,7 +232,7 @@ void main() {
     expect(await db.select(db.remoteCache).get(), hasLength(1));
   });
 
-  test('upgrades straight from v1 to v5, mockup dropped and cache opened',
+  test('upgrades straight from v1 to v6, mockup dropped and cache opened',
       () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
@@ -244,7 +247,7 @@ void main() {
         )
         .get();
 
-    expect(version.data.values.first, 5);
+    expect(version.data.values.first, 6);
     expect(mockup, isEmpty);
     expect(await db.select(db.remoteCache).get(), isEmpty);
     expect(await db.select(db.downloadedScenarios).get(), isEmpty);
@@ -253,6 +256,7 @@ void main() {
 
   void downgradeToV4() {
     final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
     db.execute('PRAGMA user_version = 4');
     db.close();
@@ -265,5 +269,31 @@ void main() {
     addTearDown(db.close);
 
     expect(await db.select(db.downloadedScenarios).get(), isEmpty);
+  });
+
+  void downgradeToV5() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE session_boards');
+    db.execute('PRAGMA user_version = 5');
+    db.close();
+  }
+
+  test('opens the game master boards table when upgrading from v5', () async {
+    downgradeToV5();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    await db.into(db.sessionBoards).insert(
+          SessionBoardRow(
+            sessionId: 'session-1',
+            accountId: 'account-1',
+            tokens: '[]',
+            notes: '',
+            updatedAt: DateTime.utc(2026, 9, 19),
+          ),
+        );
+
+    expect(await db.select(db.sessionBoards).get(), hasLength(1));
   });
 }

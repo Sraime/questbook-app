@@ -52,9 +52,10 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
+- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte, un tiroir de pions à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
-- **Livre de règle (`/regles`)** : écran d'attente pour l'instant, voir [Limitations connues](#limitations-connues).
+- **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
 
 - **Connexion (obligatoire)** : l'app démarre sur l'écran de connexion Google tant qu'aucun compte n'a été utilisé sur l'appareil. Il n'y a plus de « Continuer hors ligne ».
 
@@ -101,6 +102,8 @@ Le projet suit une architecture en couches façon *clean architecture* simplifi�
 
 ```
 assets/
+├── board/                      # Fonds de carte du mode MJ (JPEG : l'illustration est
+│                               # photographique, le PNG d'origine pesait huit fois plus)
 ├── brand/                      # logo-mark.png (le sigle découpé, porté par la barre
 │                               # haute et la carte de connexion) et app-icon.png
 │                               # (le badge opaque, lu uniquement par
@@ -144,6 +147,9 @@ lib/
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
+│   ├── game_master/             # Mode MJ : plein écran hors du shell, rail de
+│   │                            # cinq volets (plateau, personnages, règles,
+│   │                            # scénario, notes) et seuil tablette
 │   ├── profile/                 # Compte connecté et état de la synchronisation
 │   ├── rulebook/                # Livre de règle : sommaire + chapitres
 │   │                            # (7e éd. Cthulhu : Tests, Combat, Santé,
@@ -522,6 +528,47 @@ synchronisés. Un personnage créé hors-ligne et jamais poussé revient donc en
 La fiche d'un autre participant, elle, est lue en ligne et n'est jamais écrite
 sur l'appareil : elle appartient à quelqu'un d'autre, et c'est à lui de la
 changer.
+
+### Mode MJ (tablette obligatoire)
+
+Le mode MJ (`lib/features/game_master/`) est le seul écran déclaré **hors du
+`StatefulShellRoute`** : une partie prend la tablette entière, et la barre
+d'onglets n'y mène nulle part. Le rail de gauche la remplace, et « Quitter le
+mode MJ » ramène au détail de la table.
+
+**Il exige 900 × 560 points.** En dessous, il n'y a pas la place de poser trois
+colonnes côte à côte, et un plateau qu'on ne peut pas manipuler ne vaut pas la
+peine d'être affiché. Le seuil et son verdict vivent dans
+`game_master_space.dart` (`measureGameMasterSpace`), qui distingue deux refus :
+une tablette tenue en portrait s'entend dire de pivoter, un téléphone s'entend
+dire que l'écran est trop petit et de revenir depuis une tablette.
+
+Le bouton « Animer la session » reste **visible sur un téléphone** et affiche
+ce message au lieu d'ouvrir l'écran. Le cacher ferait croire que la
+fonctionnalité n'existe pas, alors qu'elle attend le MJ sur sa tablette. Le
+même verdict est remesuré à chaque `build` de l'écran : pivoter la tablette en
+pleine partie explique la disparition du plateau plutôt que de l'écraser.
+
+**L'état du plateau reste sur l'appareil**, dans la table Drift
+`session_boards` (clé primaire `{sessionId, accountId}`, voir
+`data/local/session_board_dao.dart`). Deux raisons : le plateau se manipule
+pion par pion pendant la partie, souvent loin d'un réseau fiable, et il ne
+regarde que le MJ. Les pions y sont rangés en JSON opaque — même parti pris que
+`remote_cache` : la forme d'un pion peut changer sans migration. Les positions
+et les tailles sont des **fractions de la carte**, jamais des pixels, pour que
+le plateau se retrouve identique d'un écran à l'autre. Comme le cache et les
+scénarios téléchargés, la table est vidée à la déconnexion.
+
+L'écriture suit le geste : pendant un glissement l'état ne vit qu'en mémoire,
+et il part sur le disque à la fin du geste. Les notes, elles, s'enregistrent
+500 ms après la dernière frappe — une transaction SQLite par caractère serait
+absurde.
+
+Deux limites assumées pour l'instant : les fiches des joueurs viennent de l'API
+une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
+appel qui les autorise) et ne sont donc **pas lisibles hors ligne**, et le
+plateau ne quitte pas l'appareil — un MJ qui change de tablette repart d'une
+carte vierge.
 
 ### Notifications push (Firebase Cloud Messaging)
 
@@ -1002,7 +1049,8 @@ ni les mots de passe** (volontairement, ils sont gitignorés). Deux cas :
 - Le mode "Simplifié" ne fait qu'assigner librement une valeur à chaque caractéristique (`calculation_method: "choice"`) : il n'empêche pas de choisir deux fois la même valeur, alors que la règle CdC7 d'origine impose de répartir un jeu fixe de 8 valeurs (40, 50, 50, 50, 60, 60, 70, 80) sans répétition au-delà de ce que ce jeu autorise. Ajouter cette contrainte demanderait un nouveau mécanisme de "pool partagé sans répétition", pas juste une liste de choix par caractéristique.
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
-- Le **Livre de règle** du volet n'est qu'un écran d'attente : lire les règles de l'univers demande d'afficher compétences, occupations, jets et seuils, c'est une feature à part entière. L'entrée est livrée avant son contenu, en le disant.
+- Le **Livre de règle** ne couvre que les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), rédigés en dur dans `features/rulebook/content/`. Compétences et occupations n'y sont pas, et un second univers devrait apporter son propre catalogue.
+- Le **mode MJ** demande une tablette (900 × 560 points) et ne quitte pas l'appareil : ni plateau ni notes ne remontent au serveur, donc changer de tablette repart d'une carte vierge. Les fiches des joueurs, elles, viennent de l'API une par une et ne sont pas lisibles hors ligne. Un seul fond de carte est livré ; le catalogue viendra du back.
 - L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
 - Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
 - La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.

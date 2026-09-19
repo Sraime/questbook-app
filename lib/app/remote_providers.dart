@@ -7,6 +7,7 @@ import '../config/app_config.dart';
 import '../data/auth/auth_repository.dart';
 import '../data/local/remote_cache_dao.dart';
 import '../data/local/downloaded_scenario_dao.dart';
+import '../data/local/session_board_dao.dart';
 import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
@@ -112,6 +113,7 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     // player's table around on a shared device serves no one.
     await RemoteCacheDao(ref.read(appDatabaseProvider)).clear();
     await DownloadedScenarioDao(ref.read(appDatabaseProvider)).clear();
+    await SessionBoardDao(ref.read(appDatabaseProvider)).clear();
     state = const AsyncValue.data(null);
   }
 }

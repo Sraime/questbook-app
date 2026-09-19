@@ -3071,6 +3071,371 @@ class DownloadedScenariosCompanion
   }
 }
 
+class $SessionBoardsTable extends SessionBoards
+    with TableInfo<$SessionBoardsTable, SessionBoardRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionBoardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tokensMeta = const VerificationMeta('tokens');
+  @override
+  late final GeneratedColumn<String> tokens = GeneratedColumn<String>(
+    'tokens',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sessionId,
+    accountId,
+    tokens,
+    notes,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_boards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionBoardRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('tokens')) {
+      context.handle(
+        _tokensMeta,
+        tokens.isAcceptableOrUnknown(data['tokens']!, _tokensMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId, accountId};
+  @override
+  SessionBoardRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionBoardRow(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      tokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tokens'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionBoardsTable createAlias(String alias) {
+    return $SessionBoardsTable(attachedDatabase, alias);
+  }
+}
+
+class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
+  final String sessionId;
+
+  /// Le compte à qui appartient le plateau. Un autre MJ qui se connecte sur
+  /// la même tablette ne doit pas hériter de ses pions ni de ses notes.
+  final String accountId;
+
+  /// Les pions, encodés par [BoardToken.encode].
+  final String tokens;
+  final String notes;
+  final DateTime updatedAt;
+  const SessionBoardRow({
+    required this.sessionId,
+    required this.accountId,
+    required this.tokens,
+    required this.notes,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['account_id'] = Variable<String>(accountId);
+    map['tokens'] = Variable<String>(tokens);
+    map['notes'] = Variable<String>(notes);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SessionBoardsCompanion toCompanion(bool nullToAbsent) {
+    return SessionBoardsCompanion(
+      sessionId: Value(sessionId),
+      accountId: Value(accountId),
+      tokens: Value(tokens),
+      notes: Value(notes),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SessionBoardRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionBoardRow(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      tokens: serializer.fromJson<String>(json['tokens']),
+      notes: serializer.fromJson<String>(json['notes']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'accountId': serializer.toJson<String>(accountId),
+      'tokens': serializer.toJson<String>(tokens),
+      'notes': serializer.toJson<String>(notes),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SessionBoardRow copyWith({
+    String? sessionId,
+    String? accountId,
+    String? tokens,
+    String? notes,
+    DateTime? updatedAt,
+  }) => SessionBoardRow(
+    sessionId: sessionId ?? this.sessionId,
+    accountId: accountId ?? this.accountId,
+    tokens: tokens ?? this.tokens,
+    notes: notes ?? this.notes,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SessionBoardRow copyWithCompanion(SessionBoardsCompanion data) {
+    return SessionBoardRow(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      tokens: data.tokens.present ? data.tokens.value : this.tokens,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionBoardRow(')
+          ..write('sessionId: $sessionId, ')
+          ..write('accountId: $accountId, ')
+          ..write('tokens: $tokens, ')
+          ..write('notes: $notes, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(sessionId, accountId, tokens, notes, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionBoardRow &&
+          other.sessionId == this.sessionId &&
+          other.accountId == this.accountId &&
+          other.tokens == this.tokens &&
+          other.notes == this.notes &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
+  final Value<String> sessionId;
+  final Value<String> accountId;
+  final Value<String> tokens;
+  final Value<String> notes;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SessionBoardsCompanion({
+    this.sessionId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.tokens = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SessionBoardsCompanion.insert({
+    required String sessionId,
+    required String accountId,
+    this.tokens = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : sessionId = Value(sessionId),
+       accountId = Value(accountId),
+       updatedAt = Value(updatedAt);
+  static Insertable<SessionBoardRow> custom({
+    Expression<String>? sessionId,
+    Expression<String>? accountId,
+    Expression<String>? tokens,
+    Expression<String>? notes,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (accountId != null) 'account_id': accountId,
+      if (tokens != null) 'tokens': tokens,
+      if (notes != null) 'notes': notes,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SessionBoardsCompanion copyWith({
+    Value<String>? sessionId,
+    Value<String>? accountId,
+    Value<String>? tokens,
+    Value<String>? notes,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SessionBoardsCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      accountId: accountId ?? this.accountId,
+      tokens: tokens ?? this.tokens,
+      notes: notes ?? this.notes,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (tokens.present) {
+      map['tokens'] = Variable<String>(tokens.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionBoardsCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('accountId: $accountId, ')
+          ..write('tokens: $tokens, ')
+          ..write('notes: $notes, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3084,6 +3449,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RemoteCacheTable remoteCache = $RemoteCacheTable(this);
   late final $DownloadedScenariosTable downloadedScenarios =
       $DownloadedScenariosTable(this);
+  late final $SessionBoardsTable sessionBoards = $SessionBoardsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3097,6 +3463,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncMetadata,
     remoteCache,
     downloadedScenarios,
+    sessionBoards,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5700,6 +6067,206 @@ typedef $$DownloadedScenariosTableProcessedTableManager =
       DownloadedScenarioRow,
       PrefetchHooks Function()
     >;
+typedef $$SessionBoardsTableCreateCompanionBuilder =
+    SessionBoardsCompanion Function({
+      required String sessionId,
+      required String accountId,
+      Value<String> tokens,
+      Value<String> notes,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SessionBoardsTableUpdateCompanionBuilder =
+    SessionBoardsCompanion Function({
+      Value<String> sessionId,
+      Value<String> accountId,
+      Value<String> tokens,
+      Value<String> notes,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SessionBoardsTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tokens => $composableBuilder(
+    column: $table.tokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SessionBoardsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tokens => $composableBuilder(
+    column: $table.tokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SessionBoardsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get tokens =>
+      $composableBuilder(column: $table.tokens, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SessionBoardsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionBoardsTable,
+          SessionBoardRow,
+          $$SessionBoardsTableFilterComposer,
+          $$SessionBoardsTableOrderingComposer,
+          $$SessionBoardsTableAnnotationComposer,
+          $$SessionBoardsTableCreateCompanionBuilder,
+          $$SessionBoardsTableUpdateCompanionBuilder,
+          (
+            SessionBoardRow,
+            BaseReferences<_$AppDatabase, $SessionBoardsTable, SessionBoardRow>,
+          ),
+          SessionBoardRow,
+          PrefetchHooks Function()
+        > {
+  $$SessionBoardsTableTableManager(_$AppDatabase db, $SessionBoardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionBoardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionBoardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SessionBoardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> tokens = const Value.absent(),
+                Value<String> notes = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SessionBoardsCompanion(
+                sessionId: sessionId,
+                accountId: accountId,
+                tokens: tokens,
+                notes: notes,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required String accountId,
+                Value<String> tokens = const Value.absent(),
+                Value<String> notes = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SessionBoardsCompanion.insert(
+                sessionId: sessionId,
+                accountId: accountId,
+                tokens: tokens,
+                notes: notes,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SessionBoardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionBoardsTable,
+      SessionBoardRow,
+      $$SessionBoardsTableFilterComposer,
+      $$SessionBoardsTableOrderingComposer,
+      $$SessionBoardsTableAnnotationComposer,
+      $$SessionBoardsTableCreateCompanionBuilder,
+      $$SessionBoardsTableUpdateCompanionBuilder,
+      (
+        SessionBoardRow,
+        BaseReferences<_$AppDatabase, $SessionBoardsTable, SessionBoardRow>,
+      ),
+      SessionBoardRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5720,4 +6287,6 @@ class $AppDatabaseManager {
       $$RemoteCacheTableTableManager(_db, _db.remoteCache);
   $$DownloadedScenariosTableTableManager get downloadedScenarios =>
       $$DownloadedScenariosTableTableManager(_db, _db.downloadedScenarios);
+  $$SessionBoardsTableTableManager get sessionBoards =>
+      $$SessionBoardsTableTableManager(_db, _db.sessionBoards);
 }

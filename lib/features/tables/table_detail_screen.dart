@@ -9,11 +9,13 @@ import '../../data/remote/remote_table.dart';
 import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
+import '../../design_system/components/qb_dialog.dart';
 import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../game_master/game_master_space.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
 import 'widgets/attendee_character_sheet.dart';
@@ -84,11 +86,14 @@ class _Body extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: QBSpace.s2),
-          Row(
+          // En Wrap et non en Row : sur un téléphone étroit, un nom d'univers
+          // un peu long poussait le badge de rôle hors de l'écran.
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
               if (table.universeLabel != null)
                 QBBadge(label: table.universeLabel!, tone: QBTone.info),
-              if (table.universeLabel != null) const SizedBox(width: 6),
               QBBadge(
                 label: table.isGameMaster ? 'Tu es MJ' : 'Joueur',
                 tone: table.isGameMaster ? QBTone.warning : QBTone.neutral,
@@ -194,6 +199,44 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     }
   }
 
+  /// Le mode MJ ne tient pas sur un téléphone. Le bouton reste offert plutôt
+  /// que caché : un MJ qui ne le voit nulle part conclut que la fonctionnalité
+  /// n'existe pas, alors qu'elle l'attend sur sa tablette.
+  void _openGameMasterMode() {
+    final space = measureGameMasterSpace(MediaQuery.sizeOf(context));
+
+    if (!space.isSufficient) {
+      showQBDialog<void>(
+        context: context,
+        title: 'Écran trop petit',
+        builder: (dialogContext) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              space.message,
+              style: QBType.body().copyWith(
+                fontSize: QBType.sm,
+                color: QBColors.textBody,
+              ),
+            ),
+            const SizedBox(height: QBSpace.s5),
+            QBButton(
+              label: 'Compris',
+              size: QBButtonSize.sm,
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    context.go(
+      '/tables/${widget.table.id}/sessions/${widget.session.id}/mj',
+    );
+  }
+
   Future<void> _cancel() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -256,6 +299,22 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                   ),
                 ),
               ),
+              // Animer la session ne demande rien au serveur : le plateau et
+              // les notes vivent sur l'appareil. Le réseau peut tomber en
+              // pleine partie sans emporter l'outil avec lui, d'où le
+              // `canWrite` absent ici.
+              if (widget.table.isGameMaster && !session.isCancelled)
+                QBIconButton(
+                  icon: const Icon(
+                    LucideIcons.swords,
+                    size: 16,
+                    color: QBColors.paper100,
+                  ),
+                  label: 'Animer la session',
+                  size: 32,
+                  variant: QBIconButtonVariant.solid,
+                  onPressed: _openGameMasterMode,
+                ),
               if (widget.table.isGameMaster && canWrite) ...[
                 QBIconButton(
                   icon: const Icon(LucideIcons.pencil, size: 16),

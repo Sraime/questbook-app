@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'auth_tokens.dart';
@@ -21,7 +22,29 @@ class TokenStore {
   static const _refreshKey = 'questbook.refresh_token';
   static const _userKey = 'questbook.user';
 
+  /// `errSecDuplicateItem`, as the Keychain reports it through the plugin.
+  static const _duplicateItem = -25299;
+
   final FlutterSecureStorage _storage;
+
+  /// Writes through the accessibility mismatch left by builds older than the
+  /// one that pinned [KeychainAccessibility.first_unlock_this_device].
+  ///
+  /// Accessibility filters reads but is not part of what makes a Keychain item
+  /// unique. An entry written under the previous, laxer setting is therefore
+  /// invisible to [FlutterSecureStorage.read] — which asks for the current one
+  /// — while still colliding on insert. Sign-in then fails for good on a device
+  /// that once ran an older build, since the Keychain outlives even an
+  /// uninstall. Deleting ignores accessibility, so it clears the stale entry.
+  Future<void> _write(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } on PlatformException catch (error) {
+      if (error.details != _duplicateItem) rethrow;
+      await _storage.delete(key: key);
+      await _storage.write(key: key, value: value);
+    }
+  }
 
   /// Cached profile, so a launch without connectivity can still show the user
   /// as signed in instead of bouncing them to the sign-in screen.
@@ -36,9 +59,9 @@ class TokenStore {
   }
 
   Future<void> writeUser(AuthUser user) async {
-    await _storage.write(
-      key: _userKey,
-      value: jsonEncode({
+    await _write(
+      _userKey,
+      jsonEncode({
         'id': user.id,
         'email': user.email,
         'displayName': user.displayName,
@@ -55,8 +78,8 @@ class TokenStore {
   }
 
   Future<void> write(AuthTokens tokens) async {
-    await _storage.write(key: _accessKey, value: tokens.accessToken);
-    await _storage.write(key: _refreshKey, value: tokens.refreshToken);
+    await _write(_accessKey, tokens.accessToken);
+    await _write(_refreshKey, tokens.refreshToken);
   }
 
   Future<void> clear() async {

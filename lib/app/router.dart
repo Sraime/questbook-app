@@ -2,10 +2,13 @@ import 'package:go_router/go_router.dart';
 
 import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
+import '../features/game_master/game_master_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/rulebook/rulebook_chapter_screen.dart';
 import '../features/rulebook/rulebook_screen.dart';
+import '../features/scenarios/scenario_detail_screen.dart';
+import '../features/scenarios/scenarios_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/tables/notifications_screen.dart';
 import '../features/tables/session_form_screen.dart';
@@ -66,9 +69,24 @@ final appRouter = GoRouter(
             ],
           ),
         ]),
-        // A third branch with no tab of its own, for what the chrome opens:
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/scenarios',
+            builder: (context, state) => const ScenariosScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ScenarioDetailScreen(
+                  scenarioId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+        ]),
+        // A fourth branch with no tab of its own, for what the chrome opens:
         // the drawer's destinations and the bell. They keep the shell around,
-        // and coming back to Perso or Tables finds each where it was left.
+        // and coming back to Perso, Tables or Scénarios finds each where it
+        // was left.
         //
         // Notifications used to live under `/tables`, which meant opening the
         // bell from a character sheet lit the Tables tab and lost the reader's
@@ -97,6 +115,15 @@ final appRouter = GoRouter(
           ),
         ]),
       ],
+    ),
+    // Hors du shell, seul écran dans ce cas : animer une session prend la
+    // tablette entière, et la barre d'onglets n'y mène nulle part.
+    GoRoute(
+      path: '/tables/:id/sessions/:sessionId/mj',
+      builder: (context, state) => GameMasterScreen(
+        tableId: state.pathParameters['id']!,
+        sessionId: state.pathParameters['sessionId']!,
+      ),
     ),
   ],
 );

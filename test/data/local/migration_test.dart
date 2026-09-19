@@ -54,6 +54,8 @@ void main() {
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
     db.execute('DROP TABLE sync_metadata');
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
+    db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
 
     db.execute(
@@ -146,7 +148,7 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 4);
+    expect(version.data.values.first, 7);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
@@ -154,6 +156,8 @@ void main() {
   void downgradeToV2() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
+    db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
     db.execute('PRAGMA user_version = 2');
     db.close();
@@ -164,6 +168,8 @@ void main() {
   void downgradeToV3() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE session_boards');
+    db.execute('DROP TABLE downloaded_scenarios');
     db.execute('PRAGMA user_version = 3');
     db.close();
   }
@@ -226,7 +232,7 @@ void main() {
     expect(await db.select(db.remoteCache).get(), hasLength(1));
   });
 
-  test('upgrades straight from v1 to v4, mockup dropped and cache opened',
+  test('upgrades straight from v1 to v7, mockup dropped and cache opened',
       () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
@@ -241,9 +247,83 @@ void main() {
         )
         .get();
 
-    expect(version.data.values.first, 4);
+    expect(version.data.values.first, 7);
     expect(mockup, isEmpty);
     expect(await db.select(db.remoteCache).get(), isEmpty);
+    expect(await db.select(db.downloadedScenarios).get(), isEmpty);
     expect(await db.select(db.characters).get(), hasLength(1));
+  });
+
+  void downgradeToV4() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE session_boards');
+    db.execute('DROP TABLE downloaded_scenarios');
+    db.execute('PRAGMA user_version = 4');
+    db.close();
+  }
+
+  test('opens the downloaded scenarios table when upgrading from v4', () async {
+    downgradeToV4();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    expect(await db.select(db.downloadedScenarios).get(), isEmpty);
+  });
+
+  void downgradeToV5() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE session_boards');
+    db.execute('PRAGMA user_version = 5');
+    db.close();
+  }
+
+  test('opens the game master boards table when upgrading from v5', () async {
+    downgradeToV5();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    await db.into(db.sessionBoards).insert(
+          SessionBoardRow(
+            sessionId: 'session-1',
+            accountId: 'account-1',
+            tokens: '[]',
+            notes: '',
+            updatedAt: DateTime.utc(2026, 9, 19),
+          ),
+        );
+
+    expect(await db.select(db.sessionBoards).get(), hasLength(1));
+  });
+
+  void downgradeToV6() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('ALTER TABLE session_boards DROP COLUMN map_id');
+    db.execute('PRAGMA user_version = 6');
+    db.close();
+  }
+
+  test('keeps the boards of a v6 install when adding the map column', () async {
+    downgradeToV6();
+
+    final before = raw.sqlite3.open(dbPath);
+    before.execute(
+      'INSERT INTO session_boards (session_id, account_id, tokens, notes, '
+      'updated_at) VALUES (?, ?, ?, ?, ?)',
+      ['session-1', 'account-1', '[]', 'Le phare clignote', 0],
+    );
+    before.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    final rows = await db.select(db.sessionBoards).get();
+
+    expect(rows, hasLength(1));
+    expect(rows.single.notes, 'Le phare clignote');
+    // Nulle, donc le catalogue choisira : une session d'avant la sélection de
+    // carte ne doit pas s'ouvrir sur un plateau vide.
+    expect(rows.single.mapId, isNull);
   });
 }

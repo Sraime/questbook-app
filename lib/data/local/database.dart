@@ -126,6 +126,46 @@ class InventoryItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Full copy of a scenario the user asked to keep on the device, so the
+/// rundown and annexes stay readable without a network.
+@DataClassName('DownloadedScenarioRow')
+class DownloadedScenarios extends Table {
+  TextColumn get scenarioId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get downloadedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {scenarioId, accountId};
+}
+
+/// Ce que le MJ a posé sur le plateau d'une session, et ce qu'il s'est noté.
+///
+/// Reste sur l'appareil : le plateau se manipule pion par pion pendant la
+/// partie, souvent loin d'un réseau fiable, et il ne regarde que le MJ. Le
+/// jour où un joueur devra le voir, il faudra le faire remonter à l'API.
+@DataClassName('SessionBoardRow')
+class SessionBoards extends Table {
+  TextColumn get sessionId => text()();
+
+  /// Le compte à qui appartient le plateau. Un autre MJ qui se connecte sur
+  /// la même tablette ne doit pas hériter de ses pions ni de ses notes.
+  TextColumn get accountId => text()();
+
+  /// Les pions, encodés par [BoardToken.encode].
+  TextColumn get tokens => text().withDefault(const Constant('[]'))();
+  TextColumn get notes => text().withDefault(const Constant(''))();
+
+  /// Le fond de carte choisi. Nul tant que le MJ n'a rien changé : le
+  /// catalogue décide alors du défaut, et renommer une carte ne laisse pas
+  /// une session devant un plateau vide.
+  TextColumn get mapId => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {sessionId, accountId};
+}
+
 @DriftDatabase(
   tables: [
     GameSystems,
@@ -135,6 +175,8 @@ class InventoryItems extends Table {
     InventoryItems,
     SyncMetadata,
     RemoteCache,
+    DownloadedScenarios,
+    SessionBoards,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -143,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -171,6 +213,17 @@ class AppDatabase extends _$AppDatabase {
             // Tables come back to the device, but as a read-only copy of what
             // the server last said — not as the local mockup dropped in v3.
             await m.createTable(remoteCache);
+          }
+          if (from < 5) {
+            await m.createTable(downloadedScenarios);
+          }
+          if (from < 6) {
+            await m.createTable(sessionBoards);
+          }
+          // Seulement pour qui a déjà la table : la créer ci-dessus la dote
+          // de la colonne, et l'ajouter une seconde fois échouerait.
+          if (from == 6) {
+            await m.addColumn(sessionBoards, sessionBoards.mapId);
           }
         },
       );

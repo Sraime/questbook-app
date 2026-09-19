@@ -6,6 +6,8 @@
 /// map onto. Mapping stays hand-written, matching `remote_character.dart`.
 library;
 
+import 'remote_scenario.dart';
+
 List<T> _listOf<T>(Object? raw, T Function(Map<String, dynamic>) parse) {
   if (raw is! List) return const [];
   return raw
@@ -239,6 +241,8 @@ class RemoteGameSession {
     required this.attendances,
     required this.myStatus,
     required this.myCharacter,
+    this.scenarioId,
+    this.scenario,
   });
 
   factory RemoteGameSession.fromJson(Map<String, dynamic> json) => RemoteGameSession(
@@ -258,6 +262,12 @@ class RemoteGameSession {
             : RemoteAttendanceCharacter.fromJson(
                 (json['myCharacter'] as Map).cast<String, dynamic>(),
               ),
+        scenarioId: json['scenarioId'] as String?,
+        scenario: json['scenario'] == null
+            ? null
+            : RemoteSessionScenario.fromJson(
+                (json['scenario'] as Map).cast<String, dynamic>(),
+              ),
       );
 
   final String id;
@@ -275,6 +285,9 @@ class RemoteGameSession {
 
   /// The character the signed-in member is bringing, once they have said.
   final RemoteAttendanceCharacter? myCharacter;
+
+  final String? scenarioId;
+  final RemoteSessionScenario? scenario;
 
   bool get isCancelled => status == 'cancelled';
 

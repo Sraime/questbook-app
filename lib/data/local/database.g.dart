@@ -2742,6 +2742,750 @@ class RemoteCacheCompanion extends UpdateCompanion<RemoteCacheRow> {
   }
 }
 
+class $DownloadedScenariosTable extends DownloadedScenarios
+    with TableInfo<$DownloadedScenariosTable, DownloadedScenarioRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedScenariosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scenarioIdMeta = const VerificationMeta(
+    'scenarioId',
+  );
+  @override
+  late final GeneratedColumn<String> scenarioId = GeneratedColumn<String>(
+    'scenario_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downloadedAtMeta = const VerificationMeta(
+    'downloadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> downloadedAt = GeneratedColumn<DateTime>(
+    'downloaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    scenarioId,
+    accountId,
+    payload,
+    downloadedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_scenarios';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedScenarioRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('scenario_id')) {
+      context.handle(
+        _scenarioIdMeta,
+        scenarioId.isAcceptableOrUnknown(data['scenario_id']!, _scenarioIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scenarioIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('downloaded_at')) {
+      context.handle(
+        _downloadedAtMeta,
+        downloadedAt.isAcceptableOrUnknown(
+          data['downloaded_at']!,
+          _downloadedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_downloadedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scenarioId, accountId};
+  @override
+  DownloadedScenarioRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedScenarioRow(
+      scenarioId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scenario_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      downloadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}downloaded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedScenariosTable createAlias(String alias) {
+    return $DownloadedScenariosTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedScenarioRow extends DataClass
+    implements Insertable<DownloadedScenarioRow> {
+  final String scenarioId;
+  final String accountId;
+  final String payload;
+  final DateTime downloadedAt;
+  const DownloadedScenarioRow({
+    required this.scenarioId,
+    required this.accountId,
+    required this.payload,
+    required this.downloadedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['scenario_id'] = Variable<String>(scenarioId);
+    map['account_id'] = Variable<String>(accountId);
+    map['payload'] = Variable<String>(payload);
+    map['downloaded_at'] = Variable<DateTime>(downloadedAt);
+    return map;
+  }
+
+  DownloadedScenariosCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedScenariosCompanion(
+      scenarioId: Value(scenarioId),
+      accountId: Value(accountId),
+      payload: Value(payload),
+      downloadedAt: Value(downloadedAt),
+    );
+  }
+
+  factory DownloadedScenarioRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedScenarioRow(
+      scenarioId: serializer.fromJson<String>(json['scenarioId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      downloadedAt: serializer.fromJson<DateTime>(json['downloadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scenarioId': serializer.toJson<String>(scenarioId),
+      'accountId': serializer.toJson<String>(accountId),
+      'payload': serializer.toJson<String>(payload),
+      'downloadedAt': serializer.toJson<DateTime>(downloadedAt),
+    };
+  }
+
+  DownloadedScenarioRow copyWith({
+    String? scenarioId,
+    String? accountId,
+    String? payload,
+    DateTime? downloadedAt,
+  }) => DownloadedScenarioRow(
+    scenarioId: scenarioId ?? this.scenarioId,
+    accountId: accountId ?? this.accountId,
+    payload: payload ?? this.payload,
+    downloadedAt: downloadedAt ?? this.downloadedAt,
+  );
+  DownloadedScenarioRow copyWithCompanion(DownloadedScenariosCompanion data) {
+    return DownloadedScenarioRow(
+      scenarioId: data.scenarioId.present
+          ? data.scenarioId.value
+          : this.scenarioId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      downloadedAt: data.downloadedAt.present
+          ? data.downloadedAt.value
+          : this.downloadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedScenarioRow(')
+          ..write('scenarioId: $scenarioId, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('downloadedAt: $downloadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(scenarioId, accountId, payload, downloadedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedScenarioRow &&
+          other.scenarioId == this.scenarioId &&
+          other.accountId == this.accountId &&
+          other.payload == this.payload &&
+          other.downloadedAt == this.downloadedAt);
+}
+
+class DownloadedScenariosCompanion
+    extends UpdateCompanion<DownloadedScenarioRow> {
+  final Value<String> scenarioId;
+  final Value<String> accountId;
+  final Value<String> payload;
+  final Value<DateTime> downloadedAt;
+  final Value<int> rowid;
+  const DownloadedScenariosCompanion({
+    this.scenarioId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.downloadedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadedScenariosCompanion.insert({
+    required String scenarioId,
+    required String accountId,
+    required String payload,
+    required DateTime downloadedAt,
+    this.rowid = const Value.absent(),
+  }) : scenarioId = Value(scenarioId),
+       accountId = Value(accountId),
+       payload = Value(payload),
+       downloadedAt = Value(downloadedAt);
+  static Insertable<DownloadedScenarioRow> custom({
+    Expression<String>? scenarioId,
+    Expression<String>? accountId,
+    Expression<String>? payload,
+    Expression<DateTime>? downloadedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scenarioId != null) 'scenario_id': scenarioId,
+      if (accountId != null) 'account_id': accountId,
+      if (payload != null) 'payload': payload,
+      if (downloadedAt != null) 'downloaded_at': downloadedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadedScenariosCompanion copyWith({
+    Value<String>? scenarioId,
+    Value<String>? accountId,
+    Value<String>? payload,
+    Value<DateTime>? downloadedAt,
+    Value<int>? rowid,
+  }) {
+    return DownloadedScenariosCompanion(
+      scenarioId: scenarioId ?? this.scenarioId,
+      accountId: accountId ?? this.accountId,
+      payload: payload ?? this.payload,
+      downloadedAt: downloadedAt ?? this.downloadedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scenarioId.present) {
+      map['scenario_id'] = Variable<String>(scenarioId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (downloadedAt.present) {
+      map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedScenariosCompanion(')
+          ..write('scenarioId: $scenarioId, ')
+          ..write('accountId: $accountId, ')
+          ..write('payload: $payload, ')
+          ..write('downloadedAt: $downloadedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SessionBoardsTable extends SessionBoards
+    with TableInfo<$SessionBoardsTable, SessionBoardRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionBoardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tokensMeta = const VerificationMeta('tokens');
+  @override
+  late final GeneratedColumn<String> tokens = GeneratedColumn<String>(
+    'tokens',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _mapIdMeta = const VerificationMeta('mapId');
+  @override
+  late final GeneratedColumn<String> mapId = GeneratedColumn<String>(
+    'map_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sessionId,
+    accountId,
+    tokens,
+    notes,
+    mapId,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_boards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionBoardRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('tokens')) {
+      context.handle(
+        _tokensMeta,
+        tokens.isAcceptableOrUnknown(data['tokens']!, _tokensMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('map_id')) {
+      context.handle(
+        _mapIdMeta,
+        mapId.isAcceptableOrUnknown(data['map_id']!, _mapIdMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId, accountId};
+  @override
+  SessionBoardRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionBoardRow(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      tokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tokens'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      )!,
+      mapId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}map_id'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionBoardsTable createAlias(String alias) {
+    return $SessionBoardsTable(attachedDatabase, alias);
+  }
+}
+
+class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
+  final String sessionId;
+
+  /// Le compte à qui appartient le plateau. Un autre MJ qui se connecte sur
+  /// la même tablette ne doit pas hériter de ses pions ni de ses notes.
+  final String accountId;
+
+  /// Les pions, encodés par [BoardToken.encode].
+  final String tokens;
+  final String notes;
+
+  /// Le fond de carte choisi. Nul tant que le MJ n'a rien changé : le
+  /// catalogue décide alors du défaut, et renommer une carte ne laisse pas
+  /// une session devant un plateau vide.
+  final String? mapId;
+  final DateTime updatedAt;
+  const SessionBoardRow({
+    required this.sessionId,
+    required this.accountId,
+    required this.tokens,
+    required this.notes,
+    this.mapId,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['account_id'] = Variable<String>(accountId);
+    map['tokens'] = Variable<String>(tokens);
+    map['notes'] = Variable<String>(notes);
+    if (!nullToAbsent || mapId != null) {
+      map['map_id'] = Variable<String>(mapId);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SessionBoardsCompanion toCompanion(bool nullToAbsent) {
+    return SessionBoardsCompanion(
+      sessionId: Value(sessionId),
+      accountId: Value(accountId),
+      tokens: Value(tokens),
+      notes: Value(notes),
+      mapId: mapId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mapId),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SessionBoardRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionBoardRow(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      tokens: serializer.fromJson<String>(json['tokens']),
+      notes: serializer.fromJson<String>(json['notes']),
+      mapId: serializer.fromJson<String?>(json['mapId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'accountId': serializer.toJson<String>(accountId),
+      'tokens': serializer.toJson<String>(tokens),
+      'notes': serializer.toJson<String>(notes),
+      'mapId': serializer.toJson<String?>(mapId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SessionBoardRow copyWith({
+    String? sessionId,
+    String? accountId,
+    String? tokens,
+    String? notes,
+    Value<String?> mapId = const Value.absent(),
+    DateTime? updatedAt,
+  }) => SessionBoardRow(
+    sessionId: sessionId ?? this.sessionId,
+    accountId: accountId ?? this.accountId,
+    tokens: tokens ?? this.tokens,
+    notes: notes ?? this.notes,
+    mapId: mapId.present ? mapId.value : this.mapId,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SessionBoardRow copyWithCompanion(SessionBoardsCompanion data) {
+    return SessionBoardRow(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      tokens: data.tokens.present ? data.tokens.value : this.tokens,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      mapId: data.mapId.present ? data.mapId.value : this.mapId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionBoardRow(')
+          ..write('sessionId: $sessionId, ')
+          ..write('accountId: $accountId, ')
+          ..write('tokens: $tokens, ')
+          ..write('notes: $notes, ')
+          ..write('mapId: $mapId, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(sessionId, accountId, tokens, notes, mapId, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionBoardRow &&
+          other.sessionId == this.sessionId &&
+          other.accountId == this.accountId &&
+          other.tokens == this.tokens &&
+          other.notes == this.notes &&
+          other.mapId == this.mapId &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
+  final Value<String> sessionId;
+  final Value<String> accountId;
+  final Value<String> tokens;
+  final Value<String> notes;
+  final Value<String?> mapId;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SessionBoardsCompanion({
+    this.sessionId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.tokens = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.mapId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SessionBoardsCompanion.insert({
+    required String sessionId,
+    required String accountId,
+    this.tokens = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.mapId = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : sessionId = Value(sessionId),
+       accountId = Value(accountId),
+       updatedAt = Value(updatedAt);
+  static Insertable<SessionBoardRow> custom({
+    Expression<String>? sessionId,
+    Expression<String>? accountId,
+    Expression<String>? tokens,
+    Expression<String>? notes,
+    Expression<String>? mapId,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (accountId != null) 'account_id': accountId,
+      if (tokens != null) 'tokens': tokens,
+      if (notes != null) 'notes': notes,
+      if (mapId != null) 'map_id': mapId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SessionBoardsCompanion copyWith({
+    Value<String>? sessionId,
+    Value<String>? accountId,
+    Value<String>? tokens,
+    Value<String>? notes,
+    Value<String?>? mapId,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SessionBoardsCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      accountId: accountId ?? this.accountId,
+      tokens: tokens ?? this.tokens,
+      notes: notes ?? this.notes,
+      mapId: mapId ?? this.mapId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (tokens.present) {
+      map['tokens'] = Variable<String>(tokens.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (mapId.present) {
+      map['map_id'] = Variable<String>(mapId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionBoardsCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('accountId: $accountId, ')
+          ..write('tokens: $tokens, ')
+          ..write('notes: $notes, ')
+          ..write('mapId: $mapId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2753,6 +3497,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final $RemoteCacheTable remoteCache = $RemoteCacheTable(this);
+  late final $DownloadedScenariosTable downloadedScenarios =
+      $DownloadedScenariosTable(this);
+  late final $SessionBoardsTable sessionBoards = $SessionBoardsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2765,6 +3512,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     inventoryItems,
     syncMetadata,
     remoteCache,
+    downloadedScenarios,
+    sessionBoards,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5167,6 +5916,426 @@ typedef $$RemoteCacheTableProcessedTableManager =
       RemoteCacheRow,
       PrefetchHooks Function()
     >;
+typedef $$DownloadedScenariosTableCreateCompanionBuilder =
+    DownloadedScenariosCompanion Function({
+      required String scenarioId,
+      required String accountId,
+      required String payload,
+      required DateTime downloadedAt,
+      Value<int> rowid,
+    });
+typedef $$DownloadedScenariosTableUpdateCompanionBuilder =
+    DownloadedScenariosCompanion Function({
+      Value<String> scenarioId,
+      Value<String> accountId,
+      Value<String> payload,
+      Value<DateTime> downloadedAt,
+      Value<int> rowid,
+    });
+
+class $$DownloadedScenariosTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DownloadedScenariosTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadedScenariosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedScenariosTable> {
+  $$DownloadedScenariosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scenarioId => $composableBuilder(
+    column: $table.scenarioId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DownloadedScenariosTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadedScenariosTable,
+          DownloadedScenarioRow,
+          $$DownloadedScenariosTableFilterComposer,
+          $$DownloadedScenariosTableOrderingComposer,
+          $$DownloadedScenariosTableAnnotationComposer,
+          $$DownloadedScenariosTableCreateCompanionBuilder,
+          $$DownloadedScenariosTableUpdateCompanionBuilder,
+          (
+            DownloadedScenarioRow,
+            BaseReferences<
+              _$AppDatabase,
+              $DownloadedScenariosTable,
+              DownloadedScenarioRow
+            >,
+          ),
+          DownloadedScenarioRow,
+          PrefetchHooks Function()
+        > {
+  $$DownloadedScenariosTableTableManager(
+    _$AppDatabase db,
+    $DownloadedScenariosTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedScenariosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedScenariosTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DownloadedScenariosTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> scenarioId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> downloadedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedScenariosCompanion(
+                scenarioId: scenarioId,
+                accountId: accountId,
+                payload: payload,
+                downloadedAt: downloadedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String scenarioId,
+                required String accountId,
+                required String payload,
+                required DateTime downloadedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedScenariosCompanion.insert(
+                scenarioId: scenarioId,
+                accountId: accountId,
+                payload: payload,
+                downloadedAt: downloadedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DownloadedScenariosTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadedScenariosTable,
+      DownloadedScenarioRow,
+      $$DownloadedScenariosTableFilterComposer,
+      $$DownloadedScenariosTableOrderingComposer,
+      $$DownloadedScenariosTableAnnotationComposer,
+      $$DownloadedScenariosTableCreateCompanionBuilder,
+      $$DownloadedScenariosTableUpdateCompanionBuilder,
+      (
+        DownloadedScenarioRow,
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadedScenariosTable,
+          DownloadedScenarioRow
+        >,
+      ),
+      DownloadedScenarioRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SessionBoardsTableCreateCompanionBuilder =
+    SessionBoardsCompanion Function({
+      required String sessionId,
+      required String accountId,
+      Value<String> tokens,
+      Value<String> notes,
+      Value<String?> mapId,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SessionBoardsTableUpdateCompanionBuilder =
+    SessionBoardsCompanion Function({
+      Value<String> sessionId,
+      Value<String> accountId,
+      Value<String> tokens,
+      Value<String> notes,
+      Value<String?> mapId,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SessionBoardsTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tokens => $composableBuilder(
+    column: $table.tokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mapId => $composableBuilder(
+    column: $table.mapId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SessionBoardsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tokens => $composableBuilder(
+    column: $table.tokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mapId => $composableBuilder(
+    column: $table.mapId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SessionBoardsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionBoardsTable> {
+  $$SessionBoardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get tokens =>
+      $composableBuilder(column: $table.tokens, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get mapId =>
+      $composableBuilder(column: $table.mapId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SessionBoardsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionBoardsTable,
+          SessionBoardRow,
+          $$SessionBoardsTableFilterComposer,
+          $$SessionBoardsTableOrderingComposer,
+          $$SessionBoardsTableAnnotationComposer,
+          $$SessionBoardsTableCreateCompanionBuilder,
+          $$SessionBoardsTableUpdateCompanionBuilder,
+          (
+            SessionBoardRow,
+            BaseReferences<_$AppDatabase, $SessionBoardsTable, SessionBoardRow>,
+          ),
+          SessionBoardRow,
+          PrefetchHooks Function()
+        > {
+  $$SessionBoardsTableTableManager(_$AppDatabase db, $SessionBoardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionBoardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionBoardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SessionBoardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> tokens = const Value.absent(),
+                Value<String> notes = const Value.absent(),
+                Value<String?> mapId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SessionBoardsCompanion(
+                sessionId: sessionId,
+                accountId: accountId,
+                tokens: tokens,
+                notes: notes,
+                mapId: mapId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required String accountId,
+                Value<String> tokens = const Value.absent(),
+                Value<String> notes = const Value.absent(),
+                Value<String?> mapId = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SessionBoardsCompanion.insert(
+                sessionId: sessionId,
+                accountId: accountId,
+                tokens: tokens,
+                notes: notes,
+                mapId: mapId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SessionBoardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionBoardsTable,
+      SessionBoardRow,
+      $$SessionBoardsTableFilterComposer,
+      $$SessionBoardsTableOrderingComposer,
+      $$SessionBoardsTableAnnotationComposer,
+      $$SessionBoardsTableCreateCompanionBuilder,
+      $$SessionBoardsTableUpdateCompanionBuilder,
+      (
+        SessionBoardRow,
+        BaseReferences<_$AppDatabase, $SessionBoardsTable, SessionBoardRow>,
+      ),
+      SessionBoardRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5185,4 +6354,8 @@ class $AppDatabaseManager {
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
   $$RemoteCacheTableTableManager get remoteCache =>
       $$RemoteCacheTableTableManager(_db, _db.remoteCache);
+  $$DownloadedScenariosTableTableManager get downloadedScenarios =>
+      $$DownloadedScenariosTableTableManager(_db, _db.downloadedScenarios);
+  $$SessionBoardsTableTableManager get sessionBoards =>
+      $$SessionBoardsTableTableManager(_db, _db.sessionBoards);
 }

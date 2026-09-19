@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Which of the two tabs the reader was on before the chrome took them
+/// Which of the tabs the reader was on before the chrome took them
 /// somewhere else.
 ///
 /// The bell and the drawer open pages that belong to no tab, so "back" from

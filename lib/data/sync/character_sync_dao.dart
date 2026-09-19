@@ -33,12 +33,13 @@ class CharacterSyncDao {
   Future<void> writeAccountId(String value) => _writeMeta(_accountKey, value);
 
   /// Called when a different account signs in on this device: the previous
-  /// user's characters must not leak into the new session, and the cursor from
-  /// the old account is meaningless.
+  /// user's characters and cached table payloads must not leak into the new
+  /// session, and the cursor from the old account is meaningless.
   Future<void> resetForNewAccount(String accountId) async {
     await _db.transaction(() async {
       await _db.delete(_db.characters).go();
       await _db.delete(_db.syncMetadata).go();
+      await _db.delete(_db.remoteCache).go();
       await _writeMeta(_accountKey, accountId);
     });
   }

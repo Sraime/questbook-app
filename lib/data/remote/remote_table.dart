@@ -18,28 +18,32 @@ List<T> _listOf<T>(Object? raw, T Function(Map<String, dynamic>) parse) {
 class RemoteUser {
   const RemoteUser({
     required this.id,
-    required this.email,
+    this.email,
     required this.displayName,
     required this.pictureUrl,
   });
 
   factory RemoteUser.fromJson(Map<String, dynamic> json) => RemoteUser(
         id: json['id'] as String,
-        email: json['email'] as String,
+        email: json['email'] as String?,
         displayName: json['displayName'] as String?,
         pictureUrl: json['pictureUrl'] as String?,
       );
 
   final String id;
-  final String email;
+
+  /// Present only for the signed-in user. Other members never carry an email.
+  final String? email;
   final String? displayName;
   final String? pictureUrl;
 
-  /// Players who never set a Google display name are still recognisable by
-  /// the address their game master typed to invite them.
-  String get label => displayName?.trim().isNotEmpty == true
-      ? displayName!.trim()
-      : email;
+  /// Must never fall back to [email]: that address is the signed-in user's
+  /// own mailbox, not a public handle, and other members do not send one.
+  String get label {
+    final name = displayName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return 'Joueur';
+  }
 }
 
 enum TableRole {

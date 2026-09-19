@@ -453,8 +453,8 @@ lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 - Une passe se déclenche à la connexion, au retour au premier plan, et via le
   bouton ↻ du bandeau de compte.
 - Si un **autre compte** se connecte sur l'appareil, les données locales sont
-  effacées : les personnages du compte précédent ne doivent pas fuiter dans la
-  nouvelle session.
+  effacées : les personnages **et** le cache des tables du compte précédent
+  ne doivent pas fuiter dans la nouvelle session.
 
 Les personnages créés avant cette fonctionnalité sont poussés tels quels à la
 première connexion (migration Drift v1 → v2, voir `lib/data/local/database.dart`).
@@ -506,7 +506,10 @@ c'est une nouvelle réelle à propos du compte, et afficher les tables d'hier
 par-dessus l'enterrerait. Seule une panne réseau déclenche le repli.
 
 Le cache est rattaché à un compte et effacé à la déconnexion : sur un téléphone
-partagé, personne ne doit tomber sur les tables du joueur précédent.
+partagé, personne ne doit tomber sur les tables du joueur précédent. Android
+désactive les sauvegardes (`allowBackup=false`) ; iOS exclut Application
+Support d'iCloud. Les jetons et l'email du compte connecté restent dans le
+Keystore / Keychain de l'appareil, sans synchronisation iCloud.
 
 Un cas se tient à la frontière des deux modèles : le personnage qu'un joueur
 inscrit à une session. Le choix se fait dans une liste lue en local, mais c'est

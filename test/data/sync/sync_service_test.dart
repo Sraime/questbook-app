@@ -360,6 +360,14 @@ void main() {
 
     test('wipes local data when a different account signs in', () async {
       await insertLocal(id: 'a', updatedAt: DateTime.utc(2025, 6));
+      await db.into(db.remoteCache).insert(
+            RemoteCacheRow(
+              key: 'tables.overview',
+              accountId: 'user-1',
+              payload: '{"tables":[]}',
+              fetchedAt: DateTime.utc(2025, 6),
+            ),
+          );
       await service.synchronize(accountId: 'user-1');
       api.pushed.clear();
 
@@ -370,6 +378,11 @@ void main() {
         isNull,
         reason: "the previous user's characters must not leak into the new "
             'session',
+      );
+      expect(
+        await db.select(db.remoteCache).get(),
+        isEmpty,
+        reason: "the previous user's cached tables must not leak either",
       );
       expect(api.pushed, isEmpty);
       expect(await dao.readAccountId(), 'user-2');

@@ -9,7 +9,13 @@ import 'auth_tokens.dart';
 /// refresh token is a 30-day credential.
 class TokenStore {
   TokenStore([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              iOptions: IOSOptions(
+                accessibility: KeychainAccessibility.first_unlock_this_device,
+                synchronizable: false,
+              ),
+            );
 
   static const _accessKey = 'questbook.access_token';
   static const _refreshKey = 'questbook.refresh_token';

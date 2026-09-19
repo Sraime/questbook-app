@@ -103,6 +103,15 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     } on AuthFailure catch (error) {
       state = const AsyncValue.data(null);
       return error.isCancellation ? null : error.message;
+    } catch (error, stack) {
+      // Everything the repository anticipates arrives as an AuthFailure. What
+      // lands here is a platform channel giving way — a keychain refusing a
+      // write, a plugin raising on its own. Letting it through would escape
+      // into the caller's `await` and leave a spinner turning with the cause
+      // shown nowhere, so it is named on screen instead.
+      state = const AsyncValue.data(null);
+      debugPrint('Sign-in failed: $error\n$stack');
+      return 'La connexion a échoué : $error';
     }
   }
 

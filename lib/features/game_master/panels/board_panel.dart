@@ -1,52 +1,39 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../design_system/components/qb_icon_button.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 import '../widgets/board_token_view.dart';
 
-/// Le seul fond de carte livré pour l'instant. Le tiroir en annonce d'autres
-/// pour que le MJ voie où ils atterriront ; #39 les fera venir du back.
-const _mapAsset = 'assets/board/manoir-clairiere.jpg';
-const _mapAspectRatio = 1312 / 1199;
-
-/// Ce qu'on attrape dans le tiroir et qu'on lâche sur la carte.
-class _PaletteItem {
-  const _PaletteItem(this.kind, this.color);
-
-  final BoardTokenKind kind;
-  final BoardTokenColor color;
-}
-
 /// La carte, les pions posés dessus, et le tiroir d'où on les tire.
+///
+/// Le plateau est le seul propriétaire de ses pions pendant qu'il est à
+/// l'écran. Il ne remonte l'état que lorsqu'il vaut la peine d'être
+/// enregistré, jamais pendant un glissement : faire remonter chaque image
+/// jusqu'à l'écran MJ reconstruisait le rail et le tiroir soixante fois par
+/// seconde, et le pion traînait derrière le doigt.
 class BoardPanel extends StatefulWidget {
   const BoardPanel({
     super.key,
-    required this.tokens,
-    required this.onAdd,
-    required this.onChanged,
-    required this.onCommit,
-    required this.onRemove,
+    required this.initialTokens,
+    required this.initialMapId,
+    required this.onTokensPersisted,
+    required this.onMapPersisted,
   });
 
-  final List<BoardToken> tokens;
-
-  /// Position exprimée en fractions de la carte, entre 0 et 1.
-  final void Function(BoardTokenKind kind, BoardTokenColor color, Offset at)
-      onAdd;
-
-  /// Pendant un glissement : redessiner sans écrire sur le disque.
-  final ValueChanged<BoardToken> onChanged;
-
-  /// Fin du geste : c'est maintenant que l'état mérite d'être enregistré.
-  final VoidCallback onCommit;
-  final ValueChanged<String> onRemove;
+  final List<BoardToken> initialTokens;
+  final String? initialMapId;
+  final ValueChanged<List<BoardToken>> onTokensPersisted;
+  final ValueChanged<String> onMapPersisted;
 
   @override
   State<BoardPanel> createState() => _BoardPanelState();
@@ -55,37 +42,73 @@ class BoardPanel extends StatefulWidget {
 class _BoardPanelState extends State<BoardPanel> {
   /// Taille de l'aperçu qui suit le doigt, en points.
   static const double _feedbackSide = 60;
+  static const _uuid = Uuid();
 
   final _boardKey = GlobalKey();
 
-  String? _selectedId;
-  bool _resizing = false;
+  late final _tokens = ValueNotifier<List<BoardToken>>(widget.initialTokens);
+  final _selectedId = ValueNotifier<String?>(null);
+  final _resizing = ValueNotifier<bool>(false);
 
-  void _select(String? id) {
-    setState(() {
-      _selectedId = id;
-      if (id == null) _resizing = false;
-    });
+  late BoardMap _map = boardMapById(widget.initialMapId);
+
+  @override
+  void dispose() {
+    _tokens.dispose();
+    _selectedId.dispose();
+    _resizing.dispose();
+    super.dispose();
   }
 
-  void _drop(_PaletteItem item, Offset globalTopLeft) {
+  void _persist() => widget.onTokensPersisted(_tokens.value);
+
+  void _select(String? id) {
+    _selectedId.value = id;
+    if (id == null) _resizing.value = false;
+  }
+
+  void _drop(BoardAsset asset, Offset globalTopLeft) {
     final box = _boardKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
     // `details.offset` désigne le coin de l'aperçu, pas le doigt : on vise son
     // centre, sinon le pion se pose en haut à gauche de ce qu'on visait.
-    final centre = globalTopLeft +
-        const Offset(_feedbackSide / 2, _feedbackSide / 2);
+    final centre =
+        globalTopLeft + const Offset(_feedbackSide / 2, _feedbackSide / 2);
     final local = box.globalToLocal(centre);
 
-    widget.onAdd(
-      item.kind,
-      item.color,
-      Offset(
-        (local.dx / box.size.width).clamp(0.0, 1.0),
-        (local.dy / box.size.height).clamp(0.0, 1.0),
+    _tokens.value = [
+      ..._tokens.value,
+      BoardToken(
+        id: _uuid.v4(),
+        kind: asset.kind,
+        color: asset.color,
+        x: (local.dx / box.size.width).clamp(0.0, 1.0),
+        y: (local.dy / box.size.height).clamp(0.0, 1.0),
       ),
-    );
+    ];
+    _persist();
+  }
+
+  void _update(BoardToken token) {
+    _tokens.value = [
+      for (final existing in _tokens.value)
+        existing.id == token.id ? token : existing,
+    ];
+  }
+
+  void _remove(String id) {
+    _select(null);
+    _tokens.value = [
+      for (final token in _tokens.value)
+        if (token.id != id) token,
+    ];
+    _persist();
+  }
+
+  void _selectMap(BoardMap map) {
+    setState(() => _map = map);
+    widget.onMapPersisted(map.id);
   }
 
   @override
@@ -99,10 +122,10 @@ class _BoardPanelState extends State<BoardPanel> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 var width = constraints.maxWidth;
-                var height = width / _mapAspectRatio;
+                var height = width / _map.aspectRatio;
                 if (height > constraints.maxHeight) {
                   height = constraints.maxHeight;
-                  width = height * _mapAspectRatio;
+                  width = height * _map.aspectRatio;
                 }
                 return Center(
                   child: SizedBox(
@@ -110,18 +133,15 @@ class _BoardPanelState extends State<BoardPanel> {
                     width: width,
                     height: height,
                     child: _Board(
-                      tokens: widget.tokens,
+                      map: _map,
+                      tokens: _tokens,
                       selectedId: _selectedId,
                       resizing: _resizing,
                       onSelect: _select,
-                      onChanged: widget.onChanged,
-                      onCommit: widget.onCommit,
-                      onRemove: (id) {
-                        _select(null);
-                        widget.onRemove(id);
-                      },
-                      onToggleResize: () =>
-                          setState(() => _resizing = !_resizing),
+                      onChanged: _update,
+                      onCommit: _persist,
+                      onRemove: _remove,
+                      onToggleResize: () => _resizing.value = !_resizing.value,
                       onDrop: _drop,
                     ),
                   ),
@@ -130,7 +150,11 @@ class _BoardPanelState extends State<BoardPanel> {
             ),
           ),
         ),
-        const _Palette(feedbackSide: _feedbackSide),
+        _AssetDrawer(
+          feedbackSide: _feedbackSide,
+          selectedMapId: _map.id,
+          onSelectMap: _selectMap,
+        ),
       ],
     );
   }
@@ -138,6 +162,7 @@ class _BoardPanelState extends State<BoardPanel> {
 
 class _Board extends StatelessWidget {
   const _Board({
+    required this.map,
     required this.tokens,
     required this.selectedId,
     required this.resizing,
@@ -149,19 +174,20 @@ class _Board extends StatelessWidget {
     required this.onDrop,
   });
 
-  final List<BoardToken> tokens;
-  final String? selectedId;
-  final bool resizing;
+  final BoardMap map;
+  final ValueListenable<List<BoardToken>> tokens;
+  final ValueListenable<String?> selectedId;
+  final ValueListenable<bool> resizing;
   final ValueChanged<String?> onSelect;
   final ValueChanged<BoardToken> onChanged;
   final VoidCallback onCommit;
   final ValueChanged<String> onRemove;
   final VoidCallback onToggleResize;
-  final void Function(_PaletteItem item, Offset globalTopLeft) onDrop;
+  final void Function(BoardAsset asset, Offset globalTopLeft) onDrop;
 
   @override
   Widget build(BuildContext context) {
-    return DragTarget<_PaletteItem>(
+    return DragTarget<BoardAsset>(
       onAcceptWithDetails: (details) => onDrop(details.data, details.offset),
       builder: (context, candidate, rejected) {
         return LayoutBuilder(
@@ -173,42 +199,53 @@ class _Board extends StatelessWidget {
             return DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: candidate.isEmpty
-                      ? QBColors.leather800
-                      : QBColors.gold500,
+                  color:
+                      candidate.isEmpty ? QBColors.leather800 : QBColors.gold500,
                   width: 3,
                 ),
                 boxShadow: QBShadows.paperLg,
               ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: Image.asset(_mapAsset, fit: BoxFit.fill),
-                  ),
-                  // Toucher la carte à côté d'un pion le désélectionne : sans
-                  // cela, l'encadré doré reste et le MJ croit à un blocage.
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onSelect(null),
-                    ),
-                  ),
-                  for (final token in tokens)
-                    _PlacedToken(
-                      token: token,
-                      boardWidth: width,
-                      boardHeight: height,
-                      reference: reference,
-                      selected: token.id == selectedId,
-                      resizing: resizing && token.id == selectedId,
-                      onSelect: () => onSelect(token.id),
-                      onChanged: onChanged,
-                      onCommit: onCommit,
-                      onRemove: () => onRemove(token.id),
-                      onToggleResize: onToggleResize,
-                    ),
-                ],
+              // Le seul morceau de l'écran reconstruit pendant un geste. Les
+              // pions restent des enfants directs de cette pile : les isoler
+              // dans une pile à eux leur faisait perdre le toucher.
+              child: ListenableBuilder(
+                listenable: Listenable.merge([tokens, selectedId, resizing]),
+                builder: (context, _) {
+                  final selected = selectedId.value;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Isolée des pions : sans cette barrière, déplacer un
+                      // pion repeindrait aussi la carte à chaque image.
+                      Positioned.fill(
+                        child: RepaintBoundary(child: _MapSurface(map: map)),
+                      ),
+                      // Toucher la carte à côté d'un pion le désélectionne :
+                      // sans cela, l'encadré doré reste et le MJ croit à un
+                      // blocage.
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => onSelect(null),
+                        ),
+                      ),
+                      for (final token in tokens.value)
+                        _PlacedToken(
+                          token: token,
+                          boardWidth: width,
+                          boardHeight: height,
+                          reference: reference,
+                          selected: token.id == selected,
+                          resizing: resizing.value && token.id == selected,
+                          onSelect: () => onSelect(token.id),
+                          onChanged: onChanged,
+                          onCommit: onCommit,
+                          onRemove: () => onRemove(token.id),
+                          onToggleResize: onToggleResize,
+                        ),
+                    ],
+                  );
+                },
               ),
             );
           },
@@ -216,6 +253,49 @@ class _Board extends StatelessWidget {
       },
     );
   }
+}
+
+class _MapSurface extends StatelessWidget {
+  const _MapSurface({required this.map});
+
+  final BoardMap map;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = map.asset;
+    if (asset != null) return Image.asset(asset, fit: BoxFit.fill);
+    return const ColoredBox(
+      color: QBColors.paper100,
+      child: CustomPaint(painter: _GridPainter()),
+    );
+  }
+}
+
+/// La grille de la carte vierge. Douze cases dans la largeur : assez pour
+/// situer des personnages les uns par rapport aux autres, pas assez pour
+/// transformer le plateau en damier illisible.
+class _GridPainter extends CustomPainter {
+  const _GridPainter();
+
+  static const _columns = 12;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final step = size.width / _columns;
+    final line = Paint()
+      ..color = QBColors.borderHairline
+      ..strokeWidth = 1;
+
+    for (var x = step; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
+    }
+    for (var y = step; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GridPainter oldDelegate) => false;
 }
 
 class _PlacedToken extends StatelessWidget {
@@ -377,112 +457,369 @@ class _PlacedToken extends StatelessWidget {
   }
 }
 
-class _Palette extends StatelessWidget {
-  const _Palette({required this.feedbackSide});
+/// Le tiroir : la carte à afficher, un champ de recherche, puis les rayons
+/// de pions.
+class _AssetDrawer extends StatefulWidget {
+  const _AssetDrawer({
+    required this.feedbackSide,
+    required this.selectedMapId,
+    required this.onSelectMap,
+  });
 
   final double feedbackSide;
+  final String selectedMapId;
+  final ValueChanged<BoardMap> onSelectMap;
+
+  @override
+  State<_AssetDrawer> createState() => _AssetDrawerState();
+}
+
+class _AssetDrawerState extends State<_AssetDrawer> {
+  final _search = TextEditingController();
+
+  /// Les rayons repliés. Tout est ouvert au départ ; c'est en grandissant que
+  /// le catalogue rendra le pliage utile.
+  final _collapsed = <String>{};
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _search.text;
+    final sections = filterBoardAssets(query);
+    // Une recherche déplie : chercher pour tomber sur un rayon fermé serait
+    // une deuxième énigme.
+    final searching = foldForSearch(query).isNotEmpty;
+
     return Container(
-      width: 236,
+      width: 280,
       decoration: const BoxDecoration(
         color: QBColors.paper200,
         border: Border(left: BorderSide(color: QBColors.borderStrong, width: 2)),
       ),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          QBSpace.s3,
-          QBSpace.s4,
-          QBSpace.s3,
-          QBSpace.s6,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _PaletteHint(),
-          const SizedBox(height: QBSpace.s4),
-          _section('Personnages', [
-            for (final color in BoardTokenColor.values)
-              _PaletteItem(BoardTokenKind.character, color),
-          ]),
-          _section('Environnement', [
-            for (final color in BoardTokenColor.values)
-              _PaletteItem(BoardTokenKind.environment, color),
-          ]),
-          _section('Effets', [
-            for (final color in BoardTokenColor.values)
-              _PaletteItem(BoardTokenKind.effect, color),
-          ]),
-          _section('Zones', const [
-            _PaletteItem(BoardTokenKind.zoneDisc, BoardTokenColor.yellow),
-            _PaletteItem(BoardTokenKind.zoneSquare, BoardTokenColor.yellow),
-          ]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              QBSpace.s3,
+              QBSpace.s4,
+              QBSpace.s3,
+              QBSpace.s3,
+            ),
+            child: _SearchField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                QBSpace.s3,
+                0,
+                QBSpace.s3,
+                QBSpace.s6,
+              ),
+              children: [
+                if (!searching) ...[
+                  _DrawerSection(
+                    title: 'Carte',
+                    collapsed: _collapsed.contains('Carte'),
+                    onToggle: () => _toggle('Carte'),
+                    children: [
+                      for (final map in boardMaps)
+                        _MapTile(
+                          map: map,
+                          selected: map.id == widget.selectedMapId,
+                          onTap: () => widget.onSelectMap(map),
+                        ),
+                    ],
+                  ),
+                  const _Hint(
+                    'Fais glisser un pion sur la carte. Touche-le ensuite '
+                    'pour le redimensionner ou le retirer.',
+                  ),
+                ],
+                if (sections.isEmpty)
+                  const _Hint('Aucun pion ne porte ce nom.')
+                else
+                  for (final section in sections)
+                    _DrawerSection(
+                      title: section.title,
+                      collapsed:
+                          !searching && _collapsed.contains(section.title),
+                      onToggle: () => _toggle(section.title),
+                      children: [
+                        for (final asset in section.assets)
+                          _AssetTile(
+                            asset: asset,
+                            feedbackSide: widget.feedbackSide,
+                          ),
+                      ],
+                    ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _section(String title, List<_PaletteItem> items) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: QBSpace.s5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: QBSpace.s2),
-            child: Text(
-              title,
-              style: QBType.game().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: 11,
-                letterSpacing: 11 * QBType.trackingWide,
-                color: QBColors.leather800,
-              ),
-            ),
-          ),
-          Wrap(
-            spacing: QBSpace.s2,
-            runSpacing: QBSpace.s2,
-            children: [
-              for (final item in items)
-                _PaletteTile(item: item, feedbackSide: feedbackSide),
-            ],
-          ),
-        ],
-      ),
-    );
+  void _toggle(String title) {
+    setState(() {
+      if (!_collapsed.remove(title)) _collapsed.add(title);
+    });
   }
 }
 
-class _PaletteHint extends StatelessWidget {
-  const _PaletteHint();
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Fais glisser un pion sur la carte. Touche-le ensuite pour le '
-      'redimensionner ou le retirer.',
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
       style: QBType.body().copyWith(
-        fontSize: QBType.xs,
-        color: QBColors.ink600,
+        fontSize: QBType.sm,
+        color: QBColors.ink900,
+      ),
+      cursorColor: QBColors.ink900,
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Rechercher un pion…',
+        hintStyle: QBType.body().copyWith(
+          fontSize: QBType.sm,
+          color: QBColors.textMuted,
+        ),
+        prefixIcon: const Icon(
+          LucideIcons.search,
+          size: 16,
+          color: QBColors.ink500,
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 34),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : GestureDetector(
+                onTap: () {
+                  controller.clear();
+                  onChanged('');
+                },
+                child: const Icon(
+                  LucideIcons.x,
+                  size: 16,
+                  color: QBColors.ink500,
+                ),
+              ),
+        suffixIconConstraints: const BoxConstraints(minWidth: 30),
+        filled: true,
+        fillColor: QBColors.surfaceRaised,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(QBRadius.sm),
+          borderSide: const BorderSide(color: QBColors.borderStrong, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(QBRadius.sm),
+          borderSide: const BorderSide(color: QBColors.borderStrong, width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(QBRadius.sm),
+          borderSide: const BorderSide(color: QBColors.accentFocus, width: 2),
+        ),
       ),
     );
   }
 }
 
-class _PaletteTile extends StatelessWidget {
-  const _PaletteTile({required this.item, required this.feedbackSide});
+class _DrawerSection extends StatelessWidget {
+  const _DrawerSection({
+    required this.title,
+    required this.collapsed,
+    required this.onToggle,
+    required this.children,
+  });
 
-  static const double _tileSide = 100;
+  final String title;
+  final bool collapsed;
+  final VoidCallback onToggle;
+  final List<Widget> children;
 
-  final _PaletteItem item;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: QBSpace.s4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            expanded: !collapsed,
+            button: true,
+            // Sinon le rayon entier se lit d'un bloc : « Personnages, Joueur
+            // rouge, Joueur rouge… » au lieu d'un titre qu'on peut replier.
+            container: true,
+            child: GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
+                child: Row(
+                  children: [
+                    Icon(
+                      collapsed
+                          ? LucideIcons.chevronRight
+                          : LucideIcons.chevronDown,
+                      size: 15,
+                      color: QBColors.leather800,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: QBType.game().copyWith(
+                          fontWeight: QBType.weightSemibold,
+                          fontSize: 11,
+                          letterSpacing: 11 * QBType.trackingWide,
+                          color: QBColors.leather800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (!collapsed)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Deux vignettes par ligne au minimum : une seule obligeait à
+                // dérouler tout le tiroir pour voir quatre pions.
+                const gap = QBSpace.s2;
+                final columns =
+                    math.max(2, (constraints.maxWidth / 150).floor());
+                final side =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final child in children)
+                      SizedBox(width: side, child: child),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Hint extends StatelessWidget {
+  const _Hint(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: QBSpace.s4),
+      child: Text(
+        text,
+        style: QBType.body().copyWith(
+          fontSize: QBType.xs,
+          color: QBColors.ink600,
+        ),
+      ),
+    );
+  }
+}
+
+class _MapTile extends StatelessWidget {
+  const _MapTile({
+    required this.map,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final BoardMap map;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = map.asset;
+
+    return Semantics(
+      selected: selected,
+      button: true,
+      container: true,
+      excludeSemantics: true,
+      label: 'Carte ${map.label}',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: QBColors.paper50,
+            border: Border.all(
+              color: selected ? QBColors.gold500 : QBColors.borderDefault,
+              width: selected ? 3 : 1,
+            ),
+            borderRadius: BorderRadius.circular(QBRadius.md),
+          ),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(QBRadius.xs),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: asset == null
+                      ? const ColoredBox(
+                          color: QBColors.paper200,
+                          child: CustomPaint(painter: _GridPainter()),
+                        )
+                      : Image.asset(asset, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                map.label,
+                textAlign: TextAlign.center,
+                style: QBType.body().copyWith(
+                  fontSize: QBType.xs,
+                  color: QBColors.ink700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AssetTile extends StatelessWidget {
+  const _AssetTile({required this.asset, required this.feedbackSide});
+
+  final BoardAsset asset;
   final double feedbackSide;
 
   @override
   Widget build(BuildContext context) {
-    final preview = BoardTokenView(kind: item.kind, color: item.color);
+    final preview = BoardTokenView(kind: asset.kind, color: asset.color);
 
-    return Draggable<_PaletteItem>(
-      data: item,
+    return Draggable<BoardAsset>(
+      data: asset,
       // L'aperçu se centre sous le doigt, sinon le MJ vise un endroit et le
       // pion se pose à côté.
       dragAnchorStrategy: (_, _, _) =>
@@ -493,9 +830,8 @@ class _PaletteTile extends StatelessWidget {
         child: Opacity(opacity: 0.85, child: preview),
       ),
       child: Semantics(
-        label: '${_kindLabel(item.kind)} ${_colorLabel(item.color)}',
+        container: true,
         child: Container(
-          width: _tileSide,
           padding: const EdgeInsets.symmetric(
             horizontal: QBSpace.s2,
             vertical: QBSpace.s3,
@@ -510,8 +846,10 @@ class _PaletteTile extends StatelessWidget {
               SizedBox(width: 34, height: 34, child: preview),
               const SizedBox(height: QBSpace.s2),
               Text(
-                _label(item),
+                asset.name,
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: QBType.body().copyWith(
                   fontSize: QBType.xs,
                   color: QBColors.ink700,
@@ -523,23 +861,4 @@ class _PaletteTile extends StatelessWidget {
       ),
     );
   }
-
-  static String _label(_PaletteItem item) => item.kind.isZone
-      ? _kindLabel(item.kind)
-      : _colorLabel(item.color);
-
-  static String _kindLabel(BoardTokenKind kind) => switch (kind) {
-        BoardTokenKind.character => 'Personnage',
-        BoardTokenKind.environment => 'Décor',
-        BoardTokenKind.effect => 'Effet',
-        BoardTokenKind.zoneDisc => 'Disque',
-        BoardTokenKind.zoneSquare => 'Carré',
-      };
-
-  static String _colorLabel(BoardTokenColor color) => switch (color) {
-        BoardTokenColor.red => 'Rouge',
-        BoardTokenColor.green => 'Vert',
-        BoardTokenColor.blue => 'Bleu',
-        BoardTokenColor.yellow => 'Jaune',
-      };
 }

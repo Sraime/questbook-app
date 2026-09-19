@@ -155,6 +155,11 @@ class SessionBoards extends Table {
   /// Les pions, encodés par [BoardToken.encode].
   TextColumn get tokens => text().withDefault(const Constant('[]'))();
   TextColumn get notes => text().withDefault(const Constant(''))();
+
+  /// Le fond de carte choisi. Nul tant que le MJ n'a rien changé : le
+  /// catalogue décide alors du défaut, et renommer une carte ne laisse pas
+  /// une session devant un plateau vide.
+  TextColumn get mapId => text().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
@@ -180,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -214,6 +219,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 6) {
             await m.createTable(sessionBoards);
+          }
+          // Seulement pour qui a déjà la table : la créer ci-dessus la dote
+          // de la colonne, et l'ajouter une seconde fois échouerait.
+          if (from == 6) {
+            await m.addColumn(sessionBoards, sessionBoards.mapId);
           }
         },
       );

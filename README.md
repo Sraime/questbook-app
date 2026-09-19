@@ -52,7 +52,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte, un tiroir de pions à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
+- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -559,6 +559,23 @@ et les tailles sont des **fractions de la carte**, jamais des pixels, pour que
 le plateau se retrouve identique d'un écran à l'autre. Comme le cache et les
 scénarios téléchargés, la table est vidée à la déconnexion.
 
+**Le plateau se reconstruit seul.** Pions, sélection et poignées vivent dans
+des `ValueNotifier` détenus par le volet, et seule la pile du plateau les
+écoute. Un glissement ne repasse donc ni par l'écran MJ ni par le tiroir :
+les faire remonter reconstruisait le rail, l'entête et les vignettes à chaque
+image, et le pion traînait derrière le doigt. La carte, elle, est isolée dans
+un `RepaintBoundary` pour ne pas être repeinte pendant qu'un pion bouge.
+
+Les pions restent des enfants directs de la pile du plateau. Les regrouper
+dans une pile à eux, si tentant que ce soit pour la lisibilité, leur fait
+perdre le toucher.
+
+Le tiroir tient son catalogue dans `models/board_catalog.dart` : les cartes
+d'un côté, les pions rangés par rayon de l'autre, chacun avec un nom. Ajouter
+une carte, c'est une image sous `assets/board/` et une entrée dans la liste.
+La recherche porte sur ce nom et sur le titre du rayon, sans casse ni accents,
+et déplie au passage les rayons repliés.
+
 L'écriture suit le geste : pendant un glissement l'état ne vit qu'en mémoire,
 et il part sur le disque à la fin du geste. Les notes, elles, s'enregistrent
 500 ms après la dernière frappe — une transaction SQLite par caractère serait
@@ -566,7 +583,9 @@ absurde.
 
 Deux limites assumées pour l'instant : les fiches des joueurs viennent de l'API
 une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
-appel qui les autorise) et ne sont donc **pas lisibles hors ligne**, et le
+appel qui les autorise) — le volet Personnages en montre le résumé et ouvre
+la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
+**pas lisibles hors ligne**, et le
 plateau ne quitte pas l'appareil — un MJ qui change de tablette repart d'une
 carte vierge.
 
@@ -1050,7 +1069,7 @@ ni les mots de passe** (volontairement, ils sont gitignorés). Deux cas :
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
 - Le **Livre de règle** ne couvre que les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), rédigés en dur dans `features/rulebook/content/`. Compétences et occupations n'y sont pas, et un second univers devrait apporter son propre catalogue.
-- Le **mode MJ** demande une tablette (900 × 560 points) et ne quitte pas l'appareil : ni plateau ni notes ne remontent au serveur, donc changer de tablette repart d'une carte vierge. Les fiches des joueurs, elles, viennent de l'API une par une et ne sont pas lisibles hors ligne. Un seul fond de carte est livré ; le catalogue viendra du back.
+- Le **mode MJ** demande une tablette (900 × 560 points) et ne quitte pas l'appareil : ni plateau ni notes ne remontent au serveur, donc changer de tablette repart d'une carte vierge. Les fiches des joueurs, elles, viennent de l'API une par une et ne sont pas lisibles hors ligne. Deux fonds de carte seulement, écrits en dur dans `board_catalog.dart` ; le catalogue viendra du back avec les scénarios. Les pions sont des formes colorées nommées, sans illustration.
 - L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
 - Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
 - La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.

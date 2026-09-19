@@ -3119,6 +3119,15 @@ class $SessionBoardsTable extends SessionBoards
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _mapIdMeta = const VerificationMeta('mapId');
+  @override
+  late final GeneratedColumn<String> mapId = GeneratedColumn<String>(
+    'map_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -3136,6 +3145,7 @@ class $SessionBoardsTable extends SessionBoards
     accountId,
     tokens,
     notes,
+    mapId,
     updatedAt,
   ];
   @override
@@ -3178,6 +3188,12 @@ class $SessionBoardsTable extends SessionBoards
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('map_id')) {
+      context.handle(
+        _mapIdMeta,
+        mapId.isAcceptableOrUnknown(data['map_id']!, _mapIdMeta),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -3211,6 +3227,10 @@ class $SessionBoardsTable extends SessionBoards
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       )!,
+      mapId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}map_id'],
+      ),
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -3234,12 +3254,18 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
   /// Les pions, encodés par [BoardToken.encode].
   final String tokens;
   final String notes;
+
+  /// Le fond de carte choisi. Nul tant que le MJ n'a rien changé : le
+  /// catalogue décide alors du défaut, et renommer une carte ne laisse pas
+  /// une session devant un plateau vide.
+  final String? mapId;
   final DateTime updatedAt;
   const SessionBoardRow({
     required this.sessionId,
     required this.accountId,
     required this.tokens,
     required this.notes,
+    this.mapId,
     required this.updatedAt,
   });
   @override
@@ -3249,6 +3275,9 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
     map['account_id'] = Variable<String>(accountId);
     map['tokens'] = Variable<String>(tokens);
     map['notes'] = Variable<String>(notes);
+    if (!nullToAbsent || mapId != null) {
+      map['map_id'] = Variable<String>(mapId);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -3259,6 +3288,9 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
       accountId: Value(accountId),
       tokens: Value(tokens),
       notes: Value(notes),
+      mapId: mapId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mapId),
       updatedAt: Value(updatedAt),
     );
   }
@@ -3273,6 +3305,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
       accountId: serializer.fromJson<String>(json['accountId']),
       tokens: serializer.fromJson<String>(json['tokens']),
       notes: serializer.fromJson<String>(json['notes']),
+      mapId: serializer.fromJson<String?>(json['mapId']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -3284,6 +3317,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
       'accountId': serializer.toJson<String>(accountId),
       'tokens': serializer.toJson<String>(tokens),
       'notes': serializer.toJson<String>(notes),
+      'mapId': serializer.toJson<String?>(mapId),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -3293,12 +3327,14 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
     String? accountId,
     String? tokens,
     String? notes,
+    Value<String?> mapId = const Value.absent(),
     DateTime? updatedAt,
   }) => SessionBoardRow(
     sessionId: sessionId ?? this.sessionId,
     accountId: accountId ?? this.accountId,
     tokens: tokens ?? this.tokens,
     notes: notes ?? this.notes,
+    mapId: mapId.present ? mapId.value : this.mapId,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   SessionBoardRow copyWithCompanion(SessionBoardsCompanion data) {
@@ -3307,6 +3343,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       tokens: data.tokens.present ? data.tokens.value : this.tokens,
       notes: data.notes.present ? data.notes.value : this.notes,
+      mapId: data.mapId.present ? data.mapId.value : this.mapId,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -3318,6 +3355,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
           ..write('accountId: $accountId, ')
           ..write('tokens: $tokens, ')
           ..write('notes: $notes, ')
+          ..write('mapId: $mapId, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -3325,7 +3363,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
 
   @override
   int get hashCode =>
-      Object.hash(sessionId, accountId, tokens, notes, updatedAt);
+      Object.hash(sessionId, accountId, tokens, notes, mapId, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3334,6 +3372,7 @@ class SessionBoardRow extends DataClass implements Insertable<SessionBoardRow> {
           other.accountId == this.accountId &&
           other.tokens == this.tokens &&
           other.notes == this.notes &&
+          other.mapId == this.mapId &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -3342,6 +3381,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
   final Value<String> accountId;
   final Value<String> tokens;
   final Value<String> notes;
+  final Value<String?> mapId;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const SessionBoardsCompanion({
@@ -3349,6 +3389,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
     this.accountId = const Value.absent(),
     this.tokens = const Value.absent(),
     this.notes = const Value.absent(),
+    this.mapId = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3357,6 +3398,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
     required String accountId,
     this.tokens = const Value.absent(),
     this.notes = const Value.absent(),
+    this.mapId = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : sessionId = Value(sessionId),
@@ -3367,6 +3409,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
     Expression<String>? accountId,
     Expression<String>? tokens,
     Expression<String>? notes,
+    Expression<String>? mapId,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -3375,6 +3418,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
       if (accountId != null) 'account_id': accountId,
       if (tokens != null) 'tokens': tokens,
       if (notes != null) 'notes': notes,
+      if (mapId != null) 'map_id': mapId,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3385,6 +3429,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
     Value<String>? accountId,
     Value<String>? tokens,
     Value<String>? notes,
+    Value<String?>? mapId,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -3393,6 +3438,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
       accountId: accountId ?? this.accountId,
       tokens: tokens ?? this.tokens,
       notes: notes ?? this.notes,
+      mapId: mapId ?? this.mapId,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3413,6 +3459,9 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (mapId.present) {
+      map['map_id'] = Variable<String>(mapId.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -3429,6 +3478,7 @@ class SessionBoardsCompanion extends UpdateCompanion<SessionBoardRow> {
           ..write('accountId: $accountId, ')
           ..write('tokens: $tokens, ')
           ..write('notes: $notes, ')
+          ..write('mapId: $mapId, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -6073,6 +6123,7 @@ typedef $$SessionBoardsTableCreateCompanionBuilder =
       required String accountId,
       Value<String> tokens,
       Value<String> notes,
+      Value<String?> mapId,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -6082,6 +6133,7 @@ typedef $$SessionBoardsTableUpdateCompanionBuilder =
       Value<String> accountId,
       Value<String> tokens,
       Value<String> notes,
+      Value<String?> mapId,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -6112,6 +6164,11 @@ class $$SessionBoardsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mapId => $composableBuilder(
+    column: $table.mapId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6150,6 +6207,11 @@ class $$SessionBoardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mapId => $composableBuilder(
+    column: $table.mapId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -6176,6 +6238,9 @@ class $$SessionBoardsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get mapId =>
+      $composableBuilder(column: $table.mapId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -6216,6 +6281,7 @@ class $$SessionBoardsTableTableManager
                 Value<String> accountId = const Value.absent(),
                 Value<String> tokens = const Value.absent(),
                 Value<String> notes = const Value.absent(),
+                Value<String?> mapId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionBoardsCompanion(
@@ -6223,6 +6289,7 @@ class $$SessionBoardsTableTableManager
                 accountId: accountId,
                 tokens: tokens,
                 notes: notes,
+                mapId: mapId,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -6232,6 +6299,7 @@ class $$SessionBoardsTableTableManager
                 required String accountId,
                 Value<String> tokens = const Value.absent(),
                 Value<String> notes = const Value.absent(),
+                Value<String?> mapId = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => SessionBoardsCompanion.insert(
@@ -6239,6 +6307,7 @@ class $$SessionBoardsTableTableManager
                 accountId: accountId,
                 tokens: tokens,
                 notes: notes,
+                mapId: mapId,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),

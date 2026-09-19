@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_character.dart';
@@ -10,6 +11,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../../tables/providers/table_providers.dart';
+import '../../tables/widgets/attendee_character_sheet.dart';
 
 /// Les fiches des joueurs attendus, dépliées les unes sous les autres.
 ///
@@ -44,6 +46,15 @@ class CharactersPanel extends StatelessWidget {
             color: QBColors.ink900,
           ),
         ),
+        const SizedBox(height: 2),
+        if (attending.isNotEmpty)
+          Text(
+            'Touche une fiche pour la déplier en entier.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
         const SizedBox(height: QBSpace.s2),
         if (attending.isEmpty)
           Text(
@@ -78,24 +89,44 @@ class _AttendeeCard extends ConsumerWidget {
       ),
     );
 
-    return QBCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: switch (sheet) {
-        AsyncData(value: final character) => _Sheet(
-            character: character,
-            playerLabel: attendance.user.label,
-          ),
-        AsyncError(error: final error) => _Unavailable(
-            playerLabel: attendance.user.label,
-            error: error,
-          ),
-        _ => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(QBSpace.s4),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-      },
+    // Le résumé tient en une carte, mais le MJ a parfois besoin de tout :
+    // caractéristiques, compétences, inventaire. C'est la même fiche que
+    // celle ouverte depuis la table, en lecture seule.
+    final open = sheet.hasValue
+        ? () => showAttendeeCharacterSheet(
+              context,
+              sessionId: sessionId,
+              userId: attendance.userId,
+              playerLabel: attendance.user.label,
+            )
+        : null;
+
+    return Semantics(
+      button: open != null,
+      label: open == null ? null : 'Ouvrir la fiche de ${sheet.value!.name}',
+      child: GestureDetector(
+        onTap: open,
+        behavior: HitTestBehavior.opaque,
+        child: QBCard(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: switch (sheet) {
+            AsyncData(value: final character) => _Sheet(
+                character: character,
+                playerLabel: attendance.user.label,
+              ),
+            AsyncError(error: final error) => _Unavailable(
+                playerLabel: attendance.user.label,
+                error: error,
+              ),
+            _ => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(QBSpace.s4),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+          },
+        ),
+      ),
     );
   }
 }
@@ -152,6 +183,12 @@ class _Sheet extends StatelessWidget {
                     tone: _toneOf(resource.tone),
                   ),
               ],
+            ),
+            const SizedBox(width: QBSpace.s2),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: QBColors.leather800,
             ),
           ],
         ),

@@ -19,6 +19,28 @@ void main() {
 
     expect(board.tokens, '[]');
     expect(board.notes, '');
+    expect(board.mapId, isNull);
+  });
+
+  test('remembers the map without touching the pieces on it', () async {
+    await dao.saveTokens('account-1', 'session-1', '[{"id":"t1"}]');
+    await dao.saveMap('account-1', 'session-1', 'grille');
+
+    final board = await dao.read('account-1', 'session-1');
+
+    expect(board.mapId, 'grille');
+    expect(board.tokens, '[{"id":"t1"}]');
+  });
+
+  test('changer de carte ne réinitialise pas les notes', () async {
+    await dao.saveMap('account-1', 'session-1', 'grille');
+    await dao.saveNotes('account-1', 'session-1', 'Le gardien ment');
+    await dao.saveMap('account-1', 'session-1', 'manoir');
+
+    final board = await dao.read('account-1', 'session-1');
+
+    expect(board.mapId, 'manoir');
+    expect(board.notes, 'Le gardien ment');
   });
 
   test('gives back the board that was left on the table', () async {

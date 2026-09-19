@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../app/remote_providers.dart';
 import '../../data/remote/remote_table.dart';
@@ -57,15 +56,18 @@ class GameMasterScreen extends ConsumerStatefulWidget {
 }
 
 class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
-  static const _uuid = Uuid();
-
   /// Les notes se tapent lettre par lettre ; les écrire à chaque frappe
   /// ferait une transaction SQLite par caractère.
   static const _notesDebounce = Duration(milliseconds: 500);
 
   GameMasterPanel _panel = GameMasterPanel.board;
+
+  /// Plateau et notes ne s'affichent que dans leur propre volet, qui en est
+  /// le seul manipulateur. Les garder hors de l'état de cet écran évite de
+  /// reconstruire le rail et le tiroir à chaque image d'un glissement.
   List<BoardToken> _tokens = const [];
   String _notes = '';
+  String? _mapId;
   String? _accountId;
   bool _loaded = false;
   Timer? _notesTimer;
@@ -101,43 +103,37 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
     setState(() {
       _tokens = BoardToken.decode(board.tokens);
       _notes = board.notes;
+      _mapId = board.mapId;
       _loaded = true;
     });
   }
 
-  void _persistTokens() {
+  /// Sans `setState` : rien d'autre à l'écran ne montre les pions, et le
+  /// volet qui vient de les changer les a déjà dessinés.
+  void _persistTokens(List<BoardToken> tokens) {
+    _tokens = tokens;
+
     final accountId = _accountId;
     if (accountId == null) return;
     unawaited(
       ref.read(sessionBoardDaoProvider).saveTokens(
             accountId,
             widget.sessionId,
-            BoardToken.encode(_tokens),
+            BoardToken.encode(tokens),
           ),
     );
   }
 
-  void _addToken(BoardToken token) {
-    setState(() => _tokens = [..._tokens, token]);
-    _persistTokens();
-  }
+  void _persistMap(String mapId) {
+    _mapId = mapId;
 
-  /// Appelée à chaque image pendant un glissement : on redessine sans écrire.
-  void _updateToken(BoardToken token) {
-    setState(() {
-      _tokens = [
-        for (final existing in _tokens)
-          existing.id == token.id ? token : existing,
-      ];
-    });
-  }
-
-  void _removeToken(String id) {
-    setState(() => _tokens = [
-          for (final token in _tokens)
-            if (token.id != id) token,
-        ]);
-    _persistTokens();
+    final accountId = _accountId;
+    if (accountId == null) return;
+    unawaited(
+      ref
+          .read(sessionBoardDaoProvider)
+          .saveMap(accountId, widget.sessionId, mapId),
+    );
   }
 
   void _onNotesChanged(String value) {
@@ -202,19 +198,10 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
 
   Widget _panelBody(RemoteGameSession session) => switch (_panel) {
         GameMasterPanel.board => BoardPanel(
-            tokens: _tokens,
-            onAdd: (kind, color, position) => _addToken(
-              BoardToken(
-                id: _uuid.v4(),
-                kind: kind,
-                color: color,
-                x: position.dx,
-                y: position.dy,
-              ),
-            ),
-            onChanged: _updateToken,
-            onCommit: _persistTokens,
-            onRemove: _removeToken,
+            initialTokens: _tokens,
+            initialMapId: _mapId,
+            onTokensPersisted: _persistTokens,
+            onMapPersisted: _persistMap,
           ),
         GameMasterPanel.characters => CharactersPanel(session: session),
         GameMasterPanel.rules => const RulesPanel(),

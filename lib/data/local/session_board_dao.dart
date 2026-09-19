@@ -4,13 +4,17 @@ import 'database.dart';
 
 /// Ce qu'une session garde du mode MJ entre deux ouvertures de l'app.
 class SessionBoard {
-  const SessionBoard({this.tokens = '[]', this.notes = ''});
+  const SessionBoard({this.tokens = '[]', this.notes = '', this.mapId});
 
   /// Pions encodés — voir `features/game_master/models/board_token.dart`.
   /// La couche données n'en connaît que le texte, comme pour [RemoteCache] :
   /// la forme des pions peut changer sans migration.
   final String tokens;
   final String notes;
+
+  /// Nul tant que le MJ n'a pas choisi : c'est au catalogue de décider du
+  /// fond de carte par défaut, pas à la base.
+  final String? mapId;
 }
 
 /// Plateau et notes du MJ, rangés par session et par compte.
@@ -26,7 +30,11 @@ class SessionBoardDao {
         .getSingleOrNull();
 
     if (row == null) return const SessionBoard();
-    return SessionBoard(tokens: row.tokens, notes: row.notes);
+    return SessionBoard(
+      tokens: row.tokens,
+      notes: row.notes,
+      mapId: row.mapId,
+    );
   }
 
   Future<void> saveTokens(
@@ -62,6 +70,23 @@ class SessionBoardDao {
       ),
       update: SessionBoardsCompanion(
         notes: Value(notes),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> saveMap(String accountId, String sessionId, String mapId) {
+    return _upsert(
+      accountId,
+      sessionId,
+      insert: SessionBoardsCompanion.insert(
+        sessionId: sessionId,
+        accountId: accountId,
+        mapId: Value(mapId),
+        updatedAt: DateTime.now(),
+      ),
+      update: SessionBoardsCompanion(
+        mapId: Value(mapId),
         updatedAt: Value(DateTime.now()),
       ),
     );

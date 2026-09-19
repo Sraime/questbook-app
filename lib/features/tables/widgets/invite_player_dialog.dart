@@ -63,12 +63,7 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
     } on ApiException catch (error) {
       setState(() {
         _busy = false;
-        // Only registered players can be invited, and that refusal arrives as
-        // a 404. Saying so plainly is more useful than the raw message.
-        _error = error.isMissing
-            ? 'Aucun joueur Questbook n’utilise cette adresse. '
-                'Demande-lui de se connecter une première fois.'
-            : error.message;
+        _error = error.message;
       });
     }
   }
@@ -80,8 +75,8 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Le joueur doit déjà s’être connecté à Questbook avec ce compte '
-          'Google. Il recevra un e-mail avec un lien pour rejoindre la table.',
+          'S’il n’a pas encore Questbook, il recevra un e-mail pour installer '
+          'l’app et rejoindre la table avec cette adresse Google.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,
             color: QBColors.textMuted,

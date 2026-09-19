@@ -5,15 +5,18 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
 import '../../data/remote/api_exception.dart';
+import '../../data/remote/remote_scenario.dart';
 import '../../data/remote/remote_table.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_input.dart';
 import '../../design_system/components/qb_page_background.dart';
+import '../../design_system/components/qb_select.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 import 'providers/table_providers.dart';
+import '../scenarios/providers/scenario_providers.dart';
 import 'table_formatting.dart';
 
 /// Creates a session when [sessionId] is null, edits it otherwise. The two
@@ -146,6 +149,7 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
       TextEditingController(text: widget.existing?.location ?? '');
 
   late DateTime _startsAt = widget.existing?.startsAt ?? _defaultStart();
+  late String? _scenarioId;
 
   bool _busy = false;
   String? _error;
@@ -155,6 +159,12 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
   static DateTime _defaultStart() {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 20);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scenarioId = widget.existing?.scenarioId;
   }
 
   @override
@@ -235,6 +245,7 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
           description: description.isEmpty ? null : description,
           startsAt: _startsAt,
           location: location,
+          scenarioId: _scenarioId,
         );
       } else {
         // Only what actually changed goes out: a needless `startsAt` would
@@ -246,6 +257,8 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
               description == (existing.description ?? '') ? null : description,
           startsAt: _startsAt.isAtSameMomentAs(existing.startsAt) ? null : _startsAt,
           location: location == existing.location ? null : location,
+          scenarioId: _scenarioId == existing.scenarioId ? null : _scenarioId,
+          clearScenario: existing.scenarioId != null && _scenarioId == null,
         );
       }
 
@@ -301,6 +314,12 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
           ],
         ),
         const SizedBox(height: QBSpace.s3),
+        _ScenarioPicker(
+          selectedId: _scenarioId,
+          linkedTitle: widget.existing?.scenario?.title,
+          onChanged: (id) => setState(() => _scenarioId = id),
+        ),
+        const SizedBox(height: QBSpace.s3),
         QBInput(
           label: 'Description',
           controller: _description,
@@ -325,6 +344,70 @@ class _SessionFormState extends ConsumerState<_SessionForm> {
           expand: true,
           onPressed: _busy ? null : _submit,
         ),
+      ],
+    );
+  }
+}
+
+class _ScenarioPicker extends ConsumerWidget {
+  const _ScenarioPicker({
+    required this.selectedId,
+    required this.linkedTitle,
+    required this.onChanged,
+  });
+
+  final String? selectedId;
+  final String? linkedTitle;
+  final ValueChanged<String?> onChanged;
+
+  static const _none = 'Aucun';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloaded = ref.watch(downloadedScenariosProvider).asData?.value ??
+        const <RemoteScenarioDetail>[];
+
+    final byTitle = <String, String>{
+      for (final scenario in downloaded) scenario.title: scenario.id,
+    };
+    if (linkedTitle != null && selectedId != null) {
+      byTitle.putIfAbsent(linkedTitle!, () => selectedId!);
+    }
+
+    final options = [_none, ...byTitle.keys];
+    final value = () {
+      if (selectedId == null) return _none;
+      for (final entry in byTitle.entries) {
+        if (entry.value == selectedId) return entry.key;
+      }
+      return linkedTitle ?? _none;
+    }();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        QBSelect(
+          label: 'Scénario (facultatif)',
+          value: options.contains(value) ? value : _none,
+          options: options,
+          onChanged: (picked) {
+            if (picked == null || picked == _none) {
+              onChanged(null);
+              return;
+            }
+            onChanged(byTitle[picked]);
+          },
+        ),
+        if (downloaded.isEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Télécharge un scénario dans l’onglet Scénarios pour l’attacher ici.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+        ],
       ],
     );
   }

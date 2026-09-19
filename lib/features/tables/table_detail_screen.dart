@@ -281,6 +281,10 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
           ),
           const SizedBox(height: 2),
           _IconLine(icon: LucideIcons.mapPin, text: session.location),
+          if (session.scenario != null) ...[
+            const SizedBox(height: 2),
+            _IconLine(icon: LucideIcons.book, text: session.scenario!.title),
+          ],
           if (session.description != null && session.description!.isNotEmpty) ...[
             const SizedBox(height: QBSpace.s2),
             Text(

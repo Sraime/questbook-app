@@ -54,6 +54,7 @@ void main() {
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
     db.execute('DROP TABLE sync_metadata');
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
 
     db.execute(
@@ -146,7 +147,7 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 4);
+    expect(version.data.values.first, 5);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
@@ -154,6 +155,7 @@ void main() {
   void downgradeToV2() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE downloaded_scenarios');
     addLegacyGameTables(db);
     db.execute('PRAGMA user_version = 2');
     db.close();
@@ -164,6 +166,7 @@ void main() {
   void downgradeToV3() {
     final db = raw.sqlite3.open(dbPath);
     db.execute('DROP TABLE remote_cache');
+    db.execute('DROP TABLE downloaded_scenarios');
     db.execute('PRAGMA user_version = 3');
     db.close();
   }
@@ -226,7 +229,7 @@ void main() {
     expect(await db.select(db.remoteCache).get(), hasLength(1));
   });
 
-  test('upgrades straight from v1 to v4, mockup dropped and cache opened',
+  test('upgrades straight from v1 to v5, mockup dropped and cache opened',
       () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
@@ -241,9 +244,26 @@ void main() {
         )
         .get();
 
-    expect(version.data.values.first, 4);
+    expect(version.data.values.first, 5);
     expect(mockup, isEmpty);
     expect(await db.select(db.remoteCache).get(), isEmpty);
+    expect(await db.select(db.downloadedScenarios).get(), isEmpty);
     expect(await db.select(db.characters).get(), hasLength(1));
+  });
+
+  void downgradeToV4() {
+    final db = raw.sqlite3.open(dbPath);
+    db.execute('DROP TABLE downloaded_scenarios');
+    db.execute('PRAGMA user_version = 4');
+    db.close();
+  }
+
+  test('opens the downloaded scenarios table when upgrading from v4', () async {
+    downgradeToV4();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    expect(await db.select(db.downloadedScenarios).get(), isEmpty);
   });
 }

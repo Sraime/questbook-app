@@ -6,11 +6,12 @@ import '../../app/remote_providers.dart';
 import '../../design_system/components/qb_bottom_nav_bar.dart';
 import '../../design_system/components/qb_top_app_bar.dart';
 import '../tables/providers/table_providers.dart';
+import '../scenarios/providers/scenario_providers.dart';
 import 'app_drawer.dart';
 import 'last_tab.dart';
 import 'offline_banner.dart';
 
-/// Hosts the two persistent tabs (Perso/Tables) from the mockup's bottom tab
+/// Hosts the persistent tabs (Perso / Tables / Scénarios) from the bottom tab
 /// bar, plus the chrome that frames every signed-in screen: the top bar and
 /// the menu it opens.
 class AppShell extends ConsumerStatefulWidget {
@@ -30,7 +31,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   /// Index of the branch holding what the chrome opens: notifications, profile
   /// and the rulebook. It has no tab, so none lights up while it is showing.
-  static const _chromeBranch = 2;
+  static const _chromeBranch = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     // buttons: whoever is reading a dated copy would otherwise keep reading it
     // until they thought to pull the screen down.
     ref.listen(connectivityProvider, (was, isNow) {
-      if (isNow && was == false) refreshTables(ref);
+      if (isNow && was == false) {
+        refreshTables(ref);
+        refreshScenarios(ref);
+      }
     });
 
     final offline = !ref.watch(connectivityProvider);

@@ -35,6 +35,7 @@ jobs:
     outputs:
       value: ${{ steps.version.outputs.value }}
       notes: ${{ steps.notes.outputs.value }}
+      skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -45,17 +46,20 @@ jobs:
 
       # Deux distributions sous le meme numero sont indiscernables pour un
       # testeur, et laissent le versionCode Android en arriere. Le tag pose en
-      # fin de job fait foi : s'il existe deja, la version n'a pas ete montee.
+      # fin de job fait foi : s'il existe deja, on saute (succès) plutôt que
+      # d'échouer — un merge docs/CI vers main ne doit pas casser la release.
       - name: Verify the version has not been distributed yet
         id: version
         run: |
           version=$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2)
           echo "value=$version" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
-            echo "::error::La version $version a deja ete distribuee. Monte 'version' dans pubspec.yaml avant de merger."
-            exit 1
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "La version $version a déjà été distribuée : pas de nouveau build testeurs."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Version a distribuer : $version"
           fi
-          echo "Version a distribuer : $version"
 
       - name: Compose release notes
         id: notes
@@ -78,6 +82,7 @@ jobs:
   android:
     name: Build Android
     needs: version
+    if: needs.version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -132,6 +137,7 @@ jobs:
   ios:
     name: Build iOS
     needs: version
+    if: needs.version.outputs.skip != 'true'
     runs-on: macos-latest
     steps:
       - name: Checkout main
@@ -229,6 +235,7 @@ jobs:
   distribute:
     name: Distribute and tag
     needs: [version, android, ios]
+    if: needs.version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

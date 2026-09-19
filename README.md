@@ -35,6 +35,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Signature de release iOS](#signature-de-release-ios)
   - [Firebase App Distribution](#firebase-app-distribution)
   - [CI GitHub Actions](#ci-github-actions)
+  - [Publication sur les stores](#publication-sur-les-stores)
   - [Déployer manuellement (sans la CI)](#déployer-manuellement-sans-la-ci)
   - [Reprendre ce setup sur une nouvelle machine](#reprendre-ce-setup-sur-une-nouvelle-machine)
 - [Limitations connues](#limitations-connues)
@@ -667,10 +668,10 @@ Deux distributions sous le même numéro sont indiscernables pour un testeur, qu
 ne peut plus savoir laquelle il a installée, et le `versionCode` Android figé
 interdit toute publication ultérieure sur le Play Store.
 
-Le workflow refuse donc de distribuer une version déjà livrée. Chaque
-distribution réussie pose un tag `v<version>` — `v1.3.0+5`, par exemple — et le
-job échoue d'emblée si ce tag existe déjà. Les tags font office de registre : ce
-sont eux qui disent ce qui est réellement parti chez les testeurs.
+Le workflow refuse donc de **reconstruire** une version déjà livrée : le job
+de version réussit en sautant le build, pour qu'un merge docs/CI vers `main`
+ne casse pas la release en cours. Pour envoyer un nouveau binaire aux
+testeurs, monter `version` dans `pubspec.yaml`.
 
 Le tag est posé **après** la distribution, pour qu'un build en échec ne brûle pas
 son numéro.
@@ -865,6 +866,85 @@ dans le workflow (`env:` en tête de fichier).
 > il faudra migrer l'étape « Distribute » du workflow vers un compte de
 > service GCP (rôle *Firebase App Distribution Admin*) exposé via
 > `GOOGLE_APPLICATION_CREDENTIALS`, en remplacement de `--token`.
+
+### Publication sur les stores
+
+Deux pistes, volontairement séparées :
+
+| Piste | Déclencheur | Destinataires | Artefact |
+| --- | --- | --- | --- |
+| Testeurs | Merge **`dev` → `main`** | Groupe Firebase `testeurs` | APK + IPA Ad Hoc, tag `vX.Y.Z+N` |
+| Stores | **GitHub Release** créée sur ce tag | Play Console (piste interne) + TestFlight | AAB + IPA App Store |
+
+Pas de branche `release/*`. Le tag posé par la distribution testeurs *est* la
+release : en faire une GitHub Release est le geste humain « ça a été validé,
+envoie-le aux stores ». C'est le modèle GitHub standard (un tag, une Release,
+un workflow `release: published`).
+
+```
+1. Merger dev → main          → testeurs, tag v1.6.0+8
+2. Valider sur un appareil
+3. gh release create v1.6.0+8 → Play internal (brouillon) + TestFlight
+4. Dans les consoles, promouvoir vers prod / soumettre la review
+```
+
+Étape 3, une fois le tag posé :
+
+```bash
+gh release create v1.6.0+8 --title "1.6.0" --notes "Invitations sans compte, boutons MJ, emails privés."
+```
+
+Un retry sans recréer la Release : onglet Actions → **Publish to Play Store
+and TestFlight** → Run workflow (il refuse si le tag testeurs n'existe pas).
+
+Le workflow [`.github/workflows/store-publish.yml`](.github/workflows/store-publish.yml)
+ne construit **pas** le même binaire que Firebase : Play exige un `.aab`,
+TestFlight un IPA signé **App Store** (le profil Ad Hoc des testeurs est
+refusé). Le certificat Apple Distribution, lui, est le même.
+
+#### Secrets supplémentaires
+
+En plus des 8 secrets de la distribution testeurs :
+
+| Secret | Contenu |
+| --- | --- |
+| `PLAY_SERVICE_ACCOUNT_JSON` | JSON du compte de service Play Console (une seule ligne ou le fichier entier) |
+| `IOS_APPSTORE_PROVISION_PROFILE_BASE64` | Profil **App Store** (pas Ad Hoc) en base64 |
+| `APP_STORE_CONNECT_ISSUER_ID` | UUID issuer de la clé API App Store Connect |
+| `APP_STORE_CONNECT_KEY_ID` | Identifiant de la clé (10 caractères) |
+| `APP_STORE_CONNECT_API_KEY` | Contenu du fichier `.p8` (AuthKey_XXXX.p8) |
+
+#### À faire une fois dans les consoles (Robin)
+
+Ces gestes ne passent pas par le code. Sans eux le workflow échoue, et c'est
+voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
+
+**Google Play**
+
+1. Créer l'application `com.questbook.questbook` dans Play Console.
+2. Activer la **signature d'application Play** en lui donnant la clé upload
+   déjà utilisée par Firebase (`.secrets/upload-keystore.jks`).
+3. Google Cloud → compte de service avec le rôle *Service Account User*,
+   puis Play Console → *Utilisateurs et droits* → inviter ce compte
+   (permissions *Versions* sur l'app).
+4. Télécharger la clé JSON, la coller dans `PLAY_SERVICE_ACCOUNT_JSON`.
+5. Remplir la fiche (politique de confidentialité, captures, questionnaire
+   contenu). La CI dépose un **brouillon** sur la piste interne
+   (`changesNotSentForReview`) : rien n'est envoyé en review tout seul.
+
+**App Store Connect**
+
+1. Créer l'app iOS bundle `com.questbook.questbook`.
+2. Portail développeur : profil de provisioning **App Store** pour ce bundle
+   (le certificat Distribution déjà dans `IOS_BUILD_CERTIFICATE_BASE64`
+   suffit). Encoder le `.mobileprovision` en base64 comme pour l'Ad Hoc.
+3. App Store Connect → *Intégrations* → *Clés API* : clé *App Manager*,
+   noter Issuer ID + Key ID, garder le `.p8`.
+4. Coller le tout dans les trois secrets `APP_STORE_CONNECT_*`.
+
+La promotion piste interne → production (Play) et TestFlight → App Store
+reste manuelle dans les consoles : c'est là que vivent la review, les
+captures, et le texte de version.
 
 ### Déployer manuellement (sans la CI)
 

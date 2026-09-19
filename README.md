@@ -891,6 +891,37 @@ Deux limites à garder en tête :
 Android n'a pas cet aller-retour : n'importe quel testeur du groupe
 télécharge l'APK. iOS, si — mais il est désormais automatique.
 
+#### Mode développeur sur l'appareil du testeur
+
+Une fois l'app installée, iOS 16 et plus refuse de l'ouvrir tant que le
+**mode développeur** n'est pas activé : « Developer Mode Required ». C'est une
+contrainte d'Apple sur toute distribution **Ad Hoc**, même signée avec un
+certificat Apple Distribution, et
+[documentée par Firebase](https://firebase.google.com/docs/app-distribution/troubleshooting).
+Aucun réglage de certificat ou de profil ne l'enlève.
+
+C'est une condition qui **s'ajoute** à l'enregistrement de l'UDID, elle ne le
+remplace pas : sans UDID l'app ne s'installe pas, sans mode développeur elle
+ne s'ouvre pas.
+
+Sur l'appareil, une seule fois :
+
+1. **Réglages → Confidentialité et sécurité**, section **Sécurité**.
+2. **Mode développeur** → activer l'interrupteur.
+3. Redémarrer quand l'iPhone/iPad le demande.
+4. Après le redémarrage, déverrouiller et confirmer **Activer**.
+
+> Le piège : avant que l'app ne soit installée, l'entrée **Mode développeur**
+> **n'existe pas** dans les Réglages — on n'y voit que « Mode isolement ». Elle
+> n'apparaît qu'une fois présente sur l'appareil une app qui l'exige. Inutile
+> donc de demander à un testeur de l'activer en amont : il ne trouvera rien.
+
+Seuls TestFlight, l'App Store et la distribution Enterprise échappent à cette
+contrainte. Si un jour la manipulation devient un frein pour les testeurs, la
+sortie est de basculer les tests iOS sur TestFlight — que
+[`store-publish.yml`](.github/workflows/store-publish.yml) sait déjà
+alimenter — ce qui supprimerait au passage toute la mécanique des UDID.
+
 ### Firebase App Distribution
 
 - **Projet Firebase** : `questbook-48540` (console :

@@ -1,0 +1,49 @@
+default_platform(:ios)
+
+# Numero du projet Firebase questbook-48540, celui qu'on lit au milieu des
+# App ID (`1:56734402863:ios:...`).
+FIREBASE_PROJECT_NUMBER = 56_734_402_863
+APP_IDENTIFIER = "com.questbook.questbook".freeze
+
+platform :ios do
+  # Un IPA Ad Hoc ne s'installe que sur les appareils listes dans son profil.
+  # Firebase collecte l'UDID quand un testeur s'enregistre, mais n'en fait
+  # rien de plus : sans cette lane, il faut passer a la main par le portail
+  # Apple puis re-uploader le profil en secret avant chaque nouveau testeur.
+  desc "Enregistre les nouveaux appareils testeurs et regenere le profil Ad Hoc"
+  lane :refresh_adhoc_profile do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY")
+    )
+
+    udids_file = ENV.fetch("TESTER_UDIDS_FILE")
+    firebase_app_distribution_get_udids(
+      project_number: FIREBASE_PROJECT_NUMBER,
+      output_file: udids_file,
+      firebase_cli_token: ENV.fetch("FIREBASE_TOKEN")
+    )
+
+    # Le plugin supprime le fichier quand aucun appareil n'est enregistre, au
+    # lieu d'en ecrire un vide. Passer un fichier absent a register_devices
+    # ferait echouer le build alors qu'il n'y a simplement rien a faire.
+    if File.exist?(udids_file)
+      register_devices(devices_file: udids_file, api_key: api_key, platform: "ios")
+    else
+      UI.important("Aucun UDID cote Firebase : rien a enregistrer chez Apple.")
+    end
+
+    # `force` est le coeur de l'affaire : il regenere le profil au lieu de
+    # reutiliser celui qui existe, et y embarque au passage tous les appareils
+    # connus du compte — donc ceux qu'on vient d'ajouter.
+    get_provisioning_profile(
+      adhoc: true,
+      force: true,
+      api_key: api_key,
+      app_identifier: APP_IDENTIFIER,
+      output_path: ENV.fetch("PROFILE_OUTPUT_DIR"),
+      filename: "questbook_adhoc.mobileprovision"
+    )
+  end
+end

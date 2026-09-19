@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.0+8
+version: 1.7.0+9
 
 environment:
   sdk: ^3.12.2
@@ -121,6 +121,10 @@ flutter:
     # The cut-out mark the top bar centres on itself. The opaque badge next to
     # it is only ever read by flutter_launcher_icons, never at runtime.
     - assets/brand/logo-mark.png
+    # Le fond de carte du mode MJ. En JPEG plutôt qu'en PNG : l'illustration
+    # est photographique, et le PNG d'origine pesait huit fois plus pour le
+    # même rendu à l'écran.
+    - assets/board/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

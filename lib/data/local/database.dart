@@ -139,6 +139,33 @@ class DownloadedScenarios extends Table {
   Set<Column> get primaryKey => {scenarioId, accountId};
 }
 
+/// Ce que le MJ a posé sur le plateau d'une session, et ce qu'il s'est noté.
+///
+/// Reste sur l'appareil : le plateau se manipule pion par pion pendant la
+/// partie, souvent loin d'un réseau fiable, et il ne regarde que le MJ. Le
+/// jour où un joueur devra le voir, il faudra le faire remonter à l'API.
+@DataClassName('SessionBoardRow')
+class SessionBoards extends Table {
+  TextColumn get sessionId => text()();
+
+  /// Le compte à qui appartient le plateau. Un autre MJ qui se connecte sur
+  /// la même tablette ne doit pas hériter de ses pions ni de ses notes.
+  TextColumn get accountId => text()();
+
+  /// Les pions, encodés par [BoardToken.encode].
+  TextColumn get tokens => text().withDefault(const Constant('[]'))();
+  TextColumn get notes => text().withDefault(const Constant(''))();
+
+  /// Le fond de carte choisi. Nul tant que le MJ n'a rien changé : le
+  /// catalogue décide alors du défaut, et renommer une carte ne laisse pas
+  /// une session devant un plateau vide.
+  TextColumn get mapId => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {sessionId, accountId};
+}
+
 @DriftDatabase(
   tables: [
     GameSystems,
@@ -149,6 +176,7 @@ class DownloadedScenarios extends Table {
     SyncMetadata,
     RemoteCache,
     DownloadedScenarios,
+    SessionBoards,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -157,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -188,6 +216,14 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 5) {
             await m.createTable(downloadedScenarios);
+          }
+          if (from < 6) {
+            await m.createTable(sessionBoards);
+          }
+          // Seulement pour qui a déjà la table : la créer ci-dessus la dote
+          // de la colonne, et l'ajouter une seconde fois échouerait.
+          if (from == 6) {
+            await m.addColumn(sessionBoards, sessionBoards.mapId);
           }
         },
       );

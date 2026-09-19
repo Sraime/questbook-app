@@ -50,8 +50,14 @@ app.*.map.json
 # Local AI assistant tool config (machine-specific, not project source)
 .claude/
 
+# fastlane : sorties de run, regenerees a chaque execution
+/ios/fastlane/report.xml
+/ios/fastlane/README.md
+/ios/Gemfile.lock
+
 # Signing secrets — never commit these
 /.secrets/
 /android/key.properties
 *.jks
 *.keystore
+*.mobileprovision

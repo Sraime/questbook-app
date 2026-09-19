@@ -792,9 +792,10 @@ Firebase App Distribution n'accepte pas un IPA « App Store » : il faut un
 export **Ad Hoc**, signé avec un certificat Apple Distribution et un profil
 de provisioning qui liste les UDID des appareils testeurs.
 
-Rien de tout ça n'est dans git. La CI importe le `.p12` et le
-`.mobileprovision` depuis des secrets, en extrait toute seule le Team ID et
-le nom du profil, et lance :
+Rien de tout ça n'est dans git. La CI importe le `.p12` depuis un secret,
+régénère le profil Ad Hoc à chaque build avec `fastlane` (voir
+[UDID des testeurs iOS](#udid-des-testeurs-ios)), en extrait toute seule le
+Team ID et le nom du profil, et lance :
 
 ```bash
 flutter build ipa --release --export-options-plist=ExportOptions.plist
@@ -825,10 +826,11 @@ flutter build ipa --release --export-options-plist=ExportOptions.plist
 
      Garder la clé `.key` et le `.p12` dans le coffre-fort d'équipe, jamais
      dans git. Sans la clé privée, le `.cer` Apple ne sert à rien.
-3. Devices : enregistrer au moins un iPhone (UDID). Les suivants arriveront
-   via Firebase — voir plus bas.
-4. Profiles : **Ad Hoc**, bundle `com.questbook.questbook`, le certificat
-   Distribution, les appareils choisis. Télécharger le `.mobileprovision`.
+3. Devices : rien à enregistrer à la main, la CI s'en charge — voir
+   [UDID des testeurs iOS](#udid-des-testeurs-ios).
+4. Profiles : rien à créer non plus. `fastlane` génère le profil **Ad Hoc**
+   au premier build, puis le régénère à chaque fois avec le certificat
+   Distribution et tous les appareils connus du compte.
 
 #### Secrets GitHub
 
@@ -836,7 +838,6 @@ Sur une machine qui a les fichiers (PowerShell) :
 
 ```powershell
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("ios-distribution.p12")) | Set-Clipboard
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("Questbook_AdHoc.mobileprovision")) | Set-Clipboard
 ```
 
 Sur macOS : `base64 -i ios-distribution.p12 | pbcopy`.
@@ -847,7 +848,12 @@ Coller dans `Settings → Secrets and variables → Actions` :
 | ----------------------------------- | -------------------------------------------- |
 | `IOS_BUILD_CERTIFICATE_BASE64`      | Le `.p12` en une seule ligne base64          |
 | `IOS_P12_PASSWORD`                  | Mot de passe choisi à l'export du `.p12`     |
-| `IOS_BUILD_PROVISION_PROFILE_BASE64`| Le `.mobileprovision` Ad Hoc en base64       |
+
+S'y ajoute la clé App Store Connect (`APP_STORE_CONNECT_ISSUER_ID`,
+`APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_API_KEY`), partagée avec la
+publication sur les stores. Elle doit avoir le rôle **App Manager** : le job
+s'en sert pour enregistrer des appareils et régénérer le profil, ce qui
+demande plus de droits qu'un simple envoi vers TestFlight.
 
 Le Team ID n'est pas un secret : le job le lit dans le profil.
 
@@ -858,17 +864,32 @@ Le Team ID n'est pas un secret : le job le lit dans le profil.
 
 #### UDID des testeurs iOS
 
-Un IPA Ad Hoc n'installe que sur les appareils listés dans le profil. Le
-cycle, la première fois et à chaque nouveau testeur :
+Un IPA Ad Hoc n'installe que sur les appareils listés dans son profil de
+provisioning. Firebase collecte bien l'UDID quand un testeur enregistre son
+appareil, mais il s'arrête là : c'est au projet de déclarer l'appareil chez
+Apple et de rediffuser un build signé avec un profil à jour.
 
-1. Distribuer un build (même s'il ne s'installe encore que sur ton iPhone).
-2. Le testeur ouvre le lien Firebase, enregistre son appareil : Firebase
-   affiche l'UDID.
-3. Ajouter l'UDID dans Devices, régénérer le profil Ad Hoc, mettre à jour
-   `IOS_BUILD_PROVISION_PROFILE_BASE64`, relancer le workflow.
+Le job `ios` de `firebase-distribution.yml` fait cet aller-retour tout seul,
+via la lane `refresh_adhoc_profile` (`ios/fastlane/Fastfile`) :
+
+1. `firebase_app_distribution_get_udids` récupère les UDID connus de Firebase.
+2. `register_devices` les déclare sur le portail Apple.
+3. `get_provisioning_profile(adhoc: true, force: true)` régénère le profil ;
+   `force` est ce qui y réinjecte tous les appareils du compte.
+
+Côté testeur, il reste donc **un seul geste** : ouvrir le lien Firebase et
+enregistrer son appareil. Son UDID sera pris en compte au build suivant.
+Aucun profil n'a plus besoin d'être stocké en secret.
+
+Deux limites à garder en tête :
+
+- Un appareil enregistré ne rattrape pas les builds déjà publiés. Il faut
+  attendre la prochaine distribution.
+- Apple plafonne le nombre d'appareils enregistrables par an (100 par type).
+  Le compteur ne se remet à zéro qu'au renouvellement de l'adhésion.
 
 Android n'a pas cet aller-retour : n'importe quel testeur du groupe
-télécharge l'APK. iOS, si.
+télécharge l'APK. iOS, si — mais il est désormais automatique.
 
 ### Firebase App Distribution
 
@@ -909,7 +930,7 @@ Il enchaîne quatre jobs : vérification du numéro de version → build Android
 binaires vers le groupe `testeurs` puis pose du tag. L'APK n'est envoyé
 qu'une fois l'IPA signé, pour qu'un échec iOS ne brûle pas le numéro.
 
-Il a besoin de **8 secrets** définis dans
+Il a besoin de **10 secrets** définis dans
 `Settings → Secrets and variables → Actions` du repo GitHub :
 
 | Secret                               | Contenu                                                              |
@@ -920,8 +941,14 @@ Il a besoin de **8 secrets** définis dans
 | `ANDROID_KEY_ALIAS`                  | `upload`                                                               |
 | `IOS_BUILD_CERTIFICATE_BASE64`       | Certificat Apple Distribution (`.p12`) en base64                      |
 | `IOS_P12_PASSWORD`                   | Mot de passe du `.p12`                                                |
-| `IOS_BUILD_PROVISION_PROFILE_BASE64` | Profil Ad Hoc (`.mobileprovision`) en base64                          |
+| `APP_STORE_CONNECT_ISSUER_ID`        | Issuer ID de la clé App Store Connect (rôle App Manager)              |
+| `APP_STORE_CONNECT_KEY_ID`           | Identifiant de cette clé                                              |
+| `APP_STORE_CONNECT_API_KEY`          | Contenu du `.p8` de cette clé                                         |
 | `FIREBASE_TOKEN`                     | Token CI généré via `firebase login:ci` (voir note de dépréciation ci-dessous) |
+
+Le profil Ad Hoc n'est plus un secret : il est régénéré à chaque build à
+partir de la clé App Store Connect, en même temps que les appareils des
+nouveaux testeurs sont enregistrés chez Apple.
 
 Les App ID Firebase et le Project ID ne sont *pas* secrets — ils sont en dur
 dans le workflow (`env:` en tête de fichier).

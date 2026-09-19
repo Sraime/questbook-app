@@ -52,6 +52,10 @@ class _BoardPanelState extends State<BoardPanel> {
 
   late BoardMap _map = boardMapById(widget.initialMapId);
 
+  /// Le tiroir se replie pour rendre la carte à la table : une fois les pions
+  /// posés, c'est le plateau qu'on regarde, pas le catalogue.
+  bool _drawerOpen = true;
+
   @override
   void dispose() {
     _tokens.dispose();
@@ -150,12 +154,64 @@ class _BoardPanelState extends State<BoardPanel> {
             ),
           ),
         ),
-        _AssetDrawer(
-          feedbackSide: _feedbackSide,
-          selectedMapId: _map.id,
-          onSelectMap: _selectMap,
+        _DrawerHandle(
+          open: _drawerOpen,
+          onTap: () => setState(() => _drawerOpen = !_drawerOpen),
+        ),
+        // Replié plutôt que démonté : la recherche en cours et les rayons
+        // laissés ouverts sont encore là au retour.
+        Offstage(
+          offstage: !_drawerOpen,
+          child: _AssetDrawer(
+            feedbackSide: _feedbackSide,
+            selectedMapId: _map.id,
+            onSelectMap: _selectMap,
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// La languette qui ouvre et ferme le tiroir, accrochée à son bord.
+class _DrawerHandle extends StatelessWidget {
+  const _DrawerHandle({required this.open, required this.onTap});
+
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Semantics(
+        button: true,
+        container: true,
+        label: open ? 'Masquer le tiroir des pions' : 'Afficher les pions',
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 22,
+            height: 76,
+            decoration: BoxDecoration(
+              color: QBColors.paper200,
+              border: const Border(
+                top: BorderSide(color: QBColors.borderStrong, width: 2),
+                left: BorderSide(color: QBColors.borderStrong, width: 2),
+                bottom: BorderSide(color: QBColors.borderStrong, width: 2),
+              ),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(QBRadius.md),
+              ),
+            ),
+            child: Icon(
+              open ? LucideIcons.chevronRight : LucideIcons.chevronLeft,
+              size: 16,
+              color: QBColors.leather800,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -771,9 +827,11 @@ class _MapTile extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: QBColors.paper50,
+            // Épaisseur constante : la faire grossir à la sélection raccourcit
+            // la vignette d'un point et fait tressauter la ligne entière.
             border: Border.all(
               color: selected ? QBColors.gold500 : QBColors.borderDefault,
-              width: selected ? 3 : 1,
+              width: 3,
             ),
             borderRadius: BorderRadius.circular(QBRadius.md),
           ),
@@ -792,16 +850,41 @@ class _MapTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                map.label,
-                textAlign: TextAlign.center,
-                style: QBType.body().copyWith(
-                  fontSize: QBType.xs,
-                  color: QBColors.ink700,
-                ),
-              ),
+              _TileLabel(map.label),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Le nom d'une vignette, toujours sur la même hauteur.
+///
+/// Deux lignes réservées, coupées au-delà : sans cela « Manoir dans la
+/// clairière » rendait sa vignette plus haute que « Grille vierge » et le
+/// tiroir avait l'air bancal.
+class _TileLabel extends StatelessWidget {
+  const _TileLabel(this.text);
+
+  static const double _lineHeight = 1.2;
+  static const double _height = QBType.xs * _lineHeight * 2;
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _height,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: QBType.body().copyWith(
+          fontSize: QBType.xs,
+          height: _lineHeight,
+          color: QBColors.ink700,
         ),
       ),
     );
@@ -845,16 +928,7 @@ class _AssetTile extends StatelessWidget {
             children: [
               SizedBox(width: 34, height: 34, child: preview),
               const SizedBox(height: QBSpace.s2),
-              Text(
-                asset.name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: QBType.body().copyWith(
-                  fontSize: QBType.xs,
-                  color: QBColors.ink700,
-                ),
-              ),
+              _TileLabel(asset.name),
             ],
           ),
         ),

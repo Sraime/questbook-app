@@ -76,6 +76,41 @@ void main() {
     expect(find.text('Aucun pion ne porte ce nom.'), findsOneWidget);
   });
 
+  testWidgets('se replie par sa languette et revient comme on l’a laissé',
+      (tester) async {
+    await pumpDrawer(tester);
+
+    await tester.enterText(find.byType(TextField), 'jaune');
+    await tester.pump();
+
+    await tester.tap(find.bySemanticsLabel('Masquer le tiroir des pions'));
+    await tester.pump();
+    expect(find.text('Joueur jaune'), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel('Afficher les pions'));
+    await tester.pump();
+
+    // La recherche en cours a survécu au repli : la rouvrir vidée obligerait
+    // à retaper ce qu'on cherchait.
+    expect(find.text('Joueur jaune'), findsOneWidget);
+    expect(find.text('Joueur rouge'), findsNothing);
+  });
+
+  testWidgets('aligne les vignettes sur une même taille', (tester) async {
+    await pumpDrawer(tester);
+
+    Size tileOf(String label) => tester.getSize(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(Container))
+              .first,
+        );
+
+    // « Manoir dans la clairière » tient sur deux lignes, « Grille vierge »
+    // sur une : les deux vignettes doivent quand même se répondre.
+    expect(tileOf('Manoir dans la clairière'), tileOf('Grille vierge'));
+    expect(tileOf('Joueur rouge'), tileOf('Joueur jaune'));
+  });
+
   testWidgets('picks a map and remembers it', (tester) async {
     await pumpDrawer(tester);
 

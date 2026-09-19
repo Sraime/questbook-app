@@ -303,7 +303,11 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
               // les notes vivent sur l'appareil. Le réseau peut tomber en
               // pleine partie sans emporter l'outil avec lui, d'où le
               // `canWrite` absent ici.
-              if (widget.table.isGameMaster && !session.isCancelled)
+              // Annuler une session est irréversible et se tient à côté de
+              // deux gestes anodins : ils respirent, pour qu'un pouce pressé
+              // ne se trompe pas de bouton.
+              if (widget.table.isGameMaster && !session.isCancelled) ...[
+                const SizedBox(width: QBSpace.s3),
                 QBIconButton(
                   icon: const Icon(
                     LucideIcons.swords,
@@ -315,7 +319,9 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                   variant: QBIconButtonVariant.solid,
                   onPressed: _openGameMasterMode,
                 ),
+              ],
               if (widget.table.isGameMaster && canWrite) ...[
+                const SizedBox(width: QBSpace.s3),
                 QBIconButton(
                   icon: const Icon(LucideIcons.pencil, size: 16),
                   label: 'Modifier la session',
@@ -324,6 +330,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                     '/tables/${widget.table.id}/sessions/${session.id}',
                   ),
                 ),
+                const SizedBox(width: QBSpace.s3),
                 QBIconButton(
                   icon: const Icon(LucideIcons.x, size: 16),
                   label: 'Annuler la session',

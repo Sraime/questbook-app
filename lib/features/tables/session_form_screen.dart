@@ -16,7 +16,7 @@ import 'widgets/session_form.dart';
 /// tiennent pas dans un dialogue centré sur un téléphone.
 ///
 /// La corriger ensuite ne passe plus par ici : c'est l'affaire du volet
-/// Général du mode MJ, là où le MJ est déjà quand la session se joue.
+/// Détails du mode MJ, là où le MJ est déjà quand la session se joue.
 class SessionFormScreen extends ConsumerWidget {
   const SessionFormScreen({super.key, required this.tableId});
 

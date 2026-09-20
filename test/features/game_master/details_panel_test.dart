@@ -7,7 +7,7 @@ import 'package:questbook/data/remote/remote_scenario.dart';
 import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/data/remote/session_api.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
-import 'package:questbook/features/game_master/panels/general_panel.dart';
+import 'package:questbook/features/game_master/panels/details_panel.dart';
 import 'package:questbook/features/scenarios/providers/scenario_providers.dart';
 
 /// Ce que le volet demande à l'API, et rien d'autre : le reste des appels
@@ -86,7 +86,7 @@ void main() {
         ],
         child: MaterialApp(
           home: Scaffold(
-            body: GeneralPanel(
+            body: DetailsPanel(
               tableId: 'table-1',
               session: session ?? _session,
               onCancelled: onCancelled ?? () {},
@@ -129,7 +129,7 @@ void main() {
       findsOneWidget,
       reason: 'corriger une heure ne doit pas sortir de la partie en cours',
     );
-    expect(find.byType(GeneralPanel), findsOneWidget);
+    expect(find.byType(DetailsPanel), findsOneWidget);
   });
 
   testWidgets('annuler la session referme le mode MJ', (tester) async {

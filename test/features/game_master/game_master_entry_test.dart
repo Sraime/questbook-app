@@ -111,7 +111,7 @@ void main() {
     expect(
       find.bySemanticsLabel('Annuler la session'),
       findsNothing,
-      reason: 'corriger et annuler ont rejoint le volet Général du mode MJ',
+      reason: 'corriger et annuler ont rejoint le volet Détails du mode MJ',
     );
   });
 

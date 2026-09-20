@@ -50,8 +50,8 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
-- **Carte d'une session** : pour le MJ, la carte entière mène au mode MJ ; corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. Elle ne porte donc plus rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal, et le geste le plus fréquent, animer, était le plus petit. Pour un joueur, la carte reste informative : ses boutons à lui sont « Je viens » et « Je passe ».
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions.
+- **Carte d'une session** : pour le MJ, la carte entière mène au mode MJ ; corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. Elle ne porte donc plus rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal, et le geste le plus fréquent, animer, était le plus petit. Pour un joueur, la carte reste informative : ses boutons à lui sont « Je viens » et « Je passe », jusqu'à ce que les inscriptions ferment — ils cèdent alors la place à un rappel de ce qu'il avait répondu, plutôt que de disparaître sans un mot. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
@@ -586,6 +586,26 @@ illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
 les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
 de la table et le bouton de sortie. Un volet de plus rogne cette place :
 ajouter un septième demanderait autre chose qu'une rangée fixe.
+
+### Les deux bornes d'une séance
+
+Une séance ne s'éteint pas à l'heure dite : on joue, et la partie déborde
+toujours. Le serveur envoie donc deux instants avec chaque session, et l'app
+les lit tels quels — la règle lui appartient, et deux implémentations
+finiraient par diverger.
+
+| Champ | Ce qu'il vaut | Ce que l'app en fait |
+| --- | --- | --- |
+| `closesAt` | Début + 24 h | `isPast`, donc le partage entre « Sessions » et « Sessions passées », et l'accès au mode MJ. |
+| `answersCloseAt` | Le plus tard entre le début et création + 1 h | `acceptsAnswers`, donc « Je viens » / « Je passe » et le choix du personnage. |
+
+`isUnderway` s'en déduit : commencée, pas encore close. C'est l'état d'une
+séance qu'on est en train de jouer, et ce que le MJ voit en ouvrant sa table.
+
+Une réponse mise en cache par une version d'avant la règle n'a ni l'un ni
+l'autre ; le constructeur de `RemoteGameSession` retombe alors sur le début de
+la séance, et sur la fenêtre de 24 h pour `closesAt`. C'est le seul endroit de
+l'app où ces durées sont écrites.
 
 **Le mode MJ s'ouvre sur le volet Détails**, et non sur le plateau : on y
 arrive surtout avant la partie, pour vérifier l'heure, le lieu ou le scénario.

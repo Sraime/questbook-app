@@ -257,7 +257,10 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
           ],
           const SizedBox(height: QBSpace.s3),
           _AttendanceSummary(session: session, pendingCount: pending),
-          if (!widget.table.isGameMaster && canWrite) ...[
+          if (!widget.table.isGameMaster && !session.acceptsAnswers) ...[
+            const SizedBox(height: QBSpace.s3),
+            _ClosedAnswers(session: session),
+          ] else if (!widget.table.isGameMaster && canWrite) ...[
             const SizedBox(height: QBSpace.s3),
             Row(
               children: [
@@ -312,6 +315,31 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
         behavior: HitTestBehavior.opaque,
         child: card,
       ),
+    );
+  }
+}
+
+/// Ce qui remplace « Je viens » et « Je passe » une fois les inscriptions
+/// closes. Le joueur ne peut plus rien changer, mais il doit pouvoir relire ce
+/// qu'il a répondu — et comprendre pourquoi les boutons ont disparu plutôt que
+/// de les chercher.
+class _ClosedAnswers extends StatelessWidget {
+  const _ClosedAnswers({required this.session});
+
+  final RemoteGameSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final answer = switch (session.myStatus) {
+      AttendanceStatus.yes => 'Tu as dit que tu venais.',
+      AttendanceStatus.no => 'Tu as dit que tu ne venais pas.',
+      null => 'Tu n’as pas répondu.',
+    };
+
+    return _MutedText(
+      session.isUnderway
+          ? '$answer La partie a commencé, les inscriptions sont closes.'
+          : '$answer Les inscriptions sont closes.',
     );
   }
 }

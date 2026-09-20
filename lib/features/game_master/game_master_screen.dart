@@ -17,14 +17,14 @@ import 'game_master_layout.dart';
 import 'models/board_token.dart';
 import 'panels/board_panel.dart';
 import 'panels/characters_panel.dart';
-import 'panels/general_panel.dart';
+import 'panels/details_panel.dart';
 import 'panels/notes_panel.dart';
 import 'panels/rules_panel.dart';
 import 'panels/scenario_panel.dart';
 import 'providers/game_master_providers.dart';
 
 enum GameMasterPanel {
-  general('Général', LucideIcons.settings),
+  details('Détails', LucideIcons.settings),
   board('Plateau', LucideIcons.map),
   characters('Personnages', LucideIcons.users),
   rules('Règles', LucideIcons.bookOpen),
@@ -66,7 +66,10 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
   /// ferait une transaction SQLite par caractère.
   static const _notesDebounce = Duration(milliseconds: 500);
 
-  GameMasterPanel _panel = GameMasterPanel.board;
+  /// Le mode MJ s'ouvre sur ce qu'est la séance, pas sur le plateau : on
+  /// arrive ici avant la partie, pour vérifier l'heure et le lieu, bien plus
+  /// souvent qu'on n'y arrive une carte à la main.
+  GameMasterPanel _panel = GameMasterPanel.details;
 
   /// Plateau et notes ne s'affichent que dans leur propre volet, qui en est
   /// le seul manipulateur. Les garder hors de l'état de cet écran évite de
@@ -214,7 +217,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
 
   Widget _panelBody(RemoteGameSession session, {required bool compact}) =>
       switch (_panel) {
-        GameMasterPanel.general => GeneralPanel(
+        GameMasterPanel.details => DetailsPanel(
             tableId: widget.tableId,
             session: session,
             onCancelled: _exit,

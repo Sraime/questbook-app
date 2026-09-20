@@ -24,25 +24,20 @@ class ShopArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     final asset = _assets[imageKey];
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        // The emblem is drawn to sit on the leather bar, so it needs a dark
-        // ground to read against — the paper of a card swallows it.
-        color: QBColors.slotEmpty,
-        borderRadius: BorderRadius.circular(QBRadius.md),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(QBSpace.s2),
-        child: asset == null
-            ? Center(
-                child: Icon(
-                  LucideIcons.package,
-                  size: 28,
-                  color: QBColors.paper300.withValues(alpha: 0.7),
-                ),
-              )
-            : Image.asset(asset, fit: BoxFit.contain),
-      ),
+    // Sans fond, comme les pions du plateau : une image d'article se montre
+    // telle qu'elle est, et l'enfermer dans une alvéole la ferait passer pour
+    // une vignette de plus.
+    return Padding(
+      padding: const EdgeInsets.all(QBSpace.s2),
+      child: asset == null
+          ? Center(
+              child: Icon(
+                LucideIcons.package,
+                size: 28,
+                color: QBColors.textMuted,
+              ),
+            )
+          : Image.asset(asset, fit: BoxFit.contain),
     );
   }
 }

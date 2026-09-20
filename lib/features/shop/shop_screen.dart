@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/remote/api_exception.dart';
 import '../../data/remote/remote_shop_item.dart';
-import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
@@ -97,11 +96,11 @@ class _Catalogue extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Le même calcul que le tiroir du mode MJ, pour que les deux rayons
-        // se ressemblent : deux vignettes par ligne au minimum, davantage dès
-        // qu'il y a la place.
+        // Trois par ligne au minimum, davantage dès qu'il y a la place. Un
+        // article porte un titre entier là où un pion n'a qu'un nom : à
+        // quatre, « Le Grand Ancien » se coupait au milieu.
         const gap = QBSpace.s2;
-        final columns = math.max(2, (constraints.maxWidth / 150).floor());
+        final columns = math.max(3, (constraints.maxWidth / 150).floor());
         final side = (constraints.maxWidth - gap * (columns - 1)) / columns;
 
         return Wrap(
@@ -148,34 +147,41 @@ class _ItemTile extends StatelessWidget {
           ),
           child: Column(
             children: [
-              AspectRatio(
-                aspectRatio: 1,
+              // Hauteur fixe plutôt qu'un carré : l'image suivrait sinon la
+              // largeur de la vignette, et une rangée de trois serait plus
+              // haute qu'une rangée de quatre sans rien montrer de plus.
+              SizedBox(
+                height: 68,
                 child: ShopArtwork(imageKey: item.imageKey),
               ),
               const SizedBox(height: QBSpace.s2),
               Text(
                 item.type.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: QBType.mono().copyWith(
                   fontSize: QBType.xs,
-                  letterSpacing: QBType.xs * QBType.trackingWide,
                   color: QBColors.textMuted,
                 ),
               ),
               _TileTitle(item.title),
-              const SizedBox(height: QBSpace.s2),
+              const SizedBox(height: QBSpace.s1),
               // Possédé l'emporte sur le prix : ce qu'il coûtait n'intéresse
-              // plus personne une fois qu'il est à vous.
-              if (item.owned)
-                const QBBadge(label: 'Possédé', tone: QBTone.success)
-              else
-                Text(
-                  item.priceLabel,
-                  style: QBType.mono().copyWith(
-                    fontSize: QBType.sm,
-                    fontWeight: QBType.weightBold,
-                    color: QBColors.leather700,
-                  ),
+              // plus personne une fois qu'il est à vous. En toutes lettres et
+              // non en pastille — à quatre par ligne, une pastille tient plus
+              // de place que la vignette n'en a.
+              Text(
+                item.owned ? 'Possédé' : item.priceLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: QBType.mono().copyWith(
+                  fontSize: QBType.xs,
+                  fontWeight: QBType.weightBold,
+                  color: item.owned
+                      ? QBColors.semanticSuccess
+                      : QBColors.leather700,
                 ),
+              ),
             ],
           ),
         ),

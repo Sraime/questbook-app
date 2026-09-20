@@ -129,21 +129,13 @@ class _AssetTile extends StatelessWidget {
           border: Border.all(color: QBColors.borderDefault),
           borderRadius: BorderRadius.circular(QBRadius.md),
         ),
-        child: Column(
-          children: [
-            // Sur une alvéole sombre, comme la carte sous le pion : les
-            // zones sont un blanc translucide, pensé pour se poser sur un
-            // decor, et une vignette couleur papier les effaçait.
-            Container(
-              width: 40,
-              height: 40,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: QBColors.slotEmpty,
-                borderRadius: BorderRadius.circular(QBRadius.sm),
+          child: Column(
+            children: [
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: BoardTokenPreview.of(asset),
               ),
-              child: BoardTokenView(kind: asset.kind, color: asset.color),
-            ),
             const SizedBox(height: QBSpace.s2),
             _TileLabel(asset.name),
           ],

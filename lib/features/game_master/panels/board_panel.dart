@@ -926,7 +926,10 @@ class _AssetTile extends StatelessWidget {
           ),
           child: Column(
             children: [
-              SizedBox(width: 34, height: 34, child: preview),
+              // L'aperçu du tiroir, pas celui qu'on traîne : une zone a
+              // besoin d'une alvéole sombre pour se voir sur du papier, mais
+              // pas sur la carte où elle finit.
+              SizedBox(width: 34, height: 34, child: BoardTokenPreview.of(asset)),
               const SizedBox(height: QBSpace.s2),
               _TileLabel(asset.name),
             ],

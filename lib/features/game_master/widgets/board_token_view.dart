@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../design_system/tokens/colors.dart';
+import '../../../design_system/tokens/spacing.dart';
+import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 
 /// Le dessin d'un pion, identique dans le tiroir d'assets et sur le plateau —
@@ -101,6 +103,42 @@ class BoardTokenView extends StatelessWidget {
         BoardTokenColor.blue => QBColors.juicyBlueBottom,
         BoardTokenColor.yellow => QBColors.juicyGoldBottom,
       };
+}
+
+/// Un pion montré hors du plateau : dans le tiroir du mode MJ comme dans la
+/// bibliothèque d'assets.
+///
+/// Les zones sont un blanc translucide, pensé pour se poser sur une carte.
+/// Sur du papier elles disparaissent, et un rayon qui montre des cases vides
+/// ne dit pas ce dont on dispose : elles seules reçoivent donc une alvéole
+/// sombre. Les autres pions sont opaques et colorés, leur en donner une les
+/// enfermerait dans une vignette sans rien y gagner.
+class BoardTokenPreview extends StatelessWidget {
+  const BoardTokenPreview({super.key, required this.kind, required this.color});
+
+  BoardTokenPreview.of(BoardAsset asset, {super.key})
+      : kind = asset.kind,
+        color = asset.color;
+
+  final BoardTokenKind kind;
+  final BoardTokenColor color;
+
+  bool get _needsGround =>
+      kind == BoardTokenKind.zoneDisc || kind == BoardTokenKind.zoneSquare;
+
+  @override
+  Widget build(BuildContext context) {
+    final token = BoardTokenView(kind: kind, color: color);
+    if (!_needsGround) return token;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: QBColors.slotEmpty,
+        borderRadius: BorderRadius.circular(QBRadius.sm),
+      ),
+      child: Padding(padding: const EdgeInsets.all(3), child: token),
+    );
+  }
 }
 
 class _TrianglePainter extends CustomPainter {

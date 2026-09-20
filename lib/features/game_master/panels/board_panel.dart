@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +11,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../assets/providers/owned_assets_provider.dart';
 import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 import '../widgets/board_token_view.dart';
@@ -21,13 +23,14 @@ import '../widgets/board_token_view.dart';
 /// enregistré, jamais pendant un glissement : faire remonter chaque image
 /// jusqu'à l'écran MJ reconstruisait le rail et le tiroir soixante fois par
 /// seconde, et le pion traînait derrière le doigt.
-class BoardPanel extends StatefulWidget {
+class BoardPanel extends ConsumerStatefulWidget {
   const BoardPanel({
     super.key,
     required this.initialTokens,
     required this.initialMapId,
     required this.onTokensPersisted,
     required this.onMapPersisted,
+    this.compact = false,
   });
 
   final List<BoardToken> initialTokens;
@@ -35,11 +38,15 @@ class BoardPanel extends StatefulWidget {
   final ValueChanged<List<BoardToken>> onTokensPersisted;
   final ValueChanged<String> onMapPersisted;
 
+  /// Sur un écran étroit, le tiroir n'a plus de colonne à lui : il recouvre la
+  /// carte le temps d'y piocher un pion, puis se range.
+  final bool compact;
+
   @override
-  State<BoardPanel> createState() => _BoardPanelState();
+  ConsumerState<BoardPanel> createState() => _BoardPanelState();
 }
 
-class _BoardPanelState extends State<BoardPanel> {
+class _BoardPanelState extends ConsumerState<BoardPanel> {
   /// Taille de l'aperçu qui suit le doigt, en points.
   static const double _feedbackSide = 60;
   static const _uuid = Uuid();
@@ -53,8 +60,9 @@ class _BoardPanelState extends State<BoardPanel> {
   late BoardMap _map = boardMapById(widget.initialMapId);
 
   /// Le tiroir se replie pour rendre la carte à la table : une fois les pions
-  /// posés, c'est le plateau qu'on regarde, pas le catalogue.
-  bool _drawerOpen = true;
+  /// posés, c'est le plateau qu'on regarde, pas le catalogue. Il démarre
+  /// fermé là où il recouvrirait la carte d'entrée de jeu.
+  late bool _drawerOpen = !widget.compact;
 
   @override
   void dispose() {
@@ -87,6 +95,7 @@ class _BoardPanelState extends State<BoardPanel> {
         id: _uuid.v4(),
         kind: asset.kind,
         color: asset.color,
+        assetKey: asset.key,
         x: (local.dx / box.size.width).clamp(0.0, 1.0),
         y: (local.dy / box.size.height).clamp(0.0, 1.0),
       ),
@@ -117,14 +126,19 @@ class _BoardPanelState extends State<BoardPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(QBSpace.s5),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
+    final sections = ref.watch(boardCatalogueProvider);
+    // Ce que le tiroir propose est exactement ce que le plateau sait
+    // dessiner : un pion venu d'ailleurs — un plateau partagé, un achat
+    // rendu — se rend en pion par défaut plutôt que de s'évanouir.
+    final ownedKeys = {
+      for (final section in sections)
+        for (final asset in section.assets) ?asset.key,
+    };
+
+    final board = Padding(
+      padding: EdgeInsets.all(widget.compact ? QBSpace.s3 : QBSpace.s5),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
                 var width = constraints.maxWidth;
                 var height = width / _map.aspectRatio;
                 if (height > constraints.maxHeight) {
@@ -138,6 +152,7 @@ class _BoardPanelState extends State<BoardPanel> {
                     height: height,
                     child: _Board(
                       map: _map,
+                      ownedKeys: ownedKeys,
                       tokens: _tokens,
                       selectedId: _selectedId,
                       resizing: _resizing,
@@ -152,23 +167,65 @@ class _BoardPanelState extends State<BoardPanel> {
                 );
               },
             ),
-          ),
-        ),
-        _DrawerHandle(
-          open: _drawerOpen,
-          onTap: () => setState(() => _drawerOpen = !_drawerOpen),
-        ),
-        // Replié plutôt que démonté : la recherche en cours et les rayons
-        // laissés ouverts sont encore là au retour.
-        Offstage(
+          );
+
+    Widget drawer({double? width, int minColumns = 2}) => Offstage(
+          // Replié plutôt que démonté : la recherche en cours et les rayons
+          // laissés ouverts sont encore là au retour.
           offstage: !_drawerOpen,
           child: _AssetDrawer(
+            sections: sections,
             feedbackSide: _feedbackSide,
             selectedMapId: _map.id,
+            width: width,
+            minColumns: minColumns,
             onSelectMap: _selectMap,
+            // Le tiroir recouvre la carte : le garder ouvert pendant qu'on
+            // tire un pion reviendrait à viser derrière lui.
+            onDragStarted:
+                widget.compact ? () => setState(() => _drawerOpen = false) : null,
           ),
-        ),
-      ],
+        );
+
+    final handle = _DrawerHandle(
+      open: _drawerOpen,
+      onTap: () => setState(() => _drawerOpen = !_drawerOpen),
+    );
+
+    if (!widget.compact) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: board),
+          handle,
+          drawer(),
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(child: board),
+          // Une Row qui ne remplit que sa droite : là où elle n'a pas
+          // d'enfant, le toucher traverse jusqu'à la carte.
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                handle,
+                // Juste de quoi poser une vignette par ligne : au-delà, le
+                // tiroir recouvre la carte sans rien montrer de plus.
+                drawer(
+                  width: math.min(200, constraints.maxWidth * 0.55),
+                  minColumns: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -219,6 +276,7 @@ class _DrawerHandle extends StatelessWidget {
 class _Board extends StatelessWidget {
   const _Board({
     required this.map,
+    required this.ownedKeys,
     required this.tokens,
     required this.selectedId,
     required this.resizing,
@@ -231,6 +289,10 @@ class _Board extends StatelessWidget {
   });
 
   final BoardMap map;
+
+  /// Les assets achetés dont ce compte dispose, pour savoir lesquels des
+  /// pions posés il sait encore dessiner.
+  final Set<String> ownedKeys;
   final ValueListenable<List<BoardToken>> tokens;
   final ValueListenable<String?> selectedId;
   final ValueListenable<bool> resizing;
@@ -288,6 +350,7 @@ class _Board extends StatelessWidget {
                       for (final token in tokens.value)
                         _PlacedToken(
                           token: token,
+                          ownedKeys: ownedKeys,
                           boardWidth: width,
                           boardHeight: height,
                           reference: reference,
@@ -357,6 +420,7 @@ class _GridPainter extends CustomPainter {
 class _PlacedToken extends StatelessWidget {
   const _PlacedToken({
     required this.token,
+    required this.ownedKeys,
     required this.boardWidth,
     required this.boardHeight,
     required this.reference,
@@ -373,6 +437,7 @@ class _PlacedToken extends StatelessWidget {
   static const double _actionsHeight = 40;
 
   final BoardToken token;
+  final Set<String> ownedKeys;
   final double boardWidth;
   final double boardHeight;
 
@@ -412,7 +477,11 @@ class _PlacedToken extends StatelessWidget {
               ),
             ),
             onPanEnd: (_) => onCommit(),
-            child: BoardTokenView.of(token, selected: selected),
+            child: BoardTokenView.of(
+              token,
+              selected: selected,
+              ownedKeys: ownedKeys,
+            ),
           ),
         ),
         if (selected) ..._actions(side, left, top),
@@ -517,14 +586,28 @@ class _PlacedToken extends StatelessWidget {
 /// de pions.
 class _AssetDrawer extends StatefulWidget {
   const _AssetDrawer({
+    required this.sections,
     required this.feedbackSide,
     required this.selectedMapId,
     required this.onSelectMap,
+    this.width,
+    this.minColumns = 2,
+    this.onDragStarted,
   });
 
+  /// Le catalogue de ce compte, socle et collection réunis.
+  final List<BoardAssetSection> sections;
   final double feedbackSide;
   final String selectedMapId;
   final ValueChanged<BoardMap> onSelectMap;
+
+  /// Sa largeur habituelle, sauf sur un écran qui ne peut pas la lui offrir.
+  final double? width;
+
+  /// Combien de vignettes par ligne au minimum : deux dans une colonne à lui,
+  /// une seule quand il est resserré sur la carte.
+  final int minColumns;
+  final VoidCallback? onDragStarted;
 
   @override
   State<_AssetDrawer> createState() => _AssetDrawerState();
@@ -546,13 +629,13 @@ class _AssetDrawerState extends State<_AssetDrawer> {
   @override
   Widget build(BuildContext context) {
     final query = _search.text;
-    final sections = filterBoardAssets(query);
+    final sections = filterBoardAssets(query, sections: widget.sections);
     // Une recherche déplie : chercher pour tomber sur un rayon fermé serait
     // une deuxième énigme.
     final searching = foldForSearch(query).isNotEmpty;
 
     return Container(
-      width: 280,
+      width: widget.width ?? 280,
       decoration: const BoxDecoration(
         color: QBColors.paper200,
         border: Border(left: BorderSide(color: QBColors.borderStrong, width: 2)),
@@ -585,6 +668,10 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                   _DrawerSection(
                     title: 'Carte',
                     collapsed: _collapsed.contains('Carte'),
+                    // Les fonds de carte restent côte à côte même dans un
+                    // tiroir resserré : à une par ligne, il fallait les
+                    // dépasser avant d'atteindre le premier pion.
+                    minColumns: 2,
                     onToggle: () => _toggle('Carte'),
                     children: [
                       for (final map in boardMaps)
@@ -608,12 +695,14 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                       title: section.title,
                       collapsed:
                           !searching && _collapsed.contains(section.title),
+                      minColumns: widget.minColumns,
                       onToggle: () => _toggle(section.title),
                       children: [
                         for (final asset in section.assets)
                           _AssetTile(
                             asset: asset,
                             feedbackSide: widget.feedbackSide,
+                            onDragStarted: widget.onDragStarted,
                           ),
                       ],
                     ),
@@ -701,9 +790,11 @@ class _DrawerSection extends StatelessWidget {
     required this.collapsed,
     required this.onToggle,
     required this.children,
+    required this.minColumns,
   });
 
   final String title;
+  final int minColumns;
   final bool collapsed;
   final VoidCallback onToggle;
   final List<Widget> children;
@@ -759,7 +850,7 @@ class _DrawerSection extends StatelessWidget {
                 // dérouler tout le tiroir pour voir quatre pions.
                 const gap = QBSpace.s2;
                 final columns =
-                    math.max(2, (constraints.maxWidth / 150).floor());
+                    math.max(minColumns, (constraints.maxWidth / 150).floor());
                 final side =
                     (constraints.maxWidth - gap * (columns - 1)) / columns;
 
@@ -892,17 +983,23 @@ class _TileLabel extends StatelessWidget {
 }
 
 class _AssetTile extends StatelessWidget {
-  const _AssetTile({required this.asset, required this.feedbackSide});
+  const _AssetTile({
+    required this.asset,
+    required this.feedbackSide,
+    this.onDragStarted,
+  });
 
   final BoardAsset asset;
   final double feedbackSide;
+  final VoidCallback? onDragStarted;
 
   @override
   Widget build(BuildContext context) {
-    final preview = BoardTokenView(kind: asset.kind, color: asset.color);
+    final preview = BoardTokenView.ofAsset(asset);
 
     return Draggable<BoardAsset>(
       data: asset,
+      onDragStarted: onDragStarted,
       // L'aperçu se centre sous le doigt, sinon le MJ vise un endroit et le
       // pion se pose à côté.
       dragAnchorStrategy: (_, _, _) =>

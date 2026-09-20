@@ -1,0 +1,176 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../../app/remote_providers.dart';
+import '../../data/remote/api_exception.dart';
+import '../../data/remote/remote_shop_item.dart';
+import '../../design_system/components/qb_badge.dart';
+import '../../design_system/components/qb_button.dart';
+import '../../design_system/components/qb_icon_button.dart';
+import '../../design_system/components/qb_page_background.dart';
+import '../../design_system/components/qb_toast.dart';
+import '../../design_system/tokens/colors.dart';
+import '../../design_system/tokens/spacing.dart';
+import '../../design_system/tokens/typography.dart';
+import 'providers/shop_providers.dart';
+import 'shop_artwork.dart';
+
+class ShopItemScreen extends ConsumerWidget {
+  const ShopItemScreen({super.key, required this.itemId});
+
+  final String itemId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final item = ref.watch(shopItemProvider(itemId));
+
+    return QBPageBackground(
+      child: SafeArea(
+        bottom: false,
+        child: item.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _Message(
+            error is ApiException ? error.message : 'Article introuvable.',
+          ),
+          data: (item) => _Article(item: item),
+        ),
+      ),
+    );
+  }
+}
+
+class _Article extends ConsumerStatefulWidget {
+  const _Article({required this.item});
+
+  final RemoteShopItemDetail item;
+
+  @override
+  ConsumerState<_Article> createState() => _ArticleState();
+}
+
+class _ArticleState extends ConsumerState<_Article> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
+      children: [
+        Row(
+          children: [
+            QBIconButton(
+              icon: const Icon(LucideIcons.arrowLeft, size: 18),
+              label: 'Retour à la boutique',
+              onPressed: () => context.go('/boutique'),
+            ),
+          ],
+        ),
+        const SizedBox(height: QBSpace.s4),
+        Center(
+          child: SizedBox(
+            width: 140,
+            height: 140,
+            child: ShopArtwork(imageKey: item.imageKey),
+          ),
+        ),
+        const SizedBox(height: QBSpace.s5),
+        Text(
+          item.title,
+          style: QBType.game().copyWith(
+            fontWeight: QBType.weightBold,
+            fontSize: 22,
+            color: QBColors.ink900,
+          ),
+        ),
+        const SizedBox(height: QBSpace.s3),
+        Row(
+          children: [
+            QBTag(label: item.type.label),
+            const SizedBox(width: QBSpace.s2),
+            if (item.owned)
+              const QBBadge(label: 'Possédé', tone: QBTone.success)
+            else
+              Text(
+                item.priceLabel,
+                style: QBType.mono().copyWith(
+                  fontSize: QBType.md,
+                  fontWeight: QBType.weightBold,
+                  color: QBColors.leather700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: QBSpace.s5),
+        Text(
+          item.description,
+          style: QBType.body().copyWith(
+            fontSize: QBType.sm,
+            height: 1.5,
+            color: QBColors.textBody,
+          ),
+        ),
+        const SizedBox(height: QBSpace.s6),
+        if (item.owned)
+          Text(
+            'Cet article est à toi. Tu le retrouveras parmi tes assets.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.sm,
+              color: QBColors.textMuted,
+            ),
+          )
+        else
+          QBButton(
+            label: _busy ? 'Un instant…' : 'Obtenir',
+            // Acheter est une écriture : hors ligne, le bouton attend comme
+            // partout ailleurs dans l'app.
+            onPressed: _busy || !ref.watch(canWriteProvider) ? null : _buy,
+          ),
+      ],
+    );
+  }
+
+  Future<void> _buy() async {
+    setState(() => _busy = true);
+    try {
+      await purchaseShopItem(ref, widget.item.id);
+      if (!mounted) return;
+      showQBToast(
+        context,
+        '« ${widget.item.title} » est à toi.',
+        tone: QBTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      showQBToast(context, error.message, tone: QBTone.danger);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _Message extends StatelessWidget {
+  const _Message(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(QBSpace.s6),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: QBType.body().copyWith(
+            fontSize: QBType.sm,
+            color: QBColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}

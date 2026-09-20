@@ -60,11 +60,21 @@ class BoardAsset {
     required this.name,
     required this.kind,
     required this.color,
+    this.key,
+    this.image,
   });
 
   final String name;
   final BoardTokenKind kind;
   final BoardTokenColor color;
+
+  /// La clé de l'article qui donne ce pion, `null` pour le socle commun.
+  /// C'est elle que le plateau enregistre.
+  final String? key;
+
+  /// L'illustration, pour les pions qui en ont une. Le socle se dessine
+  /// encore à la forme et à la couleur.
+  final String? image;
 }
 
 class BoardAssetSection {
@@ -74,9 +84,24 @@ class BoardAssetSection {
   final List<BoardAsset> assets;
 }
 
+/// Les rayons du tiroir. Ce sont les natures de pion, nommées : c'est ce qui
+/// permet de ranger un pion acheté sans rien lui demander de plus.
+const _personnages = 'Personnages';
+const _environnement = 'Environnement';
+const _effets = 'Effets';
+const _zones = 'Zones';
+
+/// Le rayon où se range un pion, d'après sa nature.
+String boardSectionTitleFor(BoardTokenKind kind) => switch (kind) {
+      BoardTokenKind.character => _personnages,
+      BoardTokenKind.environment => _environnement,
+      BoardTokenKind.effect => _effets,
+      BoardTokenKind.zoneDisc || BoardTokenKind.zoneSquare => _zones,
+    };
+
 const boardAssetSections = <BoardAssetSection>[
   BoardAssetSection(
-    title: 'Personnages',
+    title: _personnages,
     assets: [
       BoardAsset(
         name: 'Joueur rouge',
@@ -101,7 +126,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Environnement',
+    title: _environnement,
     assets: [
       BoardAsset(
         name: 'Décor rouge',
@@ -126,7 +151,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Effets',
+    title: _effets,
     assets: [
       BoardAsset(
         name: 'Effet rouge',
@@ -151,7 +176,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Zones',
+    title: _zones,
     assets: [
       BoardAsset(
         name: 'Zone ronde',
@@ -167,18 +192,78 @@ const boardAssetSections = <BoardAssetSection>[
   ),
 ];
 
-/// Ce qui reste du tiroir une fois [query] saisi.
+/// Les pions qui s'achètent, par la clé que la boutique leur donne.
+///
+/// Le serveur ne décrit pas à quoi ressemble un pion — il n'envoie qu'une
+/// clé — donc son dessin vit ici, du côté qui peint, comme le reste du
+/// catalogue. Une clé absente de cette table est un article que cette
+/// version de l'app ne sait pas encore montrer : elle est ignorée plutôt que
+/// de faire tomber le tiroir.
+const purchasableBoardAssets = <String, BoardAsset>{
+  'grand_ancien': BoardAsset(
+    key: 'grand_ancien',
+    name: 'Le Grand Ancien',
+    image: 'assets/brand/logo-mark.png',
+    // Un personnage : il se pose au milieu des joueurs et se déplace comme
+    // eux, ce n'est ni un décor ni une zone.
+    kind: BoardTokenKind.character,
+    color: BoardTokenColor.green,
+  ),
+};
+
+/// Le catalogue tel qu'un compte le voit : le socle commun, plus ce qu'il a
+/// acheté.
+///
+/// Les pions achetés se rangent dans les rayons existants, d'après leur
+/// nature, et non dans une vitrine « ma collection » à part : un personnage
+/// se cherche avec les personnages. Regrouper les achats ferait deux endroits
+/// où regarder pour une même question — « qu'est-ce que je peux poser comme
+/// PNJ ? » — et l'écart grandirait à chaque achat. Ils arrivent en fin de
+/// rayon, après le socle, ce qui les rend repérables sans déplacer ce que le
+/// MJ a l'habitude de trouver en tête.
+List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
+  final owned = [
+    for (final key in ownedKeys) ?purchasableBoardAssets[key],
+  ];
+  if (owned.isEmpty) return boardAssetSections;
+
+  return [
+    for (final section in boardAssetSections)
+      BoardAssetSection(
+        title: section.title,
+        assets: [
+          ...section.assets,
+          ...owned.where(
+            (asset) => boardSectionTitleFor(asset.kind) == section.title,
+          ),
+        ],
+      ),
+  ];
+}
+
+/// Le pion que dessine une clé, ou `null` si le compte ne la connaît pas.
+///
+/// Rendre `null` plutôt qu'un pion par défaut est délibéré : c'est à
+/// l'affichage de décider quoi montrer d'un asset qu'on ne possède pas, et
+/// lui seul sait qu'un rond rouge vaut mieux qu'un trou.
+BoardAsset? boardAssetForKey(String? key) =>
+    key == null ? null : purchasableBoardAssets[key];
+
+/// Ce qui reste de [sections] une fois [query] saisi.
 ///
 /// La recherche porte aussi sur le titre de la section : taper « zone » ou
 /// « personnage » doit rendre le rayon entier, c'est ce qu'on attend d'un
 /// champ de recherche au-dessus de rubriques nommées. Les sections vidées
 /// disparaissent plutôt que de rester en titres orphelins.
-List<BoardAssetSection> filterBoardAssets(String query) {
+List<BoardAssetSection> filterBoardAssets(
+  String query, {
+  List<BoardAssetSection> sections = boardAssetSections,
+}) {
   final needle = foldForSearch(query);
-  if (needle.isEmpty) return boardAssetSections;
+  if (needle.isEmpty) return sections;
 
   final kept = <BoardAssetSection>[];
-  for (final section in boardAssetSections) {
+  for (final section in sections) {
     if (foldForSearch(section.title).contains(needle)) {
       kept.add(section);
       continue;

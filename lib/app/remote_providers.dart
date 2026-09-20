@@ -16,6 +16,7 @@ import '../data/remote/character_api.dart';
 import '../data/remote/notification_api.dart';
 import '../data/remote/session_api.dart';
 import '../data/remote/scenario_api.dart';
+import '../data/remote/shop_api.dart';
 import '../data/remote/table_api.dart';
 import '../data/remote/token_store.dart';
 import '../data/sync/character_sync_dao.dart';
@@ -65,6 +66,10 @@ final sessionApiProvider = Provider<SessionApi>(
 
 final scenarioApiProvider = Provider<ScenarioApi>(
   (ref) => ScenarioApi(ref.watch(apiClientProvider)),
+);
+
+final shopApiProvider = Provider<ShopApi>(
+  (ref) => ShopApi(ref.watch(apiClientProvider)),
 );
 
 final notificationApiProvider = Provider<NotificationApi>(

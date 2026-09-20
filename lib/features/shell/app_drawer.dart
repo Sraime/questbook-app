@@ -15,12 +15,22 @@ class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
   static const _items = [
-    QBNavDrawerItem(key: '/profil', icon: LucideIcons.user, label: 'Profil'),
+    QBNavDrawerItem(
+      key: '/scenarios',
+      icon: LucideIcons.book,
+      label: 'Scénarios',
+    ),
+    QBNavDrawerItem(
+      key: '/assets',
+      icon: LucideIcons.shapes,
+      label: 'Assets',
+    ),
     QBNavDrawerItem(
       key: '/regles',
       icon: LucideIcons.bookOpen,
       label: 'Livre de règle',
     ),
+    QBNavDrawerItem(key: '/profil', icon: LucideIcons.user, label: 'Profil'),
   ];
 
   @override
@@ -136,11 +146,15 @@ class _SignOutRow extends ConsumerWidget {
               color: QBColors.paper100.withValues(alpha: 0.7),
             ),
             const SizedBox(width: QBSpace.s3 - 2),
-            Text(
-              'Se déconnecter',
-              style: QBType.body().copyWith(
-                fontSize: QBType.sm,
-                color: QBColors.paper100.withValues(alpha: 0.85),
+            // Bornée comme les destinations au-dessus : le volet a une largeur
+            // fixe, et un corps de texte agrandi par le système déborderait.
+            Expanded(
+              child: Text(
+                'Se déconnecter',
+                style: QBType.body().copyWith(
+                  fontSize: QBType.sm,
+                  color: QBColors.paper100.withValues(alpha: 0.85),
+                ),
               ),
             ),
           ],

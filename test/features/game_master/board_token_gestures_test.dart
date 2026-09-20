@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
 import 'package:questbook/features/game_master/panels/board_panel.dart';
@@ -26,13 +28,18 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BoardPanel(
-            initialTokens: const [_token],
-            initialMapId: 'grille',
-            onTokensPersisted: saved.add,
-            onMapPersisted: (_) {},
+      ProviderScope(
+        overrides: [
+          boardCatalogueProvider.overrideWithValue(boardAssetSections),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: BoardPanel(
+              initialTokens: const [_token],
+              initialMapId: 'grille',
+              onTokensPersisted: saved.add,
+              onMapPersisted: (_) {},
+            ),
           ),
         ),
       ),

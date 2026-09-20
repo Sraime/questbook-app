@@ -14,6 +14,7 @@ class RemoteCacheDao {
 
   static const overviewKey = 'tables.overview';
   static const scenariosOverviewKey = 'scenarios.overview';
+  static const ownedAssetsKey = 'assets.owned';
 
   static String detailKey(String tableId) => 'tables.detail.$tableId';
 

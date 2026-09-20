@@ -46,6 +46,8 @@ app.*.map.json
 
 # Dev scratch screenshots / mockup references (not part of the app)
 /scratch_*.png
+# Captures d'emulateur prises en cours de session (adb pull)
+/shots/
 
 # Local AI assistant tool config (machine-specific, not project source)
 .claude/
@@ -61,3 +63,6 @@ app.*.map.json
 *.jks
 *.keystore
 *.mobileprovision
+
+# Sorties de lutter run redirigees pendant un test sur emulateur.
+*.err

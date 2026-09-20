@@ -40,10 +40,41 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
   backslash Windows dans une valeur (`storeFile=C:\Users\...`) casse le
   parsing (`Malformed \uxxxx encoding`). Toujours utiliser des slashs `/`
   dans ces fichiers.
-- Un émulateur Android est déjà configuré : `questbook_test` (voir
-  `flutter emulators`). Le web (`flutter run -d chrome`) et le desktop ne
-  sont **pas** configurés nativement dans ce repo (pas de dossier `web/`
-  ni `windows/`) — voir la section Web/Desktop du README avant d'essayer.
+- Deux émulateurs Android sont déjà configurés : `questbook_play` (téléphone
+  avec Google Play) et `questbook_tablet`, seul à dépasser les 900 × 560
+  points qui donnent au mode MJ sa disposition en rail — le téléphone en
+  montre la version à onglets (voir `flutter emulators`). Le web
+  (`flutter run -d chrome`) et le desktop ne sont **pas** configurés
+  nativement dans ce repo (pas de dossier `web/` ni `windows/`) — voir la
+  section Web/Desktop du README avant d'essayer.
+- **`QUESTBOOK_GOOGLE_SERVER_CLIENT_ID`, c'est le client _Web_**, et se
+  tromper de client coûte cher : la connexion échoue avec
+  `GoogleSignInException(unknownError): [28444] Developer console is not set
+  up correctly.`, un message qui accuse la console alors que rien n'y est
+  cassé. Le projet a trois clients OAuth et deux d'entre eux sont des pièges
+  faciles — `firebase_options.dart` et `ios/Runner/Info.plist` exposent
+  l'**iOS**, qui ressemble à s'y méprendre à ce qu'on cherche. Lire le type
+  dans `android/app/google-services.json` plutôt que de recopier le premier
+  identifiant croisé : `client_type: 3` est le Web, `1` l'Android, `2` l'iOS.
+
+  | Client | Identifiant |
+  | --- | --- |
+  | **Web** (le seul à passer en `--dart-define`) | `56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf` |
+  | iOS (ne **jamais** utiliser ici) | `56734402863-oma1c0gsd0o6cfp7oefu8maej2bgb3sh` |
+
+- **Pointer l'app sur l'API locale détruit la session en cours.** Le jeton de
+  rafraîchissement stocké sur l'appareil vient du VPS, dont la base n'a rien
+  à voir avec celle de dev : l'API locale répond 401, et `ApiClient` efface
+  les jetons dès qu'un rafraîchissement échoue. Une session qui durait depuis
+  des semaines disparaît ainsi en un lancement, et il faut se reconnecter —
+  donc avoir le bon client Web sous la main. En avoir conscience avant de
+  basculer d'étape, pas après.
+- **Capturer l'émulateur** : `adb exec-out screencap -p > fichier.png` produit
+  un PNG corrompu sous PowerShell, qui décode en texte tout ce qui traverse un
+  pipeline. Passer par l'appareil : `adb shell screencap -p /sdcard/x.png`
+  puis `adb pull`. Une capture 1080 × 2400 brute dépasse en outre ce qu'un
+  agent peut lire d'un coup — la réduire (≈ 420 px de large) avec
+  `System.Drawing`.
 
 ## Secrets — ne jamais committer, ne jamais afficher en clair
 
@@ -88,6 +119,17 @@ flutter build apk --release                                  # build release (si
   `WidgetsBinding.instance.addPostFrameCallback`. Voir
   `lib/features/character_creation/widgets/characteristic_roll_dialog.dart`
   pour l'exemple corrigé.
+- **Riverpod 3 réessaie tout seul un provider en erreur**, et ça change la
+  façon de tester une panne. Un `FutureProvider` qui lève repart en
+  `AsyncLoading` après un délai, indéfiniment : si un autre provider
+  l'attend par `ref.watch(autre.future)`, cette `Future` ne se termine
+  jamais et le test part en timeout de 30 s au lieu d'échouer clairement.
+  D'où deux règles suivies ici : un provider qui doit **se rabattre sur son
+  cache** appelle l'API lui-même plutôt que d'attendre la `.future` d'un
+  voisin (comparer `ownedAssetKeysProvider` et `scenariosOverviewProvider`,
+  bâtis pareil), et un test de panne lit l'`AsyncValue` après
+  `container.listen(...)` + `pumpEventQueue()` — jamais `await ...future`,
+  qui est aussi jeté « during loading state » quand personne n'écoute.
 - **`QBButton`** (`lib/design_system/components/qb_button.dart`) enveloppe
   son contenu dans un `FittedBox` pour éviter les `RenderFlex overflowed`
   quand un label français long est utilisé dans une rangée de boutons
@@ -95,11 +137,54 @@ flutter build apk --release                                  # build release (si
   nouveau label déborde encore, c'est probablement un cas plus extrême du
   même problème — pas la peine de rajouter un `FittedBox` ad hoc ailleurs,
   le composant le gère déjà.
+- **`find.bySemanticsLabel('…')` compare le libellé entier du nœud, pas un
+  morceau.** Sur un bouton-icône, le nœud ne porte que son libellé et la
+  chaîne suffit. Dès qu'on rend toute une carte cliquable — un `Semantics`
+  au-dessus d'un `GestureDetector` —, Flutter fusionne le libellé avec les
+  textes de la carte : le nœud lit « Animer la session\nChapitre III\n… », et
+  la recherche par chaîne ne trouve rien alors que l'accessibilité est
+  correcte. Passer une `RegExp`. Le doute se lève en une minute en affichant
+  `renderObject.debugSemantics?.toStringDeep()`.
 - Les captures d'écran/diagnostics sur cette machine passent par **`adb`**
   directement (`$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe`) —
   utiliser `adb shell screencap -p /sdcard/x.png` + `adb pull`, jamais
   `adb exec-out ... > fichier` en PowerShell (corrompt le PNG binaire à
   cause de la traduction de fin de ligne).
+- **Les gestes du plateau MJ se testent mal en widget test, et Robin l'a
+  constaté avant moi : ce qui passe au vert ici ne dit pas que le pion
+  répond au doigt.** Toucher, déplacer, redimensionner et surtout faire
+  glisser un pion du tiroir vers la carte tiennent à des détails que le
+  `WidgetTester` reproduit mal. Deux pièges déjà payés, dans
+  `test/features/game_master/board_owned_token_test.dart` :
+  - un `Draggable` posé dans la liste du tiroir ne démarre pas si le geste
+    va droit sur la carte — la `ListView` gagne l'arène. Il faut un premier
+    `moveBy` **horizontal**, puis viser ;
+  - `find.text(...)` trouve une vignette construite mais hors du champ
+    visible, et `getCenter` rend alors un point en dehors de l'écran, où le
+    geste ne touche rien. Amener la vignette à l'écran d'abord — taper sa
+    recherche dans le tiroir marche mieux que `scrollUntilVisible`, qui
+    réclame un `Scrollable` explicite dès qu'il y en a plusieurs.
+
+  Conclusion : couvrir en test ce qui se vérifie (quel pion est dessiné, ce
+  qui est enregistré), et **demander un essai manuel sur
+  `questbook_tablet` dès qu'il s'agit de la sensation du geste**. Robin le
+  propose de lui-même ; ne pas conclure d'un test vert que le plateau est
+  bon.
+- **`adb shell input swipe` ne déclenche pas un `Draggable`** posé dans une
+  liste : le mouvement part d'un bloc, la `ListView` du tiroir s'en empare, et
+  on croit à un plateau cassé alors que rien ne l'est. Piloter le geste pas à
+  pas, en commençant à l'horizontale, comme un doigt le ferait :
+
+  ```powershell
+  adb -s emulator-5556 shell input motionevent DOWN 2149 636
+  adb -s emulator-5556 shell input motionevent MOVE 2090 640   # d'abord de côté
+  adb -s emulator-5556 shell input motionevent MOVE 1800 740   # puis vers la carte
+  adb -s emulator-5556 shell input motionevent UP 1172 859
+  ```
+
+  Une pause de ~150 ms entre chaque pas suffit. `input tap` et `input swipe`
+  restent bons pour tout le reste — naviguer, défiler, déplacer un pion déjà
+  posé, qui n'a pas de liste avec qui se disputer le geste.
 
 ## Fiche de personnage pilotée par config JSON (`assets/universes/`)
 
@@ -155,11 +240,14 @@ du README pour le détail.
  depuis `general_configuration` qui en porte une copie non lue/inerte) —
  `ConfigRulesEngine` prend `(CreationModeConfig, UniverseConfig)` en
  constructeur.
-- Le joueur choisit "Univers" puis (même carte, avec nom/description du
- personnage) "Mode de création" en haut de l'écran de création
- (`CharacterCreationScreen`), ce qui pilote
+- **L'univers ne se choisit plus** : l'appli est dédiée à l'Appel de
+ Cthulhu, et le mot n'apparaît nulle part à l'écran. Le joueur ne choisit
+ que "Mode de création" (même carte que nom/description du personnage,
+ dans `CharacterCreationScreen`), ce qui pilote
  `selectedCreationModeIdProvider`/`selectedCreationModeProvider`/
  `selectedUniverseProvider` — dont dépend tout le reste du formulaire.
+ Le mécanisme multi-univers reste entier sous le capot : y revenir, c'est
+ remettre un sélecteur, pas refaire la config.
  Ajouter un mode de création (ex. un futur "Débutant") = un nouveau
  fichier de surcharges + une entrée dans `creation_modes` de son univers,
  aucun changement Dart. Chaque personnage garde son `systemId` d'origine

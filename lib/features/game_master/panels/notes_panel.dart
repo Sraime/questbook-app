@@ -52,7 +52,7 @@ class _NotesPanelState extends State<NotesPanel> {
           ),
           const SizedBox(height: 2),
           Text(
-            'Enregistrées sur cette tablette au fil de la frappe.',
+            'Enregistrées sur cet appareil au fil de la frappe.',
             style: QBType.body().copyWith(
               fontSize: QBType.xs,
               color: QBColors.textMuted,

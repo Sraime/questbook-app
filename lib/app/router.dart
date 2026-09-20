@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/assets/assets_library_screen.dart';
 import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
 import '../features/game_master/game_master_screen.dart';
@@ -7,6 +8,8 @@ import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/rulebook/rulebook_chapter_screen.dart';
 import '../features/rulebook/rulebook_screen.dart';
+import '../features/shop/shop_item_screen.dart';
+import '../features/shop/shop_screen.dart';
 import '../features/scenarios/scenario_detail_screen.dart';
 import '../features/scenarios/scenarios_screen.dart';
 import '../features/shell/app_shell.dart';
@@ -57,19 +60,38 @@ final appRouter = GoRouter(
                       tableId: state.pathParameters['id']!,
                     ),
                   ),
-                  GoRoute(
-                    path: 'sessions/:sessionId',
-                    builder: (context, state) => SessionFormScreen(
-                      tableId: state.pathParameters['id']!,
-                      sessionId: state.pathParameters['sessionId']!,
-                    ),
-                  ),
                 ],
               ),
             ],
           ),
         ]),
         StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/boutique',
+            builder: (context, state) => const ShopScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ShopItemScreen(
+                  itemId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+        ]),
+        // A last branch with no tab of its own, for what the chrome opens:
+        // the drawer's destinations and the bell. They keep the shell around,
+        // and coming back to a tab finds it where it was left.
+        //
+        // Notifications used to live under `/tables`, which meant opening the
+        // bell from a character sheet lit the Tables tab and lost the reader's
+        // place there. They are not a table matter — an invitation arrives
+        // before any table exists.
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
           GoRoute(
             path: '/scenarios',
             builder: (context, state) => const ScenariosScreen(),
@@ -82,20 +104,9 @@ final appRouter = GoRouter(
               ),
             ],
           ),
-        ]),
-        // A fourth branch with no tab of its own, for what the chrome opens:
-        // the drawer's destinations and the bell. They keep the shell around,
-        // and coming back to Perso, Tables or Scénarios finds each where it
-        // was left.
-        //
-        // Notifications used to live under `/tables`, which meant opening the
-        // bell from a character sheet lit the Tables tab and lost the reader's
-        // place there. They are not a table matter — an invitation arrives
-        // before any table exists.
-        StatefulShellBranch(routes: [
           GoRoute(
-            path: '/notifications',
-            builder: (context, state) => const NotificationsScreen(),
+            path: '/assets',
+            builder: (context, state) => const AssetsLibraryScreen(),
           ),
           GoRoute(
             path: '/profil',

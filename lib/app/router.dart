@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/assets/assets_library_screen.dart';
 import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
 import '../features/game_master/game_master_screen.dart';
@@ -7,6 +8,8 @@ import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/rulebook/rulebook_chapter_screen.dart';
 import '../features/rulebook/rulebook_screen.dart';
+import '../features/shop/shop_item_screen.dart';
+import '../features/shop/shop_screen.dart';
 import '../features/scenarios/scenario_detail_screen.dart';
 import '../features/scenarios/scenarios_screen.dart';
 import '../features/shell/app_shell.dart';
@@ -69,9 +72,23 @@ final appRouter = GoRouter(
             ],
           ),
         ]),
-        // A third branch with no tab of its own, for what the chrome opens:
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/boutique',
+            builder: (context, state) => const ShopScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ShopItemScreen(
+                  itemId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+        ]),
+        // A last branch with no tab of its own, for what the chrome opens:
         // the drawer's destinations and the bell. They keep the shell around,
-        // and coming back to Perso or Tables finds each where it was left.
+        // and coming back to a tab finds it where it was left.
         //
         // Notifications used to live under `/tables`, which meant opening the
         // bell from a character sheet lit the Tables tab and lost the reader's
@@ -93,6 +110,10 @@ final appRouter = GoRouter(
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/assets',
+            builder: (context, state) => const AssetsLibraryScreen(),
           ),
           GoRoute(
             path: '/profil',

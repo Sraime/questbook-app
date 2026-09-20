@@ -55,6 +55,67 @@ void main() {
     });
   });
 
+  group('boardAssetSectionsFor', () {
+    test('un compte sans achat ne voit que le socle', () {
+      expect(boardAssetSectionsFor(const {}), same(boardAssetSections));
+    });
+
+    test('un pion acheté se range avec les siens, pas dans une vitrine à part',
+        () {
+      final sections = boardAssetSectionsFor(const {'grand_ancien'});
+
+      // Le Grand Ancien est un personnage : il se cherche là où l'on cherche
+      // les personnages, en fin de rayon pour rester repérable.
+      expect(sections.map((s) => s.title), boardAssetSections.map((s) => s.title));
+      final personnages = sections.first;
+      expect(personnages.title, 'Personnages');
+      expect(personnages.assets.last.name, 'Le Grand Ancien');
+      // La clé voyage avec le pion : c'est elle que le plateau enregistre.
+      expect(personnages.assets.last.key, 'grand_ancien');
+
+      // Les autres rayons n'ont pas bougé.
+      expect(sections[1].assets, boardAssetSections[1].assets);
+    });
+
+    test('chaque nature de pion connaît son rayon', () {
+      for (final section in boardAssetSections) {
+        for (final asset in section.assets) {
+          expect(boardSectionTitleFor(asset.kind), section.title);
+        }
+      }
+    });
+
+    test('une clé que cette version ne connaît pas est passée sous silence',
+        () {
+      // Un article ajouté au serveur après la sortie de l'app : le tiroir
+      // s'ouvre quand même, sans rubrique vide ni pion sans dessin.
+      expect(
+        boardAssetSectionsFor(const {'dragon_de_jade'}),
+        same(boardAssetSections),
+      );
+    });
+
+    test('la recherche porte aussi sur la collection', () {
+      final sections = filterBoardAssets(
+        'ancien',
+        sections: boardAssetSectionsFor(const {'grand_ancien'}),
+      );
+
+      expect(sections.single.assets.single.name, 'Le Grand Ancien');
+    });
+  });
+
+  group('boardAssetForKey', () {
+    test('rend le pion d’une clé connue', () {
+      expect(boardAssetForKey('grand_ancien')?.image, isNotNull);
+    });
+
+    test('rend null sur une clé inconnue, à l’affichage de décider', () {
+      expect(boardAssetForKey('dragon_de_jade'), isNull);
+      expect(boardAssetForKey(null), isNull);
+    });
+  });
+
   test('every piece carries a name, since the search relies on it', () {
     for (final section in boardAssetSections) {
       for (final asset in section.assets) {

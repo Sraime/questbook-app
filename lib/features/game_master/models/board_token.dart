@@ -68,6 +68,7 @@ class BoardToken {
     required this.x,
     required this.y,
     this.size = defaultSize,
+    this.assetKey,
   });
 
   factory BoardToken.fromJson(Map<String, dynamic> json) => BoardToken(
@@ -77,6 +78,10 @@ class BoardToken {
         x: (json['x'] as num).toDouble(),
         y: (json['y'] as num).toDouble(),
         size: (json['size'] as num?)?.toDouble() ?? defaultSize,
+        // Absente des plateaux enregistrés avant la boutique, et c'est très
+        // bien : un pion du socle se décrit entièrement par sa forme et sa
+        // couleur, la clé ne sert qu'à ceux qui s'achètent.
+        assetKey: json['assetKey'] as String?,
       );
 
   /// Côté d'un pion, en fraction du plus petit côté de la carte.
@@ -87,6 +92,14 @@ class BoardToken {
   final String id;
   final BoardTokenKind kind;
   final BoardTokenColor color;
+
+  /// L'asset acheté dont ce pion est une copie, `null` pour le socle commun.
+  ///
+  /// Le plateau garde la clé plutôt que l'image : ce qu'on possède peut
+  /// changer, et un pion doit rester identifiable même quand celui qui le
+  /// regarde ne l'a pas — c'est ce qui permet de le remplacer par un pion
+  /// par défaut au lieu de le perdre.
+  final String? assetKey;
 
   /// Centre du pion, entre 0 et 1.
   final double x;
@@ -100,6 +113,7 @@ class BoardToken {
         x: x ?? this.x,
         y: y ?? this.y,
         size: size ?? this.size,
+        assetKey: assetKey,
       );
 
   Map<String, dynamic> toJson() => {
@@ -109,6 +123,7 @@ class BoardToken {
         'x': x,
         'y': y,
         'size': size,
+        if (assetKey != null) 'assetKey': assetKey,
       };
 
   static List<BoardToken> decode(String payload) {

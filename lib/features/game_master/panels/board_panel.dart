@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +11,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../assets/providers/owned_assets_provider.dart';
 import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 import '../widgets/board_token_view.dart';
@@ -21,7 +23,7 @@ import '../widgets/board_token_view.dart';
 /// enregistré, jamais pendant un glissement : faire remonter chaque image
 /// jusqu'à l'écran MJ reconstruisait le rail et le tiroir soixante fois par
 /// seconde, et le pion traînait derrière le doigt.
-class BoardPanel extends StatefulWidget {
+class BoardPanel extends ConsumerStatefulWidget {
   const BoardPanel({
     super.key,
     required this.initialTokens,
@@ -36,10 +38,10 @@ class BoardPanel extends StatefulWidget {
   final ValueChanged<String> onMapPersisted;
 
   @override
-  State<BoardPanel> createState() => _BoardPanelState();
+  ConsumerState<BoardPanel> createState() => _BoardPanelState();
 }
 
-class _BoardPanelState extends State<BoardPanel> {
+class _BoardPanelState extends ConsumerState<BoardPanel> {
   /// Taille de l'aperçu qui suit le doigt, en points.
   static const double _feedbackSide = 60;
   static const _uuid = Uuid();
@@ -87,6 +89,7 @@ class _BoardPanelState extends State<BoardPanel> {
         id: _uuid.v4(),
         kind: asset.kind,
         color: asset.color,
+        assetKey: asset.key,
         x: (local.dx / box.size.width).clamp(0.0, 1.0),
         y: (local.dy / box.size.height).clamp(0.0, 1.0),
       ),
@@ -117,6 +120,15 @@ class _BoardPanelState extends State<BoardPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final sections = ref.watch(boardCatalogueProvider);
+    // Ce que le tiroir propose est exactement ce que le plateau sait
+    // dessiner : un pion venu d'ailleurs — un plateau partagé, un achat
+    // rendu — se rend en pion par défaut plutôt que de s'évanouir.
+    final ownedKeys = {
+      for (final section in sections)
+        for (final asset in section.assets) ?asset.key,
+    };
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -138,6 +150,7 @@ class _BoardPanelState extends State<BoardPanel> {
                     height: height,
                     child: _Board(
                       map: _map,
+                      ownedKeys: ownedKeys,
                       tokens: _tokens,
                       selectedId: _selectedId,
                       resizing: _resizing,
@@ -163,6 +176,7 @@ class _BoardPanelState extends State<BoardPanel> {
         Offstage(
           offstage: !_drawerOpen,
           child: _AssetDrawer(
+            sections: sections,
             feedbackSide: _feedbackSide,
             selectedMapId: _map.id,
             onSelectMap: _selectMap,
@@ -219,6 +233,7 @@ class _DrawerHandle extends StatelessWidget {
 class _Board extends StatelessWidget {
   const _Board({
     required this.map,
+    required this.ownedKeys,
     required this.tokens,
     required this.selectedId,
     required this.resizing,
@@ -231,6 +246,10 @@ class _Board extends StatelessWidget {
   });
 
   final BoardMap map;
+
+  /// Les assets achetés dont ce compte dispose, pour savoir lesquels des
+  /// pions posés il sait encore dessiner.
+  final Set<String> ownedKeys;
   final ValueListenable<List<BoardToken>> tokens;
   final ValueListenable<String?> selectedId;
   final ValueListenable<bool> resizing;
@@ -288,6 +307,7 @@ class _Board extends StatelessWidget {
                       for (final token in tokens.value)
                         _PlacedToken(
                           token: token,
+                          ownedKeys: ownedKeys,
                           boardWidth: width,
                           boardHeight: height,
                           reference: reference,
@@ -357,6 +377,7 @@ class _GridPainter extends CustomPainter {
 class _PlacedToken extends StatelessWidget {
   const _PlacedToken({
     required this.token,
+    required this.ownedKeys,
     required this.boardWidth,
     required this.boardHeight,
     required this.reference,
@@ -373,6 +394,7 @@ class _PlacedToken extends StatelessWidget {
   static const double _actionsHeight = 40;
 
   final BoardToken token;
+  final Set<String> ownedKeys;
   final double boardWidth;
   final double boardHeight;
 
@@ -412,7 +434,11 @@ class _PlacedToken extends StatelessWidget {
               ),
             ),
             onPanEnd: (_) => onCommit(),
-            child: BoardTokenView.of(token, selected: selected),
+            child: BoardTokenView.of(
+              token,
+              selected: selected,
+              ownedKeys: ownedKeys,
+            ),
           ),
         ),
         if (selected) ..._actions(side, left, top),
@@ -517,11 +543,14 @@ class _PlacedToken extends StatelessWidget {
 /// de pions.
 class _AssetDrawer extends StatefulWidget {
   const _AssetDrawer({
+    required this.sections,
     required this.feedbackSide,
     required this.selectedMapId,
     required this.onSelectMap,
   });
 
+  /// Le catalogue de ce compte, socle et collection réunis.
+  final List<BoardAssetSection> sections;
   final double feedbackSide;
   final String selectedMapId;
   final ValueChanged<BoardMap> onSelectMap;
@@ -546,7 +575,7 @@ class _AssetDrawerState extends State<_AssetDrawer> {
   @override
   Widget build(BuildContext context) {
     final query = _search.text;
-    final sections = filterBoardAssets(query);
+    final sections = filterBoardAssets(query, sections: widget.sections);
     // Une recherche déplie : chercher pour tomber sur un rayon fermé serait
     // une deuxième énigme.
     final searching = foldForSearch(query).isNotEmpty;
@@ -899,7 +928,7 @@ class _AssetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = BoardTokenView(kind: asset.kind, color: asset.color);
+    final preview = BoardTokenView.ofAsset(asset);
 
     return Draggable<BoardAsset>(
       data: asset,

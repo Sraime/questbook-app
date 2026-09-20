@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../design_system/tokens/colors.dart';
+import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 
 /// Le dessin d'un pion, identique dans le tiroir d'assets et sur le plateau —
@@ -11,21 +12,74 @@ class BoardTokenView extends StatelessWidget {
     required this.kind,
     required this.color,
     this.selected = false,
+    this.image,
   });
 
-  BoardTokenView.of(BoardToken token, {super.key, this.selected = false})
-      : kind = token.kind,
-        color = token.color;
+  /// Le dessin d'un pion du catalogue, illustration comprise s'il en a une.
+  BoardTokenView.ofAsset(BoardAsset asset, {super.key, this.selected = false})
+      : kind = asset.kind,
+        color = asset.color,
+        image = asset.image;
+
+  /// Le dessin d'un pion posé sur le plateau, pour un compte qui possède
+  /// [ownedKeys].
+  ///
+  /// Un pion acheté que le lecteur ne possède pas se rend en rond rouge —
+  /// le pion par défaut — plutôt que de disparaître : perdre une position en
+  /// silence serait pire que l'afficher au mauvais visage. Le cas se
+  /// présentera le jour où les plateaux se partageront entre MJ.
+  factory BoardTokenView.of(
+    BoardToken token, {
+    Key? key,
+    bool selected = false,
+    Set<String> ownedKeys = const {},
+  }) {
+    if (token.assetKey case final assetKey?) {
+      final asset = ownedKeys.contains(assetKey)
+          ? boardAssetForKey(assetKey)
+          : null;
+
+      return asset == null
+          ? BoardTokenView(
+              key: key,
+              kind: BoardTokenKind.character,
+              color: BoardTokenColor.red,
+              selected: selected,
+            )
+          : BoardTokenView.ofAsset(asset, key: key, selected: selected);
+    }
+
+    return BoardTokenView(
+      key: key,
+      kind: token.kind,
+      color: token.color,
+      selected: selected,
+    );
+  }
 
   final BoardTokenKind kind;
   final BoardTokenColor color;
   final bool selected;
+
+  /// L'illustration du pion, quand il en a une. Elle remplace la forme :
+  /// un pion illustré n'est plus un rond de couleur.
+  final String? image;
 
   @override
   Widget build(BuildContext context) {
     final outline = selected
         ? Border.all(color: QBColors.gold500, width: 3)
         : Border.all(color: _edge, width: 2);
+
+    if (image case final image?) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: selected ? outline : null,
+        ),
+        child: Image.asset(image, fit: BoxFit.contain),
+      );
+    }
 
     return switch (kind) {
       BoardTokenKind.character => Container(

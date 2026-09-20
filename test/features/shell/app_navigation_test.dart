@@ -23,10 +23,10 @@ void main() {
       .map((route) => route.path)
       .toList();
 
-  test('the tab bar is down to the two places one works in', () {
+  test('the tab bar holds the places one works in', () {
     expect(
       qbNavTabs.map((tab) => tab.label),
-      ['Perso', 'Tables'],
+      ['Perso', 'Tables', 'Boutique'],
     );
   });
 
@@ -36,6 +36,7 @@ void main() {
     expect(branches, hasLength(qbNavTabs.length + 1));
     expect(pathsOfBranch(0), ['/perso']);
     expect(pathsOfBranch(1), ['/tables']);
+    expect(pathsOfBranch(2), ['/boutique']);
   });
 
   test('scenarios are filed with what the chrome opens', () {
@@ -43,11 +44,18 @@ void main() {
     // belong to, and drop whoever was mid-table out of their place.
     expect(
       pathsOfBranch(qbNavTabs.length),
-      containsAll(<String>['/scenarios', '/profil', '/regles']),
+      containsAll(<String>['/scenarios', '/assets', '/profil', '/regles']),
     );
   });
 
-  testWidgets('the drawer offers Scénarios and goes there', (tester) async {
+  /// Ouvre le volet sur un routeur qui n'a que les chemins visés, pour
+  /// n'exercer que la navigation — les écrans réels demandent une base et un
+  /// compte connecté, qui ne diraient rien de plus ici.
+  Future<String?> tapInDrawer(
+    WidgetTester tester, {
+    required String label,
+    required List<String> destinations,
+  }) async {
     String? visited;
 
     final router = GoRouter(
@@ -65,13 +73,14 @@ void main() {
             ),
           ),
         ),
-        GoRoute(
-          path: '/scenarios',
-          builder: (context, state) {
-            visited = state.matchedLocation;
-            return const SizedBox();
-          },
-        ),
+        for (final path in destinations)
+          GoRoute(
+            path: path,
+            builder: (context, state) {
+              visited = state.matchedLocation;
+              return const SizedBox();
+            },
+          ),
       ],
     );
     addTearDown(router.dispose);
@@ -82,11 +91,33 @@ void main() {
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Scénarios'), findsOneWidget);
+    expect(find.text(label), findsOneWidget);
 
-    await tester.tap(find.text('Scénarios'));
+    await tester.tap(find.text(label));
     await tester.pumpAndSettle();
 
-    expect(visited, '/scenarios');
+    return visited;
+  }
+
+  testWidgets('the drawer offers Scénarios and goes there', (tester) async {
+    expect(
+      await tapInDrawer(
+        tester,
+        label: 'Scénarios',
+        destinations: ['/scenarios'],
+      ),
+      '/scenarios',
+    );
+  });
+
+  testWidgets('the drawer offers Assets and goes there', (tester) async {
+    expect(
+      await tapInDrawer(
+        tester,
+        label: 'Assets',
+        destinations: ['/assets'],
+      ),
+      '/assets',
+    );
   });
 }

@@ -21,6 +21,11 @@ class AppDrawer extends ConsumerWidget {
       label: 'Scénarios',
     ),
     QBNavDrawerItem(
+      key: '/assets',
+      icon: LucideIcons.shapes,
+      label: 'Assets',
+    ),
+    QBNavDrawerItem(
       key: '/regles',
       icon: LucideIcons.bookOpen,
       label: 'Livre de règle',

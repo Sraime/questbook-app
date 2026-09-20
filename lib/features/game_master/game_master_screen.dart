@@ -17,12 +17,14 @@ import 'game_master_layout.dart';
 import 'models/board_token.dart';
 import 'panels/board_panel.dart';
 import 'panels/characters_panel.dart';
+import 'panels/general_panel.dart';
 import 'panels/notes_panel.dart';
 import 'panels/rules_panel.dart';
 import 'panels/scenario_panel.dart';
 import 'providers/game_master_providers.dart';
 
 enum GameMasterPanel {
+  general('Général', LucideIcons.settings),
   board('Plateau', LucideIcons.map),
   characters('Personnages', LucideIcons.users),
   rules('Règles', LucideIcons.bookOpen),
@@ -212,6 +214,11 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
 
   Widget _panelBody(RemoteGameSession session, {required bool compact}) =>
       switch (_panel) {
+        GameMasterPanel.general => GeneralPanel(
+            tableId: widget.tableId,
+            session: session,
+            onCancelled: _exit,
+          ),
         GameMasterPanel.board => BoardPanel(
             initialTokens: _tokens,
             initialMapId: _mapId,
@@ -492,11 +499,11 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Les cinq volets en une ligne, quand il n'y a pas la place d'un rail.
+/// Les volets en une ligne, quand il n'y a pas la place d'un rail.
 ///
-/// Icônes seules : cinq libellés dans la largeur d'un téléphone seraient
+/// Icônes seules : six libellés dans la largeur d'un téléphone seraient
 /// illisibles. Seul le volet actif est nommé, et il prend pour cela toute la
-/// place que les quatre autres ne réclament pas.
+/// place que les cinq autres ne réclament pas.
 class _PanelTabs extends StatelessWidget {
   const _PanelTabs({required this.active, required this.onSelect});
 
@@ -527,8 +534,10 @@ class _PanelTabs extends StatelessWidget {
 class _PanelTab extends StatelessWidget {
   const _PanelTab({required this.panel, this.selected = false, this.onTap});
 
-  /// Largeur d'un onglet au repos : de quoi viser l'icône sans plus.
-  static const double _restingWidth = 50;
+  /// Largeur d'un onglet au repos : de quoi viser l'icône sans plus. Six
+  /// volets sur la largeur d'un téléphone ne laissent pas de quoi être plus
+  /// généreux sans rogner le libellé de l'actif.
+  static const double _restingWidth = 46;
 
   final GameMasterPanel panel;
   final bool selected;

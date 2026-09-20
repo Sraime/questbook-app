@@ -47,12 +47,13 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
-- **Session (`/tables/:id/sessions/new`, `/tables/:id/sessions/:sessionId`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis.
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
+- **Carte d'une session** : pour le MJ, la carte entière mène au mode MJ ; corriger la session ou l'annuler s'y fait ensuite, dans le volet Général. Elle ne porte donc plus de boutons dans l'angle de son titre — trois cibles de 32 points côte à côte se visaient mal, et le geste le plus fréquent, animer, était le plus petit. Pour un joueur, la carte reste informative : ses boutons à lui sont « Je viens » et « Je passe ».
+- **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert d'un doigt sur la carte d'une session à venir. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Général** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
@@ -153,9 +154,9 @@ lib/
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
-│   ├── game_master/             # Mode MJ : plein écran hors du shell, cinq
-│   │                            # volets (plateau, personnages, règles,
-│   │                            # scénario, notes) en rail ou en onglets
+│   ├── game_master/             # Mode MJ : plein écran hors du shell, six
+│   │                            # volets (général, plateau, personnages,
+│   │                            # règles, scénario, notes) en rail ou onglets
 │   ├── assets/                  # Vitrine des pions du plateau, hors partie ;
 │   │                            # lit le catalogue de game_master
 │   ├── shop/                    # Boutique : catalogue, page d'un article,
@@ -555,14 +556,23 @@ points, ce qu'il faut pour étaler le rail, la carte et le tiroir de front :
 
 | Disposition | Quand | Ce que ça donne |
 | --- | --- | --- |
-| `rail` | Tablette en paysage | Rail de cinq volets à gauche, tiroir d'assets ouvert à droite de la carte |
+| `rail` | Tablette en paysage | Rail de six volets à gauche, tiroir d'assets ouvert à droite de la carte |
 | `tabs` | Téléphone, tablette en portrait, fenêtre réduite | Onglets sous l'entête, tiroir en surimpression |
 
-En disposition compacte, les cinq volets tiennent dans une barre d'onglets
-**en icônes seules** : cinq libellés dans la largeur d'un téléphone seraient
+En disposition compacte, les six volets tiennent dans une barre d'onglets
+**en icônes seules** : six libellés dans la largeur d'un téléphone seraient
 illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
-les quatre autres ne réclament pas. Faute de rail, l'entête accueille le nom
-de la table et le bouton de sortie.
+les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
+de la table et le bouton de sortie. Un volet de plus rogne cette place :
+ajouter un septième demanderait autre chose qu'une rangée fixe.
+
+Le volet **Général** est celui par lequel une session se corrige. Il réutilise
+le formulaire de création (`tables/widgets/session_form.dart`) et n'envoie que
+les champs qui ont bougé — une date renvoyée telle quelle ressemblerait, vue
+du serveur, à un report, et réveillerait toute la table. Enregistrer laisse le
+MJ sur place, avec un toast pour toute confirmation : on corrige une heure
+sans sortir de la partie en cours. Annuler la session, en revanche, referme le
+mode MJ — il n'y a plus rien à y animer.
 
 Le plateau, lui, est le seul volet à ne pas tenir tel quel : la carte et un
 tiroir de 280 points ne cohabitent pas sur un téléphone. Le tiroir y **recouvre

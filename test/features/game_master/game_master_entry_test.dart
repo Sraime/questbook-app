@@ -92,12 +92,36 @@ void main() {
 
   // `bySemanticsLabel` lit le binding, qui n'existe pas encore au chargement
   // du fichier : la recherche doit donc se construire dans chaque test.
-  Finder animate() => find.bySemanticsLabel('Animer la session');
+  //
+  // Une expression plutôt qu'une chaîne : la carte entière est le bouton,
+  // donc son nœud lit « Animer la session » suivi du titre, de la date et du
+  // lieu — c'est bien ce qu'un lecteur d'écran doit annoncer.
+  Finder animate() => find.bySemanticsLabel(RegExp('Animer la session'));
 
   testWidgets('le MJ se voit proposer d’animer sa session', (tester) async {
     await pumpTable(tester, screen: const Size(1280, 800));
 
     expect(animate(), findsOneWidget);
+  });
+
+  testWidgets('la carte n’encombre plus son titre de boutons', (tester) async {
+    await pumpTable(tester, screen: const Size(1280, 800));
+
+    expect(find.bySemanticsLabel('Modifier la session'), findsNothing);
+    expect(
+      find.bySemanticsLabel('Annuler la session'),
+      findsNothing,
+      reason: 'corriger et annuler ont rejoint le volet Général du mode MJ',
+    );
+  });
+
+  testWidgets('toute la carte du MJ mène à sa session', (tester) async {
+    await pumpTable(tester, screen: const Size(1280, 800));
+
+    await tester.tap(find.text('Chapitre III — Les ruines'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('mode mj'), findsOneWidget);
   });
 
   testWidgets('un joueur ne se voit rien proposer', (tester) async {

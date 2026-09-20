@@ -60,13 +60,6 @@ final appRouter = GoRouter(
                       tableId: state.pathParameters['id']!,
                     ),
                   ),
-                  GoRoute(
-                    path: 'sessions/:sessionId',
-                    builder: (context, state) => SessionFormScreen(
-                      tableId: state.pathParameters['id']!,
-                      sessionId: state.pathParameters['sessionId']!,
-                    ),
-                  ),
                 ],
               ),
             ],

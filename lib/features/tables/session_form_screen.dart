@@ -3,88 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../app/remote_providers.dart';
-import '../../data/remote/api_exception.dart';
-import '../../data/remote/remote_scenario.dart';
-import '../../data/remote/remote_table.dart';
-import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_icon_button.dart';
-import '../../design_system/components/qb_input.dart';
 import '../../design_system/components/qb_page_background.dart';
-import '../../design_system/components/qb_select.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
-import 'providers/table_providers.dart';
-import '../scenarios/providers/scenario_providers.dart';
-import 'table_formatting.dart';
+import 'widgets/session_form.dart';
 
-/// Creates a session when [sessionId] is null, edits it otherwise. The two
-/// share every field, and the difference that matters — moving the date or the
-/// place notifies the players — is the server's to make.
+/// Proposer une session à sa table.
 ///
-/// A page rather than a modal: five fields and a soft keyboard do not fit in a
-/// centred dialog on a phone, and scrolling inside a modal is a poor trade.
+/// Une page plutôt qu'une modale : cinq champs et un clavier logiciel ne
+/// tiennent pas dans un dialogue centré sur un téléphone.
+///
+/// La corriger ensuite ne passe plus par ici : c'est l'affaire du volet
+/// Général du mode MJ, là où le MJ est déjà quand la session se joue.
 class SessionFormScreen extends ConsumerWidget {
-  const SessionFormScreen({super.key, required this.tableId, this.sessionId});
+  const SessionFormScreen({super.key, required this.tableId});
 
   final String tableId;
-  final String? sessionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (sessionId == null) {
-      return _Scaffold(
-        tableId: tableId,
-        title: 'Nouvelle session',
-        child: _SessionForm(tableId: tableId),
-      );
-    }
-
-    // Read from the table rather than carrying the session through the route:
-    // the page then survives a cold start on a deep link, and shows the
-    // session as it stands rather than as it was when the screen was opened.
-    final detail = ref.watch(tableDetailProvider(tableId));
-
-    return _Scaffold(
-      tableId: tableId,
-      title: 'Modifier la session',
-      child: detail.when(
-        data: (data) {
-          final session = data.sessions
-              .where((candidate) => candidate.id == sessionId)
-              .firstOrNull;
-
-          if (session == null) {
-            return const _Message('Cette session n’existe plus.');
-          }
-          return _SessionForm(tableId: tableId, existing: session);
-        },
-        loading: () => const Padding(
-          padding: EdgeInsets.only(top: QBSpace.s6),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (error, _) => _Message(
-          error is ApiException ? error.message : 'Session indisponible.',
-        ),
-      ),
-    );
-  }
-}
-
-class _Scaffold extends StatelessWidget {
-  const _Scaffold({
-    required this.tableId,
-    required this.title,
-    required this.child,
-  });
-
-  final String tableId;
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
     return QBPageBackground(
       child: SafeArea(
         bottom: false,
@@ -109,7 +48,7 @@ class _Scaffold extends StatelessWidget {
                 const SizedBox(width: QBSpace.s2),
                 Expanded(
                   child: Text(
-                    title,
+                    'Nouvelle session',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: QBType.game().copyWith(
@@ -122,362 +61,12 @@ class _Scaffold extends StatelessWidget {
               ],
             ),
             const SizedBox(height: QBSpace.s5),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SessionForm extends ConsumerStatefulWidget {
-  const _SessionForm({required this.tableId, this.existing});
-
-  final String tableId;
-  final RemoteGameSession? existing;
-
-  @override
-  ConsumerState<_SessionForm> createState() => _SessionFormState();
-}
-
-class _SessionFormState extends ConsumerState<_SessionForm> {
-  late final TextEditingController _title =
-      TextEditingController(text: widget.existing?.title ?? '');
-  late final TextEditingController _description =
-      TextEditingController(text: widget.existing?.description ?? '');
-  late final TextEditingController _location =
-      TextEditingController(text: widget.existing?.location ?? '');
-
-  late DateTime _startsAt = widget.existing?.startsAt ?? _defaultStart();
-  late String? _scenarioId;
-
-  bool _busy = false;
-  String? _error;
-
-  /// Sessions are evening things: tomorrow at 20h is a better first guess than
-  /// "right now".
-  static DateTime _defaultStart() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 20);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _scenarioId = widget.existing?.scenarioId;
-  }
-
-  @override
-  void dispose() {
-    _title.dispose();
-    _description.dispose();
-    _location.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _startsAt,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
-    );
-    if (date == null || !mounted) return;
-
-    setState(() {
-      _startsAt = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        _startsAt.hour,
-        _startsAt.minute,
-      );
-    });
-  }
-
-  Future<void> _pickTime() async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_startsAt),
-    );
-    if (time == null || !mounted) return;
-
-    setState(() {
-      _startsAt = DateTime(
-        _startsAt.year,
-        _startsAt.month,
-        _startsAt.day,
-        time.hour,
-        time.minute,
-      );
-    });
-  }
-
-  Future<void> _submit() async {
-    final title = _title.text.trim();
-    final location = _location.text.trim();
-
-    if (title.isEmpty) {
-      setState(() => _error = 'Donne un titre à la session.');
-      return;
-    }
-    if (location.isEmpty) {
-      setState(() => _error = 'Indique où se tiendra la session.');
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-
-    final router = GoRouter.of(context);
-    final api = ref.read(sessionApiProvider);
-    final description = _description.text.trim();
-    final existing = widget.existing;
-
-    try {
-      if (existing == null) {
-        await api.create(
-          widget.tableId,
-          title: title,
-          description: description.isEmpty ? null : description,
-          startsAt: _startsAt,
-          location: location,
-          scenarioId: _scenarioId,
-        );
-      } else {
-        // Only what actually changed goes out: a needless `startsAt` would
-        // look to the server like the date moved, and wake everyone up.
-        await api.update(
-          existing.id,
-          title: title == existing.title ? null : title,
-          description:
-              description == (existing.description ?? '') ? null : description,
-          startsAt: _startsAt.isAtSameMomentAs(existing.startsAt) ? null : _startsAt,
-          location: location == existing.location ? null : location,
-          scenarioId: _scenarioId == existing.scenarioId ? null : _scenarioId,
-          clearScenario: existing.scenarioId != null && _scenarioId == null,
-        );
-      }
-
-      refreshTables(ref, tableId: widget.tableId);
-      router.go('/tables/${widget.tableId}');
-    } on ApiException catch (error) {
-      setState(() {
-        _busy = false;
-        _error = error.message;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        QBInput(
-          label: 'Titre',
-          controller: _title,
-          placeholder: 'Le manoir Corbitt',
-          textInputAction: TextInputAction.next,
-        ),
-        const SizedBox(height: QBSpace.s3),
-        // Ahead of the description on purpose: a game master schedules a place
-        // and a date, and only then bothers to describe the evening.
-        QBInput(
-          label: 'Lieu',
-          controller: _location,
-          placeholder: 'Chez Robin',
-          textInputAction: TextInputAction.next,
-        ),
-        const SizedBox(height: QBSpace.s3),
-        Row(
-          children: [
-            Expanded(
-              child: _PickerField(
-                label: 'Date',
-                value: formatShortDate(_startsAt),
-                onTap: _pickDate,
-              ),
-            ),
-            const SizedBox(width: QBSpace.s2),
-            Expanded(
-              child: _PickerField(
-                label: 'Heure',
-                value: formatTime(_startsAt),
-                onTap: _pickTime,
-              ),
+            SessionForm(
+              tableId: tableId,
+              onSaved: () => context.go('/tables/$tableId'),
             ),
           ],
         ),
-        const SizedBox(height: QBSpace.s3),
-        _ScenarioPicker(
-          selectedId: _scenarioId,
-          linkedTitle: widget.existing?.scenario?.title,
-          onChanged: (id) => setState(() => _scenarioId = id),
-        ),
-        const SizedBox(height: QBSpace.s3),
-        QBInput(
-          label: 'Description',
-          controller: _description,
-          placeholder: 'Apportez vos fiches…',
-          maxLines: 3,
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: QBSpace.s3),
-          Text(
-            _error!,
-            style: QBType.body().copyWith(
-              fontSize: QBType.xs,
-              color: QBColors.semanticDanger,
-            ),
-          ),
-        ],
-        const SizedBox(height: QBSpace.s4),
-        QBButton(
-          label: _busy
-              ? 'Enregistrement…'
-              : (widget.existing == null ? 'Proposer la session' : 'Enregistrer'),
-          expand: true,
-          onPressed: _busy ? null : _submit,
-        ),
-      ],
-    );
-  }
-}
-
-class _ScenarioPicker extends ConsumerWidget {
-  const _ScenarioPicker({
-    required this.selectedId,
-    required this.linkedTitle,
-    required this.onChanged,
-  });
-
-  final String? selectedId;
-  final String? linkedTitle;
-  final ValueChanged<String?> onChanged;
-
-  static const _none = 'Aucun';
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final downloaded = ref.watch(downloadedScenariosProvider).asData?.value ??
-        const <RemoteScenarioDetail>[];
-
-    final byTitle = <String, String>{
-      for (final scenario in downloaded) scenario.title: scenario.id,
-    };
-    if (linkedTitle != null && selectedId != null) {
-      byTitle.putIfAbsent(linkedTitle!, () => selectedId!);
-    }
-
-    final options = [_none, ...byTitle.keys];
-    final value = () {
-      if (selectedId == null) return _none;
-      for (final entry in byTitle.entries) {
-        if (entry.value == selectedId) return entry.key;
-      }
-      return linkedTitle ?? _none;
-    }();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        QBSelect(
-          label: 'Scénario (facultatif)',
-          value: options.contains(value) ? value : _none,
-          options: options,
-          onChanged: (picked) {
-            if (picked == null || picked == _none) {
-              onChanged(null);
-              return;
-            }
-            onChanged(byTitle[picked]);
-          },
-        ),
-        if (downloaded.isEmpty) ...[
-          const SizedBox(height: 6),
-          Text(
-            'Télécharge un scénario dans l’onglet Scénarios pour l’attacher ici.',
-            style: QBType.body().copyWith(
-              fontSize: QBType.xs,
-              color: QBColors.textMuted,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// A read-only field that opens a picker, styled to sit next to [QBInput]
-/// without pretending to be one.
-class _PickerField extends StatelessWidget {
-  const _PickerField({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          // Same label as QBInput's: stacked in a form, the two kinds of field
-          // should read as one list rather than as two styles.
-          style: QBType.body().copyWith(
-            fontSize: QBType.sm,
-            fontWeight: QBType.weightSemibold,
-            color: QBColors.ink800,
-          ),
-        ),
-        const SizedBox(height: 6),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: QBColors.surfaceSunken,
-              borderRadius: BorderRadius.circular(QBRadius.md),
-              border: Border.all(color: QBColors.borderStrong, width: 2),
-            ),
-            child: Text(
-              value,
-              style: QBType.body().copyWith(
-                fontSize: QBType.sm,
-                color: QBColors.ink900,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: QBType.body().copyWith(
-        fontSize: QBType.sm,
-        color: QBColors.textMuted,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
@@ -11,6 +12,7 @@ import '../../design_system/tokens/typography.dart';
 // peine de lister un jour des pions qui n'existent plus.
 import '../game_master/models/board_catalog.dart';
 import '../game_master/widgets/board_token_view.dart';
+import 'providers/owned_assets_provider.dart';
 
 /// Ce dont le MJ dispose pour meubler un plateau, consultable hors d'une
 /// partie.
@@ -18,11 +20,13 @@ import '../game_master/widgets/board_token_view.dart';
 /// Le tiroir du mode MJ montre déjà ces pions, mais seulement une fois la
 /// session ouverte, sur une tablette : on ne pouvait pas savoir avant de
 /// s'asseoir à la table ce qu'on aurait sous la main.
-class AssetsLibraryScreen extends StatelessWidget {
+class AssetsLibraryScreen extends ConsumerWidget {
   const AssetsLibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sections = ref.watch(boardCatalogueProvider);
+
     return QBPageBackground(
       child: SafeArea(
         bottom: false,
@@ -47,13 +51,14 @@ class AssetsLibraryScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: QBSpace.s5),
-            for (final section in boardAssetSections) ...[
+            for (final section in sections) ...[
               _Section(section: section),
               const SizedBox(height: QBSpace.s5),
             ],
             Text(
-              'Les illustrations viendront plus tard : pour l’instant un pion '
-              'se reconnaît à sa forme et à sa couleur.',
+              'Les pions du socle n’ont pas encore d’illustration : ils se '
+              'reconnaissent à leur forme et à leur couleur. Ceux de la '
+              'boutique arrivent dessinés.',
               style: QBType.body().copyWith(
                 fontSize: QBType.xs,
                 color: QBColors.textMuted,
@@ -138,7 +143,7 @@ class _AssetTile extends StatelessWidget {
               SizedBox(
                 width: 40,
                 height: 40,
-                child: BoardTokenView(kind: asset.kind, color: asset.color),
+                child: BoardTokenView.ofAsset(asset),
               ),
             const SizedBox(height: QBSpace.s2),
             _TileLabel(asset.name),

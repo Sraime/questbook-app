@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
+import 'package:questbook/features/game_master/models/board_catalog.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
 import 'package:questbook/features/game_master/panels/board_panel.dart';
 
@@ -8,19 +11,29 @@ void main() {
 
   setUp(() => savedMaps = []);
 
-  Future<void> pumpDrawer(WidgetTester tester, {String? mapId}) async {
+  Future<void> pumpDrawer(
+    WidgetTester tester, {
+    String? mapId,
+    Set<String> ownedKeys = const {},
+  }) async {
     tester.view.physicalSize = const Size(2000, 1300);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BoardPanel(
-            initialTokens: const <BoardToken>[],
-            initialMapId: mapId,
-            onTokensPersisted: (_) {},
-            onMapPersisted: savedMaps.add,
+      ProviderScope(
+        overrides: [
+          boardCatalogueProvider
+              .overrideWithValue(boardAssetSectionsFor(ownedKeys)),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: BoardPanel(
+              initialTokens: const <BoardToken>[],
+              initialMapId: mapId,
+              onTokensPersisted: (_) {},
+              onMapPersisted: savedMaps.add,
+            ),
           ),
         ),
       ),
@@ -136,5 +149,19 @@ void main() {
     // Rien n'a été choisi pendant l'ouverture : on n'écrit pas sur le disque
     // pour redire ce qui y est déjà.
     expect(savedMaps, isEmpty);
+  });
+
+  testWidgets('le pion acheté prend sa place dans le tiroir', (tester) async {
+    await pumpDrawer(tester, ownedKeys: const {'grand_ancien'});
+
+    expect(find.text('Ma collection'), findsOneWidget);
+    expect(find.text('Le Grand Ancien'), findsOneWidget);
+  });
+
+  testWidgets('sans achat, le tiroir ne montre pas de rayon vide',
+      (tester) async {
+    await pumpDrawer(tester);
+
+    expect(find.text('Ma collection'), findsNothing);
   });
 }

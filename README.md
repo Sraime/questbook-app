@@ -53,7 +53,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
-- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones). Le tiroir du mode MJ montre déjà les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. L'écran lit `boardAssetSections` (`features/game_master/models/board_catalog.dart`) et ne redéclare rien — un pion ajouté au mode MJ y apparaît sans qu'on y pense, et un test l'exige.
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones, puis **Ma collection** si le compte a acheté des pions). Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
@@ -585,6 +585,36 @@ d'un côté, les pions rangés par rayon de l'autre, chacun avec un nom. Ajouter
 une carte, c'est une image sous `assets/board/` et une entrée dans la liste.
 La recherche porte sur ce nom et sur le titre du rayon, sans casse ni accents,
 et déplie au passage les rayons repliés.
+
+#### Les pions achetés
+
+Le catalogue n'est plus une constante : c'est la somme d'un socle commun et de
+ce que le compte a acheté, assemblée par `boardAssetSectionsFor` et servie par
+`boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`)
+au tiroir comme à `/assets`. La collection ferme la marche, parce que le socle
+est ce dont on se sert à chaque partie et qu'aller chercher un rond rouge sous
+une rubrique qui grandit à chaque achat serait une corvée.
+
+Le serveur ne décrit pas à quoi ressemble un pion : la boutique n'envoie qu'une
+`assetKey`, et le dessin qui lui correspond vit dans `purchasableBoardAssets`,
+du côté qui peint. Une clé qu'une version de l'app ne connaît pas encore est
+donc simplement ignorée — le tiroir s'ouvre sans rubrique vide ni pion sans
+visage.
+
+Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
+enregistrés avant la boutique, et c'est très bien : le socle se décrit
+entièrement par sa forme et sa couleur). **Un pion dont le lecteur ne possède
+pas l'asset se rend en rond rouge** plutôt que de disparaître : perdre une
+position en silence serait pire que l'afficher au mauvais visage. Ce repli est
+aujourd'hui inatteignable — le plateau ne quitte pas l'appareil, donc personne
+d'autre ne le lit — et il est là pour le jour où les plateaux se partageront.
+
+Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
+et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
+scénarios, alors que la boutique elle-même ne se lit pas hors ligne : il n'y a
+rien à acheter sans réseau, mais une partie se joue parfois sans couverture, et
+un MJ dont les pions payés disparaîtraient du tiroir à ce moment-là n'aurait
+aucun moyen de les retrouver.
 
 L'écriture suit le geste : pendant un glissement l'état ne vit qu'en mémoire,
 et il part sur le disque à la fin du geste. Les notes, elles, s'enregistrent

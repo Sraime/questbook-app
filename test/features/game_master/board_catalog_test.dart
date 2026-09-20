@@ -55,6 +55,52 @@ void main() {
     });
   });
 
+  group('boardAssetSectionsFor', () {
+    test('un compte sans achat ne voit que le socle', () {
+      expect(boardAssetSectionsFor(const {}), same(boardAssetSections));
+    });
+
+    test('ce qui a été acheté rejoint le catalogue, à la suite du socle', () {
+      final sections = boardAssetSectionsFor(const {'grand_ancien'});
+
+      expect(sections.length, boardAssetSections.length + 1);
+      expect(sections.last.title, 'Ma collection');
+      expect(sections.last.assets.single.name, 'Le Grand Ancien');
+      // La clé voyage avec le pion : c'est elle que le plateau enregistre.
+      expect(sections.last.assets.single.key, 'grand_ancien');
+    });
+
+    test('une clé que cette version ne connaît pas est passée sous silence',
+        () {
+      // Un article ajouté au serveur après la sortie de l'app : le tiroir
+      // s'ouvre quand même, sans rubrique vide ni pion sans dessin.
+      expect(
+        boardAssetSectionsFor(const {'dragon_de_jade'}),
+        same(boardAssetSections),
+      );
+    });
+
+    test('la recherche porte aussi sur la collection', () {
+      final sections = filterBoardAssets(
+        'ancien',
+        sections: boardAssetSectionsFor(const {'grand_ancien'}),
+      );
+
+      expect(sections.single.assets.single.name, 'Le Grand Ancien');
+    });
+  });
+
+  group('boardAssetForKey', () {
+    test('rend le pion d’une clé connue', () {
+      expect(boardAssetForKey('grand_ancien')?.image, isNotNull);
+    });
+
+    test('rend null sur une clé inconnue, à l’affichage de décider', () {
+      expect(boardAssetForKey('dragon_de_jade'), isNull);
+      expect(boardAssetForKey(null), isNull);
+    });
+  });
+
   test('every piece carries a name, since the search relies on it', () {
     for (final section in boardAssetSections) {
       for (final asset in section.assets) {

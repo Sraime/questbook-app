@@ -118,6 +118,17 @@ flutter build apk --release                                  # build release (si
   `WidgetsBinding.instance.addPostFrameCallback`. Voir
   `lib/features/character_creation/widgets/characteristic_roll_dialog.dart`
   pour l'exemple corrigé.
+- **Riverpod 3 réessaie tout seul un provider en erreur**, et ça change la
+  façon de tester une panne. Un `FutureProvider` qui lève repart en
+  `AsyncLoading` après un délai, indéfiniment : si un autre provider
+  l'attend par `ref.watch(autre.future)`, cette `Future` ne se termine
+  jamais et le test part en timeout de 30 s au lieu d'échouer clairement.
+  D'où deux règles suivies ici : un provider qui doit **se rabattre sur son
+  cache** appelle l'API lui-même plutôt que d'attendre la `.future` d'un
+  voisin (comparer `ownedAssetKeysProvider` et `scenariosOverviewProvider`,
+  bâtis pareil), et un test de panne lit l'`AsyncValue` après
+  `container.listen(...)` + `pumpEventQueue()` — jamais `await ...future`,
+  qui est aussi jeté « during loading state » quand personne n'écoute.
 - **`QBButton`** (`lib/design_system/components/qb_button.dart`) enveloppe
   son contenu dans un `FittedBox` pour éviter les `RenderFlex overflowed`
   quand un label français long est utilisé dans une rangée de boutons
@@ -130,6 +141,26 @@ flutter build apk --release                                  # build release (si
   utiliser `adb shell screencap -p /sdcard/x.png` + `adb pull`, jamais
   `adb exec-out ... > fichier` en PowerShell (corrompt le PNG binaire à
   cause de la traduction de fin de ligne).
+- **Les gestes du plateau MJ se testent mal en widget test, et Robin l'a
+  constaté avant moi : ce qui passe au vert ici ne dit pas que le pion
+  répond au doigt.** Toucher, déplacer, redimensionner et surtout faire
+  glisser un pion du tiroir vers la carte tiennent à des détails que le
+  `WidgetTester` reproduit mal. Deux pièges déjà payés, dans
+  `test/features/game_master/board_owned_token_test.dart` :
+  - un `Draggable` posé dans la liste du tiroir ne démarre pas si le geste
+    va droit sur la carte — la `ListView` gagne l'arène. Il faut un premier
+    `moveBy` **horizontal**, puis viser ;
+  - `find.text(...)` trouve une vignette construite mais hors du champ
+    visible, et `getCenter` rend alors un point en dehors de l'écran, où le
+    geste ne touche rien. Amener la vignette à l'écran d'abord — taper sa
+    recherche dans le tiroir marche mieux que `scrollUntilVisible`, qui
+    réclame un `Scrollable` explicite dès qu'il y en a plusieurs.
+
+  Conclusion : couvrir en test ce qui se vérifie (quel pion est dessiné, ce
+  qui est enregistré), et **demander un essai manuel sur
+  `questbook_tablet` dès qu'il s'agit de la sensation du geste**. Robin le
+  propose de lui-même ; ne pas conclure d'un test vert que le plateau est
+  bon.
 
 ## Fiche de personnage pilotée par config JSON (`assets/universes/`)
 

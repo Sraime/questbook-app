@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:questbook/app/remote_providers.dart';
 import 'package:questbook/data/remote/remote_table.dart';
+import 'package:questbook/design_system/components/qb_button.dart';
 import 'package:questbook/features/tables/providers/table_providers.dart';
 import 'package:questbook/features/tables/table_detail_screen.dart';
 
@@ -145,7 +146,7 @@ void main() {
         session: sessionAt(startsIn: const Duration(hours: -2)),
       );
 
-      expect(find.bySemanticsLabel(RegExp('Animer la session')), findsOneWidget);
+      expect(find.widgetWithText(QBButton, 'Animer'), findsOneWidget);
     });
 
     testWidgets('elle rejoint les séances passées au bout de vingt-quatre '
@@ -156,7 +157,8 @@ void main() {
       );
 
       expect(find.text('Sessions passées'), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('Animer la session')), findsNothing);
+      expect(find.widgetWithText(QBButton, 'Animer'), findsNothing);
+      expect(find.widgetWithText(QBButton, 'Préparer'), findsNothing);
     });
   });
 

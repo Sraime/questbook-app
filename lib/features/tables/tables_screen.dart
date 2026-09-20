@@ -45,7 +45,7 @@ class TablesScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Tes campagnes en cours, tous univers confondus.',
+                'Tes campagnes en cours.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textMuted,
@@ -153,9 +153,8 @@ class _TableCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Badges sit under the title rather than beside it: a universe
-            // label is free text, and next to one the title was squeezed hard
-            // enough to break mid-word.
+            // The badge sits under the title rather than beside it: next to
+            // one, a long title was squeezed hard enough to break mid-word.
             Text(
               table.title,
               style: QBType.game().copyWith(
@@ -164,18 +163,9 @@ class _TableCard extends StatelessWidget {
                 color: QBColors.ink900,
               ),
             ),
-            if (table.universeLabel != null || table.isGameMaster) ...[
+            if (table.isGameMaster) ...[
               const SizedBox(height: QBSpace.s2),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  if (table.universeLabel != null)
-                    QBBadge(label: table.universeLabel!, tone: QBTone.info),
-                  if (table.isGameMaster)
-                    const QBBadge(label: 'MJ', tone: QBTone.warning),
-                ],
-              ),
+              const QBBadge(label: 'MJ', tone: QBTone.warning),
             ],
             const SizedBox(height: QBSpace.s2),
             Text(
@@ -391,27 +381,20 @@ class _LoadFailure extends StatelessWidget {
 class _NewTableDialog {
   static Future<void> show(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
-    final universeController = TextEditingController();
 
     return showQBDialog(
       context: context,
       title: 'Nouvelle table',
-      builder: (dialogContext) => _NewTableForm(
-        titleController: titleController,
-        universeController: universeController,
-      ),
+      builder: (dialogContext) =>
+          _NewTableForm(titleController: titleController),
     );
   }
 }
 
 class _NewTableForm extends ConsumerStatefulWidget {
-  const _NewTableForm({
-    required this.titleController,
-    required this.universeController,
-  });
+  const _NewTableForm({required this.titleController});
 
   final TextEditingController titleController;
-  final TextEditingController universeController;
 
   @override
   ConsumerState<_NewTableForm> createState() => _NewTableFormState();
@@ -434,13 +417,9 @@ class _NewTableFormState extends ConsumerState<_NewTableForm> {
     });
 
     final navigator = Navigator.of(context);
-    final universe = widget.universeController.text.trim();
 
     try {
-      await ref.read(tableApiProvider).create(
-            title: title,
-            universeLabel: universe.isEmpty ? null : universe,
-          );
+      await ref.read(tableApiProvider).create(title: title);
       refreshTables(ref);
       await navigator.maybePop();
     } on ApiException catch (error) {
@@ -461,12 +440,6 @@ class _NewTableFormState extends ConsumerState<_NewTableForm> {
           label: 'Nom de la table',
           controller: widget.titleController,
           error: _error,
-        ),
-        const SizedBox(height: QBSpace.s3),
-        QBInput(
-          label: 'Univers',
-          controller: widget.universeController,
-          placeholder: 'Cthulhu…',
         ),
         const SizedBox(height: QBSpace.s4),
         QBButton(

@@ -100,7 +100,7 @@ class _CharacterCreationScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Switching universe/creation mode resets the whole draft (see
+    // Switching creation mode resets the whole draft (see
     // `selectedCreationModeProvider`/`characterCreationProvider.build()`) —
     // the name/description fields are local `TextEditingController`s, so
     // they need clearing explicitly to stay in sync.
@@ -149,32 +149,14 @@ class _CharacterCreationScreenState
               ),
             ),
             const SizedBox(height: QBSpace.s5),
-            // Univers, nom, description puis mode de création, dans cet
-            // ordre et dans une seule section : Univers/Mode de création
-            // déterminent quelle config pilote tout le reste (occupations,
-            // caractéristiques, compétences…), donc ils encadrent les deux
-            // champs qui, eux, ne dépendent d'aucun univers.
+            // Nom, description puis mode de création, dans cet ordre et dans
+            // une seule section : le mode de création détermine quelle config
+            // pilote tout le reste (occupations, caractéristiques,
+            // compétences…), donc il ferme la section.
             QBCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  QBSelect(
-                    label: 'Univers',
-                    value: config.universeName,
-                    options: [
-                      for (final name in {for (final c in availableModes) c.universeName})
-                        name,
-                    ],
-                    onChanged: (name) {
-                      if (name == null) return;
-                      final firstForUniverse =
-                          availableModes.firstWhere((c) => c.universeName == name);
-                      ref
-                          .read(selectedCreationModeIdProvider.notifier)
-                          .select(firstForUniverse.id);
-                    },
-                  ),
-                  const SizedBox(height: QBSpace.s4),
                   QBInput(
                     label: 'Nom du personnage',
                     controller: _nameController,

@@ -116,11 +116,12 @@ class RemoteTableInvitation {
   final RemoteUser invitedBy;
 }
 
+/// The server still returns a `universeLabel` on tables created before the app
+/// became Call of Cthulhu only: it is deliberately left unread.
 class RemoteGameTable {
   const RemoteGameTable({
     required this.id,
     required this.title,
-    required this.universeLabel,
     required this.ownerId,
     required this.role,
     required this.createdAt,
@@ -133,7 +134,6 @@ class RemoteGameTable {
   factory RemoteGameTable.fromJson(Map<String, dynamic> json) => RemoteGameTable(
         id: json['id'] as String,
         title: json['title'] as String,
-        universeLabel: json['universeLabel'] as String?,
         ownerId: json['ownerId'] as String,
         role: TableRole.parse(json['role'] as String),
         createdAt: DateTime.parse(json['createdAt'] as String),
@@ -150,7 +150,6 @@ class RemoteGameTable {
 
   final String id;
   final String title;
-  final String? universeLabel;
   final String ownerId;
 
   /// The signed-in user's own role, sent by the server so the UI never has to

@@ -16,7 +16,6 @@ void main() {
   RemoteGameTable tableFor(TableRole role) => RemoteGameTable(
         id: 'table-1',
         title: 'Les ombres d’Arkham',
-        universeLabel: 'Appel de Cthulhu',
         ownerId: 'gm-1',
         role: role,
         createdAt: now,

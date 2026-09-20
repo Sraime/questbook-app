@@ -130,7 +130,7 @@ void main() {
 
     expect(find.text('Le Grand Ancien'), findsOneWidget);
     expect(find.text('Asset'), findsOneWidget);
-    expect(find.text('Gratuit'), findsOneWidget);
+    expect(find.text('0 €'), findsOneWidget);
     // La description appartient à la page de l'article, où il y a la place
     // de la lire.
     expect(find.textContaining('emblème'), findsNothing);
@@ -179,7 +179,7 @@ void main() {
     expect(find.text('Possédé'), findsOneWidget);
     expect(find.text('Obtenir'), findsNothing);
     // Ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous.
-    expect(find.text('Gratuit'), findsNothing);
+    expect(find.text('0 €'), findsNothing);
   });
 
   testWidgets('offline, the offer waits like every other write',
@@ -224,5 +224,11 @@ void main() {
     await pumpShop(tester, items: [_item(priceCents: 499)]);
 
     expect(find.text('4,99 €'), findsOneWidget);
+  });
+
+  testWidgets('a round price drops the centimes', (tester) async {
+    await pumpShop(tester, items: [_item(priceCents: 500)]);
+
+    expect(find.text('5 €'), findsOneWidget);
   });
 }

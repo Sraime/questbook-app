@@ -59,13 +59,16 @@ class RemoteShopItem {
   final String? assetKey;
   final bool owned;
 
-  /// Free is worth saying in words rather than as « 0,00 € », which reads
-  /// like a price that failed to load.
+  /// Un prix, toujours en euros — « 0 € » compris, qui est un prix comme un
+  /// autre et se lit dans la même colonne que les autres.
+  ///
+  /// Les centimes ne s'écrivent que s'il y en a : « 0,00 € » et « 5,00 € »
+  /// alourdissent sans rien préciser.
   String get priceLabel {
-    if (priceCents == 0) return 'Gratuit';
     final euros = priceCents ~/ 100;
-    final cents = (priceCents % 100).toString().padLeft(2, '0');
-    return '$euros,$cents €';
+    final cents = priceCents % 100;
+    if (cents == 0) return '$euros €';
+    return '$euros,${cents.toString().padLeft(2, '0')} €';
   }
 }
 

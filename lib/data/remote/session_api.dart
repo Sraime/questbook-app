@@ -143,6 +143,65 @@ class SessionApi {
     );
   }
 
+  // --- Personnages non-joueurs ---
+  //
+  // Réservés au MJ, lectures comprises : ce qu'il a préparé est exactement ce
+  // que ses joueurs ne doivent pas savoir. Appeler ces routes depuis un compte
+  // joueur vaut un 403, et c'est voulu.
+
+  Future<List<RemoteNpc>> listNpcs(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/npcs'),
+      parse: (data) {
+        final npcs = (data as Map)['npcs'];
+        if (npcs is! List) return const <RemoteNpc>[];
+        return npcs
+            .whereType<Map>()
+            .map((entry) => RemoteNpc.fromJson(entry.cast<String, dynamic>()))
+            .toList(growable: false);
+      },
+    );
+  }
+
+  Future<RemoteNpc> createNpc(
+    String sessionId, {
+    required String name,
+    String? description,
+  }) {
+    return _client.send(
+      (dio) => dio.post<dynamic>(
+        '/sessions/$sessionId/npcs',
+        data: {'name': name, 'description': ?description},
+      ),
+      parse: _parseNpc,
+    );
+  }
+
+  Future<RemoteNpc> updateNpc(
+    String sessionId,
+    String npcId, {
+    String? name,
+    String? description,
+  }) {
+    return _client.send(
+      (dio) => dio.patch<dynamic>(
+        '/sessions/$sessionId/npcs/$npcId',
+        data: {'name': ?name, 'description': ?description},
+      ),
+      parse: _parseNpc,
+    );
+  }
+
+  Future<void> deleteNpc(String sessionId, String npcId) {
+    return _client.send(
+      (dio) => dio.delete<dynamic>('/sessions/$sessionId/npcs/$npcId'),
+      parse: (_) {},
+    );
+  }
+
   RemoteGameSession _parseSession(Object? data) =>
       RemoteGameSession.fromJson((data as Map).cast<String, dynamic>());
+
+  RemoteNpc _parseNpc(Object? data) =>
+      RemoteNpc.fromJson((data as Map).cast<String, dynamic>());
 }

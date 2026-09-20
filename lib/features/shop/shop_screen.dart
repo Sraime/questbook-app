@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../data/remote/api_exception.dart';
 import '../../data/remote/remote_shop_item.dart';
 import '../../design_system/components/qb_badge.dart';
-import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
@@ -94,22 +95,37 @@ class _Catalogue extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: QBSpace.s4),
-          _ItemCard(item: items[i]),
-        ],
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Le même calcul que le tiroir du mode MJ, pour que les deux rayons
+        // se ressemblent : deux vignettes par ligne au minimum, davantage dès
+        // qu'il y a la place.
+        const gap = QBSpace.s2;
+        final columns = math.max(2, (constraints.maxWidth / 150).floor());
+        final side = (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in items)
+              SizedBox(width: side, child: _ItemTile(item: item)),
+          ],
+        );
+      },
     );
   }
 }
 
-/// A card says the four things the shelf has to say — picture, title, type,
-/// price — and nothing else. What the article actually is belongs to its own
-/// page, where there is room to read it.
-class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.item});
+/// Une vignette dit les quatre choses du rayon — image, type, titre, prix —
+/// et rien de plus. Ce qu'est vraiment l'article appartient à sa page, où il
+/// y a la place de le lire.
+///
+/// Même chrome que les pions du tiroir du mode MJ : on y prend et on y repose
+/// les mêmes objets, les montrer autrement ici laisserait croire à deux
+/// catalogues sans rapport.
+class _ItemTile extends StatelessWidget {
+  const _ItemTile({required this.item});
 
   final RemoteShopItem item;
 
@@ -118,53 +134,81 @@ class _ItemCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.go('/boutique/${item.id}'),
       behavior: HitTestBehavior.opaque,
-      child: QBCard(
-        padding: const EdgeInsets.all(QBSpace.s4),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 64,
-              height: 64,
-              child: ShopArtwork(imageKey: item.imageKey),
-            ),
-            const SizedBox(width: QBSpace.s4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    item.title,
-                    style: QBType.game().copyWith(
-                      fontWeight: QBType.weightBold,
-                      fontSize: 15,
-                      color: QBColors.ink900,
-                    ),
-                  ),
-                  const SizedBox(height: QBSpace.s2),
-                  Row(
-                    children: [
-                      QBTag(label: item.type.label),
-                      const SizedBox(width: QBSpace.s2),
-                      // Owned wins over the price: what it used to cost is of
-                      // no interest once it is yours.
-                      if (item.owned)
-                        const QBBadge(label: 'Possédé', tone: QBTone.success)
-                      else
-                        Text(
-                          item.priceLabel,
-                          style: QBType.mono().copyWith(
-                            fontSize: QBType.sm,
-                            fontWeight: QBType.weightBold,
-                            color: QBColors.leather700,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+      child: Semantics(
+        container: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: QBSpace.s2,
+            vertical: QBSpace.s3,
+          ),
+          decoration: BoxDecoration(
+            color: QBColors.paper50,
+            border: Border.all(color: QBColors.borderDefault),
+            borderRadius: BorderRadius.circular(QBRadius.md),
+          ),
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: ShopArtwork(imageKey: item.imageKey),
               ),
-            ),
-          ],
+              const SizedBox(height: QBSpace.s2),
+              Text(
+                item.type.label,
+                style: QBType.mono().copyWith(
+                  fontSize: QBType.xs,
+                  letterSpacing: QBType.xs * QBType.trackingWide,
+                  color: QBColors.textMuted,
+                ),
+              ),
+              _TileTitle(item.title),
+              const SizedBox(height: QBSpace.s2),
+              // Possédé l'emporte sur le prix : ce qu'il coûtait n'intéresse
+              // plus personne une fois qu'il est à vous.
+              if (item.owned)
+                const QBBadge(label: 'Possédé', tone: QBTone.success)
+              else
+                Text(
+                  item.priceLabel,
+                  style: QBType.mono().copyWith(
+                    fontSize: QBType.sm,
+                    fontWeight: QBType.weightBold,
+                    color: QBColors.leather700,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Le titre d'un article, toujours sur la même hauteur : deux lignes
+/// réservées, sinon « Le Grand Ancien » et « Pack » ne poseraient pas leur
+/// prix au même niveau dans une même rangée.
+class _TileTitle extends StatelessWidget {
+  const _TileTitle(this.text);
+
+  static const double _lineHeight = 1.2;
+  static const double _height = 13 * _lineHeight * 2;
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _height,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: QBType.game().copyWith(
+          fontWeight: QBType.weightBold,
+          fontSize: 13,
+          height: _lineHeight,
+          color: QBColors.ink900,
         ),
       ),
     );

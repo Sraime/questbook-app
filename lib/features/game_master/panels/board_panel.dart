@@ -30,12 +30,17 @@ class BoardPanel extends ConsumerStatefulWidget {
     required this.initialMapId,
     required this.onTokensPersisted,
     required this.onMapPersisted,
+    this.compact = false,
   });
 
   final List<BoardToken> initialTokens;
   final String? initialMapId;
   final ValueChanged<List<BoardToken>> onTokensPersisted;
   final ValueChanged<String> onMapPersisted;
+
+  /// Sur un écran étroit, le tiroir n'a plus de colonne à lui : il recouvre la
+  /// carte le temps d'y piocher un pion, puis se range.
+  final bool compact;
 
   @override
   ConsumerState<BoardPanel> createState() => _BoardPanelState();
@@ -55,8 +60,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
   late BoardMap _map = boardMapById(widget.initialMapId);
 
   /// Le tiroir se replie pour rendre la carte à la table : une fois les pions
-  /// posés, c'est le plateau qu'on regarde, pas le catalogue.
-  bool _drawerOpen = true;
+  /// posés, c'est le plateau qu'on regarde, pas le catalogue. Il démarre
+  /// fermé là où il recouvrirait la carte d'entrée de jeu.
+  late bool _drawerOpen = !widget.compact;
 
   @override
   void dispose() {
@@ -129,14 +135,10 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
         for (final asset in section.assets) ?asset.key,
     };
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(QBSpace.s5),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
+    final board = Padding(
+      padding: EdgeInsets.all(widget.compact ? QBSpace.s3 : QBSpace.s5),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
                 var width = constraints.maxWidth;
                 var height = width / _map.aspectRatio;
                 if (height > constraints.maxHeight) {
@@ -165,24 +167,65 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
                 );
               },
             ),
-          ),
-        ),
-        _DrawerHandle(
-          open: _drawerOpen,
-          onTap: () => setState(() => _drawerOpen = !_drawerOpen),
-        ),
-        // Replié plutôt que démonté : la recherche en cours et les rayons
-        // laissés ouverts sont encore là au retour.
-        Offstage(
+          );
+
+    Widget drawer({double? width, int minColumns = 2}) => Offstage(
+          // Replié plutôt que démonté : la recherche en cours et les rayons
+          // laissés ouverts sont encore là au retour.
           offstage: !_drawerOpen,
           child: _AssetDrawer(
             sections: sections,
             feedbackSide: _feedbackSide,
             selectedMapId: _map.id,
+            width: width,
+            minColumns: minColumns,
             onSelectMap: _selectMap,
+            // Le tiroir recouvre la carte : le garder ouvert pendant qu'on
+            // tire un pion reviendrait à viser derrière lui.
+            onDragStarted:
+                widget.compact ? () => setState(() => _drawerOpen = false) : null,
           ),
-        ),
-      ],
+        );
+
+    final handle = _DrawerHandle(
+      open: _drawerOpen,
+      onTap: () => setState(() => _drawerOpen = !_drawerOpen),
+    );
+
+    if (!widget.compact) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: board),
+          handle,
+          drawer(),
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(child: board),
+          // Une Row qui ne remplit que sa droite : là où elle n'a pas
+          // d'enfant, le toucher traverse jusqu'à la carte.
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                handle,
+                // Juste de quoi poser une vignette par ligne : au-delà, le
+                // tiroir recouvre la carte sans rien montrer de plus.
+                drawer(
+                  width: math.min(200, constraints.maxWidth * 0.55),
+                  minColumns: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -547,6 +590,9 @@ class _AssetDrawer extends StatefulWidget {
     required this.feedbackSide,
     required this.selectedMapId,
     required this.onSelectMap,
+    this.width,
+    this.minColumns = 2,
+    this.onDragStarted,
   });
 
   /// Le catalogue de ce compte, socle et collection réunis.
@@ -554,6 +600,14 @@ class _AssetDrawer extends StatefulWidget {
   final double feedbackSide;
   final String selectedMapId;
   final ValueChanged<BoardMap> onSelectMap;
+
+  /// Sa largeur habituelle, sauf sur un écran qui ne peut pas la lui offrir.
+  final double? width;
+
+  /// Combien de vignettes par ligne au minimum : deux dans une colonne à lui,
+  /// une seule quand il est resserré sur la carte.
+  final int minColumns;
+  final VoidCallback? onDragStarted;
 
   @override
   State<_AssetDrawer> createState() => _AssetDrawerState();
@@ -581,7 +635,7 @@ class _AssetDrawerState extends State<_AssetDrawer> {
     final searching = foldForSearch(query).isNotEmpty;
 
     return Container(
-      width: 280,
+      width: widget.width ?? 280,
       decoration: const BoxDecoration(
         color: QBColors.paper200,
         border: Border(left: BorderSide(color: QBColors.borderStrong, width: 2)),
@@ -614,6 +668,10 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                   _DrawerSection(
                     title: 'Carte',
                     collapsed: _collapsed.contains('Carte'),
+                    // Les fonds de carte restent côte à côte même dans un
+                    // tiroir resserré : à une par ligne, il fallait les
+                    // dépasser avant d'atteindre le premier pion.
+                    minColumns: 2,
                     onToggle: () => _toggle('Carte'),
                     children: [
                       for (final map in boardMaps)
@@ -637,12 +695,14 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                       title: section.title,
                       collapsed:
                           !searching && _collapsed.contains(section.title),
+                      minColumns: widget.minColumns,
                       onToggle: () => _toggle(section.title),
                       children: [
                         for (final asset in section.assets)
                           _AssetTile(
                             asset: asset,
                             feedbackSide: widget.feedbackSide,
+                            onDragStarted: widget.onDragStarted,
                           ),
                       ],
                     ),
@@ -730,9 +790,11 @@ class _DrawerSection extends StatelessWidget {
     required this.collapsed,
     required this.onToggle,
     required this.children,
+    required this.minColumns,
   });
 
   final String title;
+  final int minColumns;
   final bool collapsed;
   final VoidCallback onToggle;
   final List<Widget> children;
@@ -788,7 +850,7 @@ class _DrawerSection extends StatelessWidget {
                 // dérouler tout le tiroir pour voir quatre pions.
                 const gap = QBSpace.s2;
                 final columns =
-                    math.max(2, (constraints.maxWidth / 150).floor());
+                    math.max(minColumns, (constraints.maxWidth / 150).floor());
                 final side =
                     (constraints.maxWidth - gap * (columns - 1)) / columns;
 
@@ -921,10 +983,15 @@ class _TileLabel extends StatelessWidget {
 }
 
 class _AssetTile extends StatelessWidget {
-  const _AssetTile({required this.asset, required this.feedbackSide});
+  const _AssetTile({
+    required this.asset,
+    required this.feedbackSide,
+    this.onDragStarted,
+  });
 
   final BoardAsset asset;
   final double feedbackSide;
+  final VoidCallback? onDragStarted;
 
   @override
   Widget build(BuildContext context) {
@@ -932,6 +999,7 @@ class _AssetTile extends StatelessWidget {
 
     return Draggable<BoardAsset>(
       data: asset,
+      onDragStarted: onDragStarted,
       // L'aperçu se centre sous le doigt, sinon le MJ vise un endroit et le
       // pion se pose à côté.
       dragAnchorStrategy: (_, _, _) =>

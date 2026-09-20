@@ -41,8 +41,9 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
   parsing (`Malformed \uxxxx encoding`). Toujours utiliser des slashs `/`
   dans ces fichiers.
 - Deux émulateurs Android sont déjà configurés : `questbook_play` (téléphone
-  avec Google Play) et `questbook_tablet`, seul capable d'atteindre les
-  900 × 560 points du mode MJ (voir `flutter emulators`). Le web
+  avec Google Play) et `questbook_tablet`, seul à dépasser les 900 × 560
+  points qui donnent au mode MJ sa disposition en rail — le téléphone en
+  montre la version à onglets (voir `flutter emulators`). Le web
   (`flutter run -d chrome`) et le desktop ne sont **pas** configurés
   nativement dans ce repo (pas de dossier `web/` ni `windows/`) — voir la
   section Web/Desktop du README avant d'essayer.

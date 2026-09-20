@@ -36,6 +36,15 @@ class AuthApi {
     );
   }
 
+  /// Efface le compte et tout ce que le serveur y rattache. Sans retour :
+  /// il n'y a plus rien à renvoyer.
+  Future<void> deleteAccount() {
+    return _client.send(
+      (dio) => dio.delete<dynamic>('/auth/me'),
+      parse: (_) {},
+    );
+  }
+
   Future<void> logout(String refreshToken) {
     return _client.send(
       authenticated: false,

@@ -127,6 +127,21 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     state = AsyncValue.data(user);
   }
 
+  /// Supprime le compte, puis n'en laisse rien sur l'appareil.
+  ///
+  /// La déconnexion épargne les personnages, parce qu'ils remonteront à la
+  /// prochaine connexion. Ici il n'y a plus rien où les remonter : les garder
+  /// serait conserver ce qu'on a demandé d'effacer.
+  Future<void> deleteAccount() async {
+    await ref.read(authRepositoryProvider).deleteAccount();
+
+    final database = ref.read(appDatabaseProvider);
+    await CharacterSyncDao(database).forgetAccount();
+    await DownloadedScenarioDao(database).clear();
+    await SessionBoardDao(database).clear();
+    state = const AsyncValue.data(null);
+  }
+
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
     // The cached tables belong to the account that just left. They are keyed

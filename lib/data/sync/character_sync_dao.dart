@@ -37,11 +37,20 @@ class CharacterSyncDao {
   /// session, and the cursor from the old account is meaningless.
   Future<void> resetForNewAccount(String accountId) async {
     await _db.transaction(() async {
-      await _db.delete(_db.characters).go();
-      await _db.delete(_db.syncMetadata).go();
-      await _db.delete(_db.remoteCache).go();
+      await _wipe();
       await _writeMeta(_accountKey, accountId);
     });
+  }
+
+  /// Called when the account is deleted rather than replaced. Same erasure,
+  /// but nobody takes its place: leaving the characters of an account that no
+  /// longer exists on the device would be keeping what was asked to be gone.
+  Future<void> forgetAccount() => _db.transaction(_wipe);
+
+  Future<void> _wipe() async {
+    await _db.delete(_db.characters).go();
+    await _db.delete(_db.syncMetadata).go();
+    await _db.delete(_db.remoteCache).go();
   }
 
   Future<String?> _readMeta(String key) async {

@@ -4,12 +4,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
 import '../../data/remote/auth_tokens.dart';
+import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import 'widgets/delete_account_dialog.dart';
 import 'widgets/rename_dialog.dart';
 
 /// Where the account answers for itself: who is signed in, and whether this
@@ -57,6 +59,10 @@ class ProfileScreen extends ConsumerWidget {
             ],
             const SizedBox(height: QBSpace.s5),
             _SyncCard(sync: sync),
+            if (user != null) ...[
+              const SizedBox(height: QBSpace.s5),
+              const _DeleteAccountCard(),
+            ],
           ],
         ),
       ),
@@ -109,6 +115,48 @@ class _AccountCard extends StatelessWidget {
             label: 'Changer de pseudo',
             size: 36,
             onPressed: () => showRenameDialog(context, currentName: user.label),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// En bas de l'écran, et pas ailleurs : c'est un geste qu'on vient chercher,
+/// jamais un qu'on croise.
+class _DeleteAccountCard extends StatelessWidget {
+  const _DeleteAccountCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return QBCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Quitter Questbook',
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightSemibold,
+              fontSize: 15,
+              color: QBColors.ink900,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s2),
+          Text(
+            'Supprimer ton compte efface tes personnages, tes scénarios et '
+            'tes achats, ici comme sur le serveur.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s3),
+          QBButton(
+            label: 'Supprimer mon compte',
+            variant: QBButtonVariant.danger,
+            expand: true,
+            onPressed: () => showDeleteAccountDialog(context),
           ),
         ],
       ),

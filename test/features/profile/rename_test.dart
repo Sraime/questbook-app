@@ -43,6 +43,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<AuthUser> signInWithGoogle() async => _account;
 
   @override
+  Future<void> deleteAccount() async {}
+
+  @override
   Future<void> signOut() async {}
 }
 

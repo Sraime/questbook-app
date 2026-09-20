@@ -66,3 +66,4 @@ app.*.map.json
 
 # Sorties de lutter run redirigees pendant un test sur emulateur.
 *.err
+*.out

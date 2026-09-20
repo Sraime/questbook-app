@@ -22,6 +22,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Génération de code](#génération-de-code)
 - [Exécution](#exécution)
 - [Compte Google et synchronisation](#compte-google-et-synchronisation)
+  - [Supprimer son compte](#supprimer-son-compte)
   - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
   - [Lancer contre le backend local](#lancer-contre-le-backend-local)
   - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
@@ -59,7 +60,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
-- **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix.
+- **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
 
 - **Connexion (obligatoire)** : l'app démarre sur l'écran de connexion Google tant qu'aucun compte n'a été utilisé sur l'appareil. Il n'y a plus de « Continuer hors ligne ».
@@ -412,6 +413,24 @@ purement local n'avait accès à rien de tout cela.
 
 **Ne pas confondre avec le réseau.** Une fois connecté, perdre le réseau ne
 déconnecte pas : l'app bascule en **consultation seule**, décrite plus bas.
+
+### Supprimer son compte
+
+Tout en bas de `/profil`, dans une carte à part. Le dialogue de confirmation
+énumère ce qui disparaît, et **compte les tables que le joueur anime** : elles
+seront dissoutes, et disparaîtront aussi pour leurs joueurs. Dire « tes tables
+seront supprimées » ne veut rien dire tant qu'on ne sait pas lesquelles.
+
+C'est le serveur qui fait le travail, en une cascade (`DELETE /auth/me`).
+L'appareil n'agit qu'ensuite, et seulement si le serveur a accepté : jetons
+effacés, puis les personnages, les scénarios téléchargés et les plateaux de
+session. La déconnexion, elle, épargne les personnages — ils remonteront à la
+prochaine connexion. Ici il n'y a plus rien où les remonter, et les garder
+serait conserver ce qu'on a demandé d'effacer.
+
+Si le serveur refuse, rien n'est touché localement et le message s'affiche dans
+le dialogue : l'appareil reste connecté à un compte qui existe toujours, ce qui
+est la vérité.
 
 ### Configuration de build (`--dart-define`)
 

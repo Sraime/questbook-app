@@ -56,7 +56,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert d'un doigt sur la carte d'une session à venir. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Général** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert d'un doigt sur la carte d'une session à venir. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Général** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent, puis les personnages non-joueurs que le MJ prépare pour cette séance), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
@@ -682,6 +682,24 @@ la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
 **pas lisibles hors ligne**, et le
 plateau ne quitte pas l'appareil — un MJ qui change d'appareil repart d'une
 carte vierge.
+
+#### Les personnages non-joueurs
+
+Sous les fiches des joueurs, dans le même volet : créatures, indicateurs,
+esprits. Un nom, une description libre, et rien d'autre — ce ne sont pas des
+fiches de personnage, et leur donner des caractéristiques serait une autre
+fonctionnalité. Le MJ en ajoute, en corrige et en retire ; toucher une carte
+rouvre le formulaire rempli, pour qu'une coquille ne force pas à tout retaper.
+
+Ils vivent **sur le serveur**, contrairement au plateau et aux notes, et sont
+attachés à la **session** : ce qu'on prépare pour une veillée n'est pas ce
+qu'on prépare pour la suivante. Le revers est qu'ils ne se lisent pas hors
+ligne, et le volet le dit plutôt que d'afficher une liste vide.
+
+Les routes sont réservées au MJ, lectures comprises : ce qu'il a écrit est
+exactement ce que ses joueurs ne doivent pas savoir. `GET /sessions/:id` ne les
+renvoie pas, il faut les demander — il n'y a donc pas de vue joueur à concevoir
+ni à oublier de protéger.
 
 ### Notifications push (Firebase Cloud Messaging)
 

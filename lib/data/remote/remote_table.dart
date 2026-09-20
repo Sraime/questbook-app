@@ -228,6 +228,30 @@ class RemoteAttendance {
   final RemoteAttendanceCharacter? character;
 }
 
+/// Tout ce qui est à la table sans être un joueur : créature, indicateur,
+/// esprit. Un nom, une description libre, et rien d'autre — ce n'est pas une
+/// fiche de personnage.
+///
+/// Attaché à une session et lisible du seul MJ : le serveur ne le renvoie
+/// jamais dans le détail d'une session, il faut aller le chercher.
+class RemoteNpc {
+  const RemoteNpc({
+    required this.id,
+    required this.name,
+    required this.description,
+  });
+
+  factory RemoteNpc.fromJson(Map<String, dynamic> json) => RemoteNpc(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String? ?? '',
+      );
+
+  final String id;
+  final String name;
+  final String description;
+}
+
 class RemoteGameSession {
   const RemoteGameSession({
     required this.id,

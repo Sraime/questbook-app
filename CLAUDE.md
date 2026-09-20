@@ -145,6 +145,13 @@ flutter build apk --release                                  # build release (si
   la recherche par chaîne ne trouve rien alors que l'accessibilité est
   correcte. Passer une `RegExp`. Le doute se lève en une minute en affichant
   `renderObject.debugSemantics?.toStringDeep()`.
+- **Et quand le nœud est fusionné, ne pas le taper.** La `RegExp` ci-dessus
+  rend le finder trouvant, mais `tap()` vise le centre du nœud, qui couvre
+  alors toute la ligne — un bouton-icône posé à droite d'un titre n'est jamais
+  atteint, et le test échoue plus loin sur un dialogue qui ne s'est pas
+  ouvert, sans rien dire du vrai coupable. Viser le bouton lui-même :
+  `find.widgetWithIcon(QBIconButton, LucideIcons.plus)`, ou `find.byType` s'il
+  est seul. Le libellé sémantique reste utile à vérifier, séparément.
 - Les captures d'écran/diagnostics sur cette machine passent par **`adb`**
   directement (`$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe`) —
   utiliser `adb shell screencap -p /sdcard/x.png` + `adb pull`, jamais

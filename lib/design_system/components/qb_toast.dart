@@ -4,8 +4,9 @@ import '../tokens/colors.dart';
 import '../tokens/spacing.dart';
 import '../tokens/typography.dart';
 
-/// Ported from components/feedback/Toast.jsx. Not wired into any of the
-/// current screens, kept for design-system completeness.
+/// Ported from components/feedback/Toast.jsx. Use [showQBToast] rather than
+/// building one by hand: a toast has to be handed to the messenger to float
+/// above the page and go away on its own.
 class QBToast extends StatelessWidget {
   const QBToast({
     super.key,
@@ -57,4 +58,29 @@ class QBToast extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Floats a [QBToast] over the current page.
+///
+/// Goes through [ScaffoldMessenger] rather than an overlay of its own: it
+/// already queues messages, dismisses them and survives a route change. The
+/// snack bar itself is stripped bare — transparent, no elevation, no padding
+/// — so what shows is the toast and nothing of Material underneath.
+void showQBToast(
+  BuildContext context,
+  String message, {
+  QBTone tone = QBTone.neutral,
+}) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Center(child: QBToast(message: message, tone: tone)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        padding: EdgeInsets.zero,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
 }

@@ -23,10 +23,10 @@ void main() {
       .map((route) => route.path)
       .toList();
 
-  test('the tab bar is down to the two places one works in', () {
+  test('the tab bar holds the places one works in', () {
     expect(
       qbNavTabs.map((tab) => tab.label),
-      ['Perso', 'Tables'],
+      ['Perso', 'Tables', 'Boutique'],
     );
   });
 
@@ -36,6 +36,7 @@ void main() {
     expect(branches, hasLength(qbNavTabs.length + 1));
     expect(pathsOfBranch(0), ['/perso']);
     expect(pathsOfBranch(1), ['/tables']);
+    expect(pathsOfBranch(2), ['/boutique']);
   });
 
   test('scenarios are filed with what the chrome opens', () {

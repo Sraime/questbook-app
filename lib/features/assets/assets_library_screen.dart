@@ -87,11 +87,12 @@ class _Section extends StatelessWidget {
         const SizedBox(height: QBSpace.s3),
         LayoutBuilder(
           builder: (context, constraints) {
-            // Trois colonnes sur un téléphone, davantage dès qu'il y a la
-            // place : une vignette plus large qu'un pouce ne dirait rien de
-            // plus d'une forme colorée.
+            // Quatre colonnes sur un téléphone, davantage dès qu'il y a la
+            // place. Quatre et non trois parce que les rayons vont par
+            // quatre : à trois, chacun se coupait en une rangée pleine et un
+            // pion orphelin en dessous.
             const gap = QBSpace.s2;
-            final columns = math.max(3, (constraints.maxWidth / 120).floor());
+            final columns = math.max(4, (constraints.maxWidth / 120).floor());
             final side = (constraints.maxWidth - gap * (columns - 1)) / columns;
 
             return Wrap(
@@ -130,9 +131,17 @@ class _AssetTile extends StatelessWidget {
         ),
         child: Column(
           children: [
-            SizedBox(
-              width: 34,
-              height: 34,
+            // Sur une alvéole sombre, comme la carte sous le pion : les
+            // zones sont un blanc translucide, pensé pour se poser sur un
+            // decor, et une vignette couleur papier les effaçait.
+            Container(
+              width: 40,
+              height: 40,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: QBColors.slotEmpty,
+                borderRadius: BorderRadius.circular(QBRadius.sm),
+              ),
               child: BoardTokenView(kind: asset.kind, color: asset.color),
             ),
             const SizedBox(height: QBSpace.s2),

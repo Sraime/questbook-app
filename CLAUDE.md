@@ -40,7 +40,9 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
   backslash Windows dans une valeur (`storeFile=C:\Users\...`) casse le
   parsing (`Malformed \uxxxx encoding`). Toujours utiliser des slashs `/`
   dans ces fichiers.
-- Un émulateur Android est déjà configuré : `questbook_test` (voir
+- Deux émulateurs Android sont déjà configurés : `questbook_play` (téléphone
+  avec Google Play, donc connexion Google possible) et `questbook_tablet`,
+  seul capable d'atteindre les 900 × 560 points du mode MJ (voir
   `flutter emulators`). Le web (`flutter run -d chrome`) et le desktop ne
   sont **pas** configurés nativement dans ce repo (pas de dossier `web/`
   ni `windows/`) — voir la section Web/Desktop du README avant d'essayer.

@@ -103,6 +103,15 @@ class AuthRepository {
     }
   }
 
+  /// Le profil en cache suit aussitôt : c'est lui qu'un démarrage hors ligne
+  /// relit, et il montrerait sinon l'ancien pseudo jusqu'à la prochaine
+  /// connexion réussie.
+  Future<AuthUser> rename(String displayName) async {
+    final user = await _api.rename(displayName);
+    await _store.writeUser(user);
+    return user;
+  }
+
   Future<void> signOut() async {
     final tokens = await _store.read();
 

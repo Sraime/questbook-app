@@ -24,6 +24,18 @@ class AuthApi {
     );
   }
 
+  /// Le pseudo est la seule chose qu'un compte peut changer de lui-même :
+  /// l'adresse et la photo restent celles de Google.
+  Future<AuthUser> rename(String displayName) {
+    return _client.send(
+      (dio) => dio.patch<dynamic>(
+        '/auth/me',
+        data: {'displayName': displayName},
+      ),
+      parse: (data) => AuthUser.fromJson((data as Map).cast<String, dynamic>()),
+    );
+  }
+
   Future<void> logout(String refreshToken) {
     return _client.send(
       authenticated: false,

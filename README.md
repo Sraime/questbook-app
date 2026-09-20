@@ -46,7 +46,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création de personnage (`/perso/create`)** : choix de l'univers et du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. La boutique (#19) viendra plus tard ; en attendant, quelques scénarios sont donnés à la connexion.
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
 - **Session (`/tables/:id/sessions/new`, `/tables/:id/sessions/:sessionId`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
@@ -54,6 +54,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones). Le tiroir du mode MJ montre déjà les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. L'écran lit `boardAssetSections` (`features/game_master/models/board_catalog.dart`) et ne redéclare rien — un pion ajouté au mode MJ y apparaît sans qu'on y pense, et un test l'exige.
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -68,17 +69,19 @@ Toute l'interface utilise un design system interne « juicy » (boutons/cartes/d
 
 Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une seule règle les départage : **le bas est pour les endroits où l'on travaille, le haut pour tout le reste.**
 
-- **En bas**, les deux onglets persistants : Perso et Tables. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
+- **En bas**, les trois onglets persistants : Perso, Tables et Boutique. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
 - **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
 
 Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Assets, Livre de règle, Profil, et la déconnexion en bas du panneau.
 
 **Scénarios a quitté la barre du bas** pour ce volet. On y va préparer une partie avant qu'elle existe, pas pendant qu'on joue : ce n'est pas un endroit où l'on travaille en allers-retours, et lui garder un tiers de la barre disait le contraire. Le voisinage du Livre de règle est plus juste — deux lectures qu'on ouvre, pas deux chantiers qu'on reprend.
 
+**La Boutique a pris la place laissée libre.** On la parcourt par allers-retours — une carte, son article, retour au rayon — et ce qu'on y obtient doit rester à portée sans rouvrir un menu. C'est bien un endroit où l'on travaille, au sens de la règle ci-dessus.
+
 Trois conséquences valent d'être notées, parce que ce sont elles qui ont dicté la structure du routeur :
 
 - **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
-- Notifications, Scénarios, Assets, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des deux. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que sortir une destination de la barre ne puisse pas laisser les deux en désaccord.
+- Notifications, Scénarios, Assets, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que déplacer une destination dans la barre ou l'en sortir ne puisse pas laisser les deux en désaccord.
 - Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
 - Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
 
@@ -90,7 +93,7 @@ L'`AccountBar` qui coiffait la liste des personnages a disparu : le compte est p
 | --- | --- |
 | Framework | Flutter (SDK Dart `^3.12.2`, canal stable) |
 | État / DI | [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) (`Notifier`, `Provider`, `FutureProvider`) |
-| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` : deux onglets, plus une branche sans onglet pour ce qu'ouvre la barre haute) |
+| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` : trois onglets, plus une branche sans onglet pour ce qu'ouvre la barre haute) |
 | Persistance locale | [`drift`](https://pub.dev/packages/drift) + [`drift_flutter`](https://pub.dev/packages/drift_flutter) (SQLite embarqué) |
 | Modèles immuables | [`freezed`](https://pub.dev/packages/freezed) / `freezed_annotation` |
 | Sérialisation | `json_annotation` / `json_serializable` |
@@ -155,12 +158,14 @@ lib/
 │   │                            # scénario, notes) et seuil tablette
 │   ├── assets/                  # Vitrine des pions du plateau, hors partie ;
 │   │                            # lit le catalogue de game_master
+│   ├── shop/                    # Boutique : catalogue, page d'un article,
+│   │                            # achat ; les clés d'image se résolvent ici
 │   ├── profile/                 # Compte connecté et état de la synchronisation
 │   ├── rulebook/                # Livre de règle : sommaire + chapitres
 │   │                            # (7e éd. Cthulhu : Tests, Combat, Santé,
 │   │                            # Folie, Poursuites)
 │   ├── auth/                    # Écran de connexion Google
-│   └── shell/                   # AppShell : les deux barres de chrome
+│   └── shell/                   # AppShell : les deux barres de chrome (haut et bas)
 │                                # (StatefulShellRoute), le volet du burger,
 │                                # le bandeau hors ligne et l'onglet d'où l'on vient
 ├── services/

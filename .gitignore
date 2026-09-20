@@ -61,3 +61,6 @@ app.*.map.json
 *.jks
 *.keystore
 *.mobileprovision
+
+# Sorties de lutter run redirigees pendant un test sur emulateur.
+*.err

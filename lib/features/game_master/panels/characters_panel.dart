@@ -7,6 +7,7 @@ import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_character.dart';
 import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_badge.dart';
+import '../../../design_system/components/qb_button.dart';
 import '../../../design_system/components/qb_card.dart';
 import '../../../design_system/components/qb_icon_button.dart';
 import '../../../design_system/tokens/colors.dart';
@@ -25,9 +26,17 @@ import '../widgets/npc_dialog.dart';
 /// d'appel qui les rendrait toutes d'un coup. Sans réseau, la liste reste donc
 /// vide.
 class CharactersPanel extends ConsumerWidget {
-  const CharactersPanel({super.key, required this.session});
+  const CharactersPanel({
+    super.key,
+    required this.session,
+    this.compact = false,
+  });
 
   final RemoteGameSession session;
+
+  /// Sur un écran étroit, le bouton d'ajout ne tient pas à côté du titre de sa
+  /// section : il passe dessous.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,8 +85,12 @@ class CharactersPanel extends ConsumerWidget {
             const SizedBox(height: QBSpace.s3),
             _AttendeeCard(sessionId: session.id, attendance: attendance),
           ],
-        const SizedBox(height: QBSpace.s6),
-        _NpcSection(sessionId: session.id),
+        // Deux listes de personnages se suivent : sans filet, la seconde se
+        // lit comme la suite de la première.
+        const SizedBox(height: QBSpace.s5),
+        Container(height: 1, color: QBColors.borderHairline),
+        const SizedBox(height: QBSpace.s5),
+        _NpcSection(sessionId: session.id, compact: compact),
       ],
     );
   }
@@ -87,39 +100,46 @@ class CharactersPanel extends ConsumerWidget {
 /// non dans un volet à part : le MJ y cherche la même chose — qui est là, et
 /// ce qu'il sait de lui.
 class _NpcSection extends ConsumerWidget {
-  const _NpcSection({required this.sessionId});
+  const _NpcSection({required this.sessionId, required this.compact});
 
   final String sessionId;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final npcs = ref.watch(sessionNpcsProvider(sessionId));
 
+    // Le titre entier ne laisse pas la place d'un bouton sur un téléphone :
+    // il tient déjà presque toute la largeur à lui seul. L'abréviation, elle,
+    // laisse la ligne respirer, et le sous-titre juste en dessous dit en
+    // toutes lettres de quoi il s'agit.
+    final title = Text(
+      compact ? 'PNJ' : 'Personnages non-joueurs',
+      style: QBType.game().copyWith(
+        fontWeight: QBType.weightBold,
+        fontSize: 16,
+        letterSpacing: 16 * QBType.trackingWide,
+        color: QBColors.ink900,
+      ),
+    );
+
+    // Libellé et non icône seule, comme « + Inviter » sur l'écran d'une
+    // table : c'est le même geste, il a la même forme. Il se raccourcit avec
+    // le titre — sous un titre « PNJ », « + Ajouter » ne laisse aucun doute.
+    final add = QBButton(
+      label: compact ? '+ Ajouter' : '+ Ajouter un PNJ',
+      size: QBButtonSize.sm,
+      onPressed: () => showNpcDialog(context, sessionId: sessionId),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Personnages non-joueurs',
-                style: QBType.game().copyWith(
-                  fontWeight: QBType.weightBold,
-                  fontSize: 16,
-                  letterSpacing: 16 * QBType.trackingWide,
-                  color: QBColors.ink900,
-                ),
-              ),
-            ),
-            QBIconButton(
-              icon: const Icon(LucideIcons.plus, size: 18),
-              label: 'Ajouter un personnage non-joueur',
-              size: 36,
-              onPressed: () => showNpcDialog(context, sessionId: sessionId),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
+        Row(children: [Expanded(child: title), add]),
+        // Le sous-titre se colle au titre, sauf quand le bouton lui passe
+        // au-dessus : l'ombre portée descend de 8 points et déborde de 14 de
+        // plus, elle salirait la ligne juste en dessous.
+        SizedBox(height: compact ? QBSpace.s4 : 2),
         Text(
           'Créatures, indicateurs, esprits. Tes joueurs ne les voient pas.',
           style: QBType.body().copyWith(

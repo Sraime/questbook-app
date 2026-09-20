@@ -226,7 +226,10 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
             onTokensPersisted: _persistTokens,
             onMapPersisted: _persistMap,
           ),
-        GameMasterPanel.characters => CharactersPanel(session: session),
+        GameMasterPanel.characters => CharactersPanel(
+            session: session,
+            compact: compact,
+          ),
         GameMasterPanel.rules => const RulesPanel(),
         GameMasterPanel.scenario => ScenarioPanel(session: session),
         GameMasterPanel.notes => NotesPanel(

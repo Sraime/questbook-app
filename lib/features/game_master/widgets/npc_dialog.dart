@@ -22,6 +22,10 @@ Future<void> showNpcDialog(
   return showQBDialog(
     context: context,
     title: existing == null ? 'Nouveau personnage' : 'Modifier',
+    // Plus large que les autres fenêtres : la description est de la prose, et
+    // l'écrire dans une colonne de deux mots empêche de la relire. `QBDialog`
+    // ramène cette largeur à celle de l'écran quand il est plus étroit.
+    width: 560,
     builder: (_) => _NpcForm(sessionId: sessionId, existing: existing),
   );
 }

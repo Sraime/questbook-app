@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:questbook/app/remote_providers.dart';
 import 'package:questbook/data/remote/api_exception.dart';
 import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/data/remote/session_api.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
-import 'package:questbook/design_system/components/qb_icon_button.dart';
 import 'package:questbook/features/game_master/panels/characters_panel.dart';
 
 /// Les seuls appels que la section attend. Le reste du client n'a pas à
@@ -100,18 +98,23 @@ void main() {
     WidgetTester tester, {
     List<RemoteNpc> npcs = const [],
     ApiException? failure,
+    bool compact = false,
   }) async {
     final api = _FakeSessionApi(failure: failure)..stored = npcs;
 
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.physicalSize = compact
+        ? const Size(411, 890)
+        : const Size(800, 1600);
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [sessionApiProvider.overrideWithValue(api)],
         child: MaterialApp(
-          home: Scaffold(body: CharactersPanel(session: _session)),
+          home: Scaffold(
+            body: CharactersPanel(session: _session, compact: compact),
+          ),
         ),
       ),
     );
@@ -120,13 +123,38 @@ void main() {
     return api;
   }
 
-  /// Visé par son icône et non par son étiquette : le bouton d'ajout partage
-  /// sa ligne avec le titre de la section, et le nœud sémantique qui les
-  /// réunit est centré sur le titre — `tap` manquerait le bouton.
   Future<void> openAddDialog(WidgetTester tester) async {
-    await tester.tap(find.widgetWithIcon(QBIconButton, LucideIcons.plus));
+    await tester.tap(find.widgetWithText(QBButton, '+ Ajouter un PNJ'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('sur un écran étroit, titre et bouton tiennent sur une ligne',
+      (tester) async {
+    await pumpPanel(tester, compact: true);
+
+    // En toutes lettres, le titre prenait presque toute la largeur : il
+    // passait sur deux lignes et le bouton venait à cheval sur le sous-titre.
+    final title = find.text('PNJ');
+    expect(title, findsOneWidget);
+    expect(tester.getRect(title).height, lessThan(24));
+
+    final button = find.widgetWithText(QBButton, '+ Ajouter');
+    expect(
+      tester.getRect(button).top,
+      lessThan(tester.getRect(title).bottom),
+    );
+
+    // Son ombre portée descend de 8 points et déborde de 14 de plus : sans
+    // marge, elle salit le sous-titre.
+    final subtitle = find.text(
+      'Créatures, indicateurs, esprits. Tes joueurs ne les voient pas.',
+    );
+    expect(subtitle, findsOneWidget);
+    expect(
+      tester.getRect(subtitle).top - tester.getRect(button).bottom,
+      greaterThanOrEqualTo(14),
+    );
+  });
 
   testWidgets('la section existe, vide, sous les fiches des joueurs',
       (tester) async {

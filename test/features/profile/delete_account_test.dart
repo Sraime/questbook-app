@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import 'package:questbook/data/remote/api_exception.dart';
 import 'package:questbook/data/remote/auth_tokens.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
 import 'package:questbook/features/profile/profile_screen.dart';
+import 'package:questbook/features/tables/providers/table_providers.dart';
 
 const _account = AuthUser(
   id: 'user-1',
@@ -55,6 +58,7 @@ void main() {
   Future<(_FakeAuthRepository, ProviderContainer)> pumpProfile(
     WidgetTester tester, {
     ApiException? failure,
+    Future<TablesOverview>? tables,
   }) async {
     final repository = _FakeAuthRepository(failure: failure);
 
@@ -65,6 +69,10 @@ void main() {
     final container = ProviderContainer(overrides: [
       authRepositoryProvider.overrideWithValue(repository),
       appDatabaseProvider.overrideWithValue(database),
+      tablesOverviewProvider.overrideWith(
+        (ref) =>
+            tables ?? Future.value(const TablesOverview(tables: [], invitations: [])),
+      ),
     ]);
     addTearDown(container.dispose);
     await container.read(authControllerProvider.future);
@@ -86,6 +94,27 @@ void main() {
     await tester.tap(find.widgetWithText(QBButton, 'Supprimer mon compte'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('rien ne s’efface tant que les tables sont inconnues',
+      (tester) async {
+    final (repository, _) = await pumpProfile(
+      tester,
+      // La liste des tables n'arrive jamais : le decompte reste inconnu.
+      tables: Completer<TablesOverview>().future,
+    );
+
+    await openDialog(tester);
+
+    expect(find.text('Vérification de tes tables…'), findsOneWidget);
+    await tester.tap(find.widgetWithText(QBButton, 'Supprimer définitivement'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.deletions,
+      0,
+      reason: 'confirmer avant de savoir ce qu’on efface ne doit rien effacer',
+    );
+  });
 
   testWidgets('la suppression demande confirmation avant de partir',
       (tester) async {

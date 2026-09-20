@@ -53,6 +53,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones). Le tiroir du mode MJ montre déjà les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. L'écran lit `boardAssetSections` (`features/game_master/models/board_catalog.dart`) et ne redéclare rien — un pion ajouté au mode MJ y apparaît sans qu'on y pense, et un test l'exige.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -70,14 +71,14 @@ Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une se
 - **En bas**, les deux onglets persistants : Perso et Tables. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
 - **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
 
-Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Livre de règle, Profil, et la déconnexion en bas du panneau.
+Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Assets, Livre de règle, Profil, et la déconnexion en bas du panneau.
 
 **Scénarios a quitté la barre du bas** pour ce volet. On y va préparer une partie avant qu'elle existe, pas pendant qu'on joue : ce n'est pas un endroit où l'on travaille en allers-retours, et lui garder un tiers de la barre disait le contraire. Le voisinage du Livre de règle est plus juste — deux lectures qu'on ouvre, pas deux chantiers qu'on reprend.
 
 Trois conséquences valent d'être notées, parce que ce sont elles qui ont dicté la structure du routeur :
 
 - **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
-- Notifications, Scénarios, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des deux. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que sortir une destination de la barre ne puisse pas laisser les deux en désaccord.
+- Notifications, Scénarios, Assets, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des deux. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que sortir une destination de la barre ne puisse pas laisser les deux en désaccord.
 - Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
 - Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
 
@@ -152,6 +153,8 @@ lib/
 │   ├── game_master/             # Mode MJ : plein écran hors du shell, rail de
 │   │                            # cinq volets (plateau, personnages, règles,
 │   │                            # scénario, notes) et seuil tablette
+│   ├── assets/                  # Vitrine des pions du plateau, hors partie ;
+│   │                            # lit le catalogue de game_master
 │   ├── profile/                 # Compte connecté et état de la synchronisation
 │   ├── rulebook/                # Livre de règle : sommaire + chapitres
 │   │                            # (7e éd. Cthulhu : Tests, Combat, Santé,

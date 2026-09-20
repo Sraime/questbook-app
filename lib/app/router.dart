@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/assets/assets_library_screen.dart';
 import '../features/character_creation/character_creation_screen.dart';
 import '../features/character_sheet/character_sheet_screen.dart';
 import '../features/game_master/game_master_screen.dart';
@@ -93,6 +94,10 @@ final appRouter = GoRouter(
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/assets',
+            builder: (context, state) => const AssetsLibraryScreen(),
           ),
           GoRoute(
             path: '/profil',

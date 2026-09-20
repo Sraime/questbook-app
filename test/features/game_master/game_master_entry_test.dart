@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:questbook/app/remote_providers.dart';
 import 'package:questbook/data/remote/remote_table.dart';
+import 'package:questbook/design_system/components/qb_button.dart';
+import 'package:questbook/design_system/components/qb_card.dart';
 import 'package:questbook/features/tables/providers/table_providers.dart';
 import 'package:questbook/features/tables/table_detail_screen.dart';
 
@@ -36,26 +38,34 @@ void main() {
         nextSessionAt: null,
       );
 
-  final session = RemoteGameSession(
-    id: 'session-1',
-    tableId: 'table-1',
-    title: 'Chapitre III — Les ruines',
-    description: null,
-    startsAt: now.add(const Duration(days: 2)),
-    location: 'Chez Marie',
-    status: 'scheduled',
-    attendances: const [],
-    myStatus: null,
-    myCharacter: null,
-    scenarioId: null,
-    scenario: null,
-  );
+  RemoteGameSession sessionStarting(Duration startsIn) {
+    final startsAt = DateTime.now().add(startsIn);
+    return RemoteGameSession(
+      id: 'session-1',
+      tableId: 'table-1',
+      title: 'Chapitre III — Les ruines',
+      description: null,
+      startsAt: startsAt,
+      location: 'Chez Marie',
+      status: 'scheduled',
+      attendances: const [],
+      myStatus: null,
+      myCharacter: null,
+      scenarioId: null,
+      scenario: null,
+      closesAt: startsAt.add(const Duration(hours: 24)),
+      answersCloseAt: startsAt,
+    );
+  }
 
   Future<void> pumpTable(
     WidgetTester tester, {
     required Size screen,
     TableRole role = TableRole.gameMaster,
+    Duration startsIn = const Duration(days: 2),
   }) async {
+    final session = sessionStarting(startsIn);
+
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = screen;
     addTearDown(tester.view.reset);
@@ -90,18 +100,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // `bySemanticsLabel` lit le binding, qui n'existe pas encore au chargement
-  // du fichier : la recherche doit donc se construire dans chaque test.
-  //
-  // Une expression plutôt qu'une chaîne : la carte entière est le bouton,
-  // donc son nœud lit « Animer la session » suivi du titre, de la date et du
-  // lieu — c'est bien ce qu'un lecteur d'écran doit annoncer.
-  Finder animate() => find.bySemanticsLabel(RegExp('Animer la session'));
+  Finder entry(String label) => find.widgetWithText(QBButton, label);
 
-  testWidgets('le MJ se voit proposer d’animer sa session', (tester) async {
+  testWidgets('avant l’heure, le MJ prépare sa séance', (tester) async {
     await pumpTable(tester, screen: const Size(1280, 800));
 
-    expect(animate(), findsOneWidget);
+    expect(entry('Préparer'), findsOneWidget);
+    expect(entry('Animer'), findsNothing);
+  });
+
+  testWidgets('une fois commencée, il l’anime', (tester) async {
+    await pumpTable(
+      tester,
+      screen: const Size(1280, 800),
+      startsIn: const Duration(hours: -2),
+    );
+
+    expect(entry('Animer'), findsOneWidget);
+    expect(entry('Préparer'), findsNothing);
   });
 
   testWidgets('la carte n’encombre plus son titre de boutons', (tester) async {
@@ -115,13 +131,27 @@ void main() {
     );
   });
 
-  testWidgets('toute la carte du MJ mène à sa session', (tester) async {
+  testWidgets('le bouton mène au mode MJ', (tester) async {
+    await pumpTable(tester, screen: const Size(1280, 800));
+
+    await tester.tap(entry('Préparer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('mode mj'), findsOneWidget);
+  });
+
+  testWidgets('le reste de la carte ne mène plus nulle part', (tester) async {
     await pumpTable(tester, screen: const Size(1280, 800));
 
     await tester.tap(find.text('Chapitre III — Les ruines'));
     await tester.pumpAndSettle();
 
-    expect(find.text('mode mj'), findsOneWidget);
+    expect(
+      find.text('mode mj'),
+      findsNothing,
+      reason: 'un geste qu’aucun mot n’annonce ne se devine pas : c’est le '
+          'bouton qui ouvre le mode MJ, et lui seul',
+    );
   });
 
   testWidgets('un joueur ne se voit rien proposer', (tester) async {
@@ -131,22 +161,33 @@ void main() {
       role: TableRole.player,
     );
 
-    expect(animate(), findsNothing);
+    expect(entry('Préparer'), findsNothing);
+    expect(entry('Animer'), findsNothing);
   });
 
-  testWidgets('sur un téléphone aussi, le MJ peut animer', (tester) async {
+  testWidgets('le bouton prend toute la largeur de la carte', (tester) async {
     await pumpTable(tester, screen: const Size(412, 915));
 
+    final card = tester.getRect(find.byType(QBCard).first);
+    final button = tester.getRect(entry('Préparer'));
+
+    // À la marge intérieure près, celle que la carte impose à tout son
+    // contenu : le bouton est aussi large que le titre au-dessus de lui.
+    expect(button.width, greaterThan(card.width - 40));
+  });
+
+  testWidgets('sur un téléphone aussi, le MJ entre dans sa session',
+      (tester) async {
+    await pumpTable(tester, screen: const Size(412, 915));
+
+    await tester.tap(entry('Préparer'));
+    await tester.pumpAndSettle();
+
     expect(
-      animate(),
+      find.text('mode mj'),
       findsOneWidget,
       reason: 'le mode MJ tourne désormais sur téléphone : plus rien à '
           'refuser au MJ qui n’a pas de tablette sous la main',
     );
-
-    await tester.tap(animate());
-    await tester.pumpAndSettle();
-
-    expect(find.text('mode mj'), findsOneWidget);
   });
 }

@@ -203,13 +203,15 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     final session = widget.session;
     final canWrite = ref.watch(canWriteProvider);
 
-    // Toute la carte mène au mode MJ, où corriger la session et l'annuler ont
-    // leur volet : trois boutons dans l'angle d'un titre se visaient mal, et
-    // le geste qu'on fait le plus souvent — animer — était le plus petit.
+    // Un bouton nommé, à la place qu'occupent « Je viens » et « Je passe »
+    // chez le joueur : corriger la session et l'annuler ont leur volet dans le
+    // mode MJ, mais encore faut-il voir comment y entrer. La carte entière y
+    // menait, et un geste qu'aucun mot n'annonce ne se devine pas.
     //
-    // Animer ne demande rien au serveur : le plateau et les notes vivent sur
-    // l'appareil. Le réseau peut tomber en pleine partie sans emporter l'outil
-    // avec lui, d'où le `canWrite` absent ici.
+    // Ni préparer ni animer ne demande quoi que ce soit au serveur : le
+    // plateau et les notes vivent sur l'appareil. Le réseau peut tomber en
+    // pleine partie sans emporter l'outil avec lui, d'où le `canWrite` absent
+    // ici.
     final runnable = widget.table.isGameMaster && !session.isCancelled;
 
     // The game master runs the evening rather than attending it, so they are
@@ -257,7 +259,21 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
           ],
           const SizedBox(height: QBSpace.s3),
           _AttendanceSummary(session: session, pendingCount: pending),
-          if (!widget.table.isGameMaster && !session.acceptsAnswers) ...[
+          if (runnable) ...[
+            const SizedBox(height: QBSpace.s3),
+            QBButton(
+              // Préparer avant l'heure, animer pendant : le même écran, mais
+              // pas le même moment, et le MJ sait lequel des deux il vient
+              // faire.
+              label: session.isUnderway ? 'Animer' : 'Préparer',
+              size: QBButtonSize.sm,
+              expand: true,
+              variant: session.isUnderway
+                  ? QBButtonVariant.primary
+                  : QBButtonVariant.secondary,
+              onPressed: _openGameMasterMode,
+            ),
+          ] else if (!widget.table.isGameMaster && !session.acceptsAnswers) ...[
             const SizedBox(height: QBSpace.s3),
             _ClosedAnswers(session: session),
           ] else if (!widget.table.isGameMaster && canWrite) ...[
@@ -302,20 +318,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
       ),
     );
 
-    if (!runnable) return card;
-
-    return Semantics(
-      container: true,
-      button: true,
-      label: 'Animer la session',
-      child: GestureDetector(
-        onTap: _openGameMasterMode,
-        // Les lignes de participants ouvrent une fiche : leur geste à elles
-        // l'emporte, celui-ci ne ramasse que le reste de la carte.
-        behavior: HitTestBehavior.opaque,
-        child: card,
-      ),
-    );
+    return card;
   }
 }
 

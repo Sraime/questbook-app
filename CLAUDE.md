@@ -137,6 +137,14 @@ flutter build apk --release                                  # build release (si
   nouveau label déborde encore, c'est probablement un cas plus extrême du
   même problème — pas la peine de rajouter un `FittedBox` ad hoc ailleurs,
   le composant le gère déjà.
+- **`find.bySemanticsLabel('…')` compare le libellé entier du nœud, pas un
+  morceau.** Sur un bouton-icône, le nœud ne porte que son libellé et la
+  chaîne suffit. Dès qu'on rend toute une carte cliquable — un `Semantics`
+  au-dessus d'un `GestureDetector` —, Flutter fusionne le libellé avec les
+  textes de la carte : le nœud lit « Animer la session\nChapitre III\n… », et
+  la recherche par chaîne ne trouve rien alors que l'accessibilité est
+  correcte. Passer une `RegExp`. Le doute se lève en une minute en affichant
+  `renderObject.debugSemantics?.toStringDeep()`.
 - Les captures d'écran/diagnostics sur cette machine passent par **`adb`**
   directement (`$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe`) —
   utiliser `adb shell screencap -p /sdcard/x.png` + `adb pull`, jamais

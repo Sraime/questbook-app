@@ -198,40 +198,19 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     );
   }
 
-  Future<void> _cancel() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Annuler la session ?'),
-        content: const Text('Les joueurs en seront informés.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Non'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Annuler la session'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(sessionApiProvider).cancel(widget.session.id);
-      refreshTables(ref, tableId: widget.table.id);
-    } on ApiException catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
     final canWrite = ref.watch(canWriteProvider);
+
+    // Toute la carte mène au mode MJ, où corriger la session et l'annuler ont
+    // leur volet : trois boutons dans l'angle d'un titre se visaient mal, et
+    // le geste qu'on fait le plus souvent — animer — était le plus petit.
+    //
+    // Animer ne demande rien au serveur : le plateau et les notes vivent sur
+    // l'appareil. Le réseau peut tomber en pleine partie sans emporter l'outil
+    // avec lui, d'où le `canWrite` absent ici.
+    final runnable = widget.table.isGameMaster && !session.isCancelled;
 
     // The game master runs the evening rather than attending it, so they are
     // neither expected to answer nor counted among those who have not.
@@ -241,65 +220,19 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
             !member.role.isGameMaster && !answered.contains(member.userId))
         .length;
 
-    return QBCard(
+    final card = QBCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  session.title,
-                  style: QBType.game().copyWith(
-                    fontWeight: QBType.weightSemibold,
-                    fontSize: 15,
-                    color: QBColors.ink900,
-                  ),
-                ),
-              ),
-              // Animer la session ne demande rien au serveur : le plateau et
-              // les notes vivent sur l'appareil. Le réseau peut tomber en
-              // pleine partie sans emporter l'outil avec lui, d'où le
-              // `canWrite` absent ici.
-              // Annuler une session est irréversible et se tient à côté de
-              // deux gestes anodins : ils respirent, pour qu'un pouce pressé
-              // ne se trompe pas de bouton.
-              if (widget.table.isGameMaster && !session.isCancelled) ...[
-                const SizedBox(width: QBSpace.s3),
-                QBIconButton(
-                  icon: const Icon(
-                    LucideIcons.swords,
-                    size: 16,
-                    color: QBColors.paper100,
-                  ),
-                  label: 'Animer la session',
-                  size: 32,
-                  variant: QBIconButtonVariant.solid,
-                  onPressed: _openGameMasterMode,
-                ),
-              ],
-              if (widget.table.isGameMaster && canWrite) ...[
-                const SizedBox(width: QBSpace.s3),
-                QBIconButton(
-                  icon: const Icon(LucideIcons.pencil, size: 16),
-                  label: 'Modifier la session',
-                  size: 32,
-                  onPressed: () => context.go(
-                    '/tables/${widget.table.id}/sessions/${session.id}',
-                  ),
-                ),
-                const SizedBox(width: QBSpace.s3),
-                QBIconButton(
-                  icon: const Icon(LucideIcons.x, size: 16),
-                  label: 'Annuler la session',
-                  size: 32,
-                  onPressed: _cancel,
-                ),
-              ],
-            ],
+          Text(
+            session.title,
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightSemibold,
+              fontSize: 15,
+              color: QBColors.ink900,
+            ),
           ),
           const SizedBox(height: QBSpace.s2),
           _IconLine(
@@ -363,6 +296,21 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
             ],
           ],
         ],
+      ),
+    );
+
+    if (!runnable) return card;
+
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'Animer la session',
+      child: GestureDetector(
+        onTap: _openGameMasterMode,
+        // Les lignes de participants ouvrent une fiche : leur geste à elles
+        // l'emporte, celui-ci ne ramasse que le reste de la carte.
+        behavior: HitTestBehavior.opaque,
+        child: card,
       ),
     );
   }

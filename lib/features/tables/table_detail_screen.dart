@@ -226,28 +226,13 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  session.title,
-                  style: QBType.game().copyWith(
-                    fontWeight: QBType.weightSemibold,
-                    fontSize: 15,
-                    color: QBColors.ink900,
-                  ),
-                ),
-              ),
-              if (runnable) ...[
-                const SizedBox(width: QBSpace.s3),
-                const Icon(
-                  LucideIcons.swords,
-                  size: 16,
-                  color: QBColors.leather700,
-                ),
-              ],
-            ],
+          Text(
+            session.title,
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightSemibold,
+              fontSize: 15,
+              color: QBColors.ink900,
+            ),
           ),
           const SizedBox(height: QBSpace.s2),
           _IconLine(

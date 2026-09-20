@@ -46,19 +46,28 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
   (`flutter run -d chrome`) et le desktop ne sont **pas** configurés
   nativement dans ce repo (pas de dossier `web/` ni `windows/`) — voir la
   section Web/Desktop du README avant d'essayer.
-- **La connexion Google échoue sur un build debug**, avec
+- **`QUESTBOOK_GOOGLE_SERVER_CLIENT_ID`, c'est le client _Web_**, et se
+  tromper de client coûte cher : la connexion échoue avec
   `GoogleSignInException(unknownError): [28444] Developer console is not set
-  up correctly.` Le `google-services.json` ne déclare qu'un seul client
-  OAuth Android, portant l'empreinte du keystore de **release**
-  (`c5528ac3…`) ; celle de la clé de debug (`50:BE:91:2B:…`) n'y est pas, et
-  aucun client ne correspond donc à l'APK installé. Tant que ce n'est pas
-  corrigé, **aucune carte demandant un compte connecté ne peut être vérifiée
-  sur émulateur** : tout ce qui traverse l'API est hors de portée depuis ce
-  poste. Le correctif est une action console — ajouter l'empreinte de debug
-  à l'app Android du projet Firebase, puis retélécharger
-  `android/app/google-services.json`. Vérifier avant de conclure autre chose :
-  l'empreinte courante se calcule avec `keytool -list -rfc` (voir le
-  contournement en locale française dans le README du back).
+  up correctly.`, un message qui accuse la console alors que rien n'y est
+  cassé. Le projet a trois clients OAuth et deux d'entre eux sont des pièges
+  faciles — `firebase_options.dart` et `ios/Runner/Info.plist` exposent
+  l'**iOS**, qui ressemble à s'y méprendre à ce qu'on cherche. Lire le type
+  dans `android/app/google-services.json` plutôt que de recopier le premier
+  identifiant croisé : `client_type: 3` est le Web, `1` l'Android, `2` l'iOS.
+
+  | Client | Identifiant |
+  | --- | --- |
+  | **Web** (le seul à passer en `--dart-define`) | `56734402863-bugmvgqggfhi7g0nv02o7c0uv1uarajf` |
+  | iOS (ne **jamais** utiliser ici) | `56734402863-oma1c0gsd0o6cfp7oefu8maej2bgb3sh` |
+
+- **Pointer l'app sur l'API locale détruit la session en cours.** Le jeton de
+  rafraîchissement stocké sur l'appareil vient du VPS, dont la base n'a rien
+  à voir avec celle de dev : l'API locale répond 401, et `ApiClient` efface
+  les jetons dès qu'un rafraîchissement échoue. Une session qui durait depuis
+  des semaines disparaît ainsi en un lancement, et il faut se reconnecter —
+  donc avoir le bon client Web sous la main. En avoir conscience avant de
+  basculer d'étape, pas après.
 - **Capturer l'émulateur** : `adb exec-out screencap -p > fichier.png` produit
   un PNG corrompu sous PowerShell, qui décode en texte tout ce qui traverse un
   pipeline. Passer par l'appareil : `adb shell screencap -p /sdcard/x.png`

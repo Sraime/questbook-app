@@ -69,7 +69,19 @@ final appRouter = GoRouter(
             ],
           ),
         ]),
+        // A third branch with no tab of its own, for what the chrome opens:
+        // the drawer's destinations and the bell. They keep the shell around,
+        // and coming back to Perso or Tables finds each where it was left.
+        //
+        // Notifications used to live under `/tables`, which meant opening the
+        // bell from a character sheet lit the Tables tab and lost the reader's
+        // place there. They are not a table matter — an invitation arrives
+        // before any table exists.
         StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
           GoRoute(
             path: '/scenarios',
             builder: (context, state) => const ScenariosScreen(),
@@ -81,21 +93,6 @@ final appRouter = GoRouter(
                 ),
               ),
             ],
-          ),
-        ]),
-        // A fourth branch with no tab of its own, for what the chrome opens:
-        // the drawer's destinations and the bell. They keep the shell around,
-        // and coming back to Perso, Tables or Scénarios finds each where it
-        // was left.
-        //
-        // Notifications used to live under `/tables`, which meant opening the
-        // bell from a character sheet lit the Tables tab and lost the reader's
-        // place there. They are not a table matter — an invitation arrives
-        // before any table exists.
-        StatefulShellBranch(routes: [
-          GoRoute(
-            path: '/notifications',
-            builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: '/profil',

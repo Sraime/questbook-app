@@ -11,9 +11,9 @@ import 'app_drawer.dart';
 import 'last_tab.dart';
 import 'offline_banner.dart';
 
-/// Hosts the persistent tabs (Perso / Tables / Scénarios) from the bottom tab
-/// bar, plus the chrome that frames every signed-in screen: the top bar and
-/// the menu it opens.
+/// Hosts the persistent tabs (Perso / Tables) from the bottom tab bar, plus
+/// the chrome that frames every signed-in screen: the top bar and the menu it
+/// opens.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({
     super.key,
@@ -29,9 +29,12 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// Index of the branch holding what the chrome opens: notifications, profile
-  /// and the rulebook. It has no tab, so none lights up while it is showing.
-  static const _chromeBranch = 3;
+  /// Index of the branch holding what the chrome opens: notifications,
+  /// scenarios, profile and the rulebook. It comes after the tabs and has none
+  /// of its own, so no tab lights up while it is showing — read from the bar
+  /// rather than written down, so moving a destination out of the bar cannot
+  /// leave the two disagreeing.
+  static final _chromeBranch = qbNavTabs.length;
 
   @override
   Widget build(BuildContext context) {

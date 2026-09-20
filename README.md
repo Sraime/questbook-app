@@ -46,7 +46,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création de personnage (`/perso/create`)** : choix de l'univers et du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (titre + univers). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. La boutique (#19) viendra plus tard ; en attendant, quelques scénarios sont donnés à la connexion.
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. La boutique (#19) viendra plus tard ; en attendant, quelques scénarios sont donnés à la connexion.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose et modifie les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
 - **Session (`/tables/:id/sessions/new`, `/tables/:id/sessions/:sessionId`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis.
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
@@ -67,15 +67,17 @@ Toute l'interface utilise un design system interne « juicy » (boutons/cartes/d
 
 Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une seule règle les départage : **le bas est pour les endroits où l'on travaille, le haut pour tout le reste.**
 
-- **En bas**, les trois onglets persistants : Perso, Tables et Scénarios. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
+- **En bas**, les deux onglets persistants : Perso et Tables. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
 - **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
 
-Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Profil, Livre de règle, et la déconnexion en bas du panneau.
+Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Livre de règle, Profil, et la déconnexion en bas du panneau.
+
+**Scénarios a quitté la barre du bas** pour ce volet. On y va préparer une partie avant qu'elle existe, pas pendant qu'on joue : ce n'est pas un endroit où l'on travaille en allers-retours, et lui garder un tiers de la barre disait le contraire. Le voisinage du Livre de règle est plus juste — deux lectures qu'on ouvre, pas deux chantiers qu'on reprend.
 
 Trois conséquences valent d'être notées, parce que ce sont elles qui ont dicté la structure du routeur :
 
 - **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
-- Notifications, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`) : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des trois.
+- Notifications, Scénarios, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun des deux. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que sortir une destination de la barre ne puisse pas laisser les deux en désaccord.
 - Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
 - Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
 
@@ -87,7 +89,7 @@ L'`AccountBar` qui coiffait la liste des personnages a disparu : le compte est p
 | --- | --- |
 | Framework | Flutter (SDK Dart `^3.12.2`, canal stable) |
 | État / DI | [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) (`Notifier`, `Provider`, `FutureProvider`) |
-| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` : trois onglets, plus une branche sans onglet pour ce qu'ouvre la barre haute) |
+| Navigation | [`go_router`](https://pub.dev/packages/go_router) (`StatefulShellRoute` : deux onglets, plus une branche sans onglet pour ce qu'ouvre la barre haute) |
 | Persistance locale | [`drift`](https://pub.dev/packages/drift) + [`drift_flutter`](https://pub.dev/packages/drift_flutter) (SQLite embarqué) |
 | Modèles immuables | [`freezed`](https://pub.dev/packages/freezed) / `freezed_annotation` |
 | Sérialisation | `json_annotation` / `json_serializable` |

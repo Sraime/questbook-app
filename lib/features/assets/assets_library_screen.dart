@@ -131,10 +131,14 @@ class _AssetTile extends StatelessWidget {
         ),
           child: Column(
             children: [
+              // Sans fond : un pion se montre tel qu'il se pose. Les zones,
+              // qui sont un blanc translucide pensé pour une carte, s'en
+              // trouvent discrètes sur du papier — c'est assumé, le tiroir du
+              // mode MJ les montre déjà ainsi.
               SizedBox(
                 width: 40,
                 height: 40,
-                child: BoardTokenPreview.of(asset),
+                child: BoardTokenView(kind: asset.kind, color: asset.color),
               ),
             const SizedBox(height: QBSpace.s2),
             _TileLabel(asset.name),

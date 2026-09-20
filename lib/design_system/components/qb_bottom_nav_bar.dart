@@ -14,7 +14,6 @@ class QBNavTab {
 const List<QBNavTab> qbNavTabs = [
   QBNavTab(icon: LucideIcons.user, label: 'Perso'),
   QBNavTab(icon: LucideIcons.calendarDays, label: 'Tables'),
-  QBNavTab(icon: LucideIcons.book, label: 'Scénarios'),
 ];
 
 /// Leather-and-gold bottom tab bar ported from the `bar()` helper embedded in

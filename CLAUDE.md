@@ -41,11 +41,30 @@ Ce projet est développé sur **Windows / PowerShell**. Pièges rencontrés :
   parsing (`Malformed \uxxxx encoding`). Toujours utiliser des slashs `/`
   dans ces fichiers.
 - Deux émulateurs Android sont déjà configurés : `questbook_play` (téléphone
-  avec Google Play, donc connexion Google possible) et `questbook_tablet`,
-  seul capable d'atteindre les 900 × 560 points du mode MJ (voir
-  `flutter emulators`). Le web (`flutter run -d chrome`) et le desktop ne
-  sont **pas** configurés nativement dans ce repo (pas de dossier `web/`
-  ni `windows/`) — voir la section Web/Desktop du README avant d'essayer.
+  avec Google Play) et `questbook_tablet`, seul capable d'atteindre les
+  900 × 560 points du mode MJ (voir `flutter emulators`). Le web
+  (`flutter run -d chrome`) et le desktop ne sont **pas** configurés
+  nativement dans ce repo (pas de dossier `web/` ni `windows/`) — voir la
+  section Web/Desktop du README avant d'essayer.
+- **La connexion Google échoue sur un build debug**, avec
+  `GoogleSignInException(unknownError): [28444] Developer console is not set
+  up correctly.` Le `google-services.json` ne déclare qu'un seul client
+  OAuth Android, portant l'empreinte du keystore de **release**
+  (`c5528ac3…`) ; celle de la clé de debug (`50:BE:91:2B:…`) n'y est pas, et
+  aucun client ne correspond donc à l'APK installé. Tant que ce n'est pas
+  corrigé, **aucune carte demandant un compte connecté ne peut être vérifiée
+  sur émulateur** : tout ce qui traverse l'API est hors de portée depuis ce
+  poste. Le correctif est une action console — ajouter l'empreinte de debug
+  à l'app Android du projet Firebase, puis retélécharger
+  `android/app/google-services.json`. Vérifier avant de conclure autre chose :
+  l'empreinte courante se calcule avec `keytool -list -rfc` (voir le
+  contournement en locale française dans le README du back).
+- **Capturer l'émulateur** : `adb exec-out screencap -p > fichier.png` produit
+  un PNG corrompu sous PowerShell, qui décode en texte tout ce qui traverse un
+  pipeline. Passer par l'appareil : `adb shell screencap -p /sdcard/x.png`
+  puis `adb pull`. Une capture 1080 × 2400 brute dépasse en outre ce qu'un
+  agent peut lire d'un coup — la réduire (≈ 420 px de large) avec
+  `System.Drawing`.
 
 ## Secrets — ne jamais committer, ne jamais afficher en clair
 

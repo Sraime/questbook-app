@@ -136,10 +136,12 @@ void main() {
     expect((await settledOwnedKeys()).error, isA<ApiException>());
   });
 
-  test('le catalogue de pions réunit le socle et la collection', () async {
+  test('le catalogue de pions range l’achat dans son rayon', () async {
     await container.read(ownedAssetKeysProvider.future);
 
-    expect(container.read(boardCatalogueProvider).last.title, 'Ma collection');
+    final personnages = container.read(boardCatalogueProvider).first;
+    expect(personnages.title, 'Personnages');
+    expect(personnages.assets.last.name, 'Le Grand Ancien');
   });
 }
 

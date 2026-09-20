@@ -84,9 +84,24 @@ class BoardAssetSection {
   final List<BoardAsset> assets;
 }
 
+/// Les rayons du tiroir. Ce sont les natures de pion, nommées : c'est ce qui
+/// permet de ranger un pion acheté sans rien lui demander de plus.
+const _personnages = 'Personnages';
+const _environnement = 'Environnement';
+const _effets = 'Effets';
+const _zones = 'Zones';
+
+/// Le rayon où se range un pion, d'après sa nature.
+String boardSectionTitleFor(BoardTokenKind kind) => switch (kind) {
+      BoardTokenKind.character => _personnages,
+      BoardTokenKind.environment => _environnement,
+      BoardTokenKind.effect => _effets,
+      BoardTokenKind.zoneDisc || BoardTokenKind.zoneSquare => _zones,
+    };
+
 const boardAssetSections = <BoardAssetSection>[
   BoardAssetSection(
-    title: 'Personnages',
+    title: _personnages,
     assets: [
       BoardAsset(
         name: 'Joueur rouge',
@@ -111,7 +126,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Environnement',
+    title: _environnement,
     assets: [
       BoardAsset(
         name: 'Décor rouge',
@@ -136,7 +151,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Effets',
+    title: _effets,
     assets: [
       BoardAsset(
         name: 'Effet rouge',
@@ -161,7 +176,7 @@ const boardAssetSections = <BoardAssetSection>[
     ],
   ),
   BoardAssetSection(
-    title: 'Zones',
+    title: _zones,
     assets: [
       BoardAsset(
         name: 'Zone ronde',
@@ -196,12 +211,16 @@ const purchasableBoardAssets = <String, BoardAsset>{
   ),
 };
 
-/// Le catalogue tel qu'un compte le voit : le socle commun, puis ce qu'il a
+/// Le catalogue tel qu'un compte le voit : le socle commun, plus ce qu'il a
 /// acheté.
 ///
-/// Sa collection vient en dernier et non en tête : le socle est ce dont on se
-/// sert à chaque partie, et le reléguer sous une rubrique qui grandira au fil
-/// des achats ferait dérouler le tiroir pour atteindre un rond rouge.
+/// Les pions achetés se rangent dans les rayons existants, d'après leur
+/// nature, et non dans une vitrine « ma collection » à part : un personnage
+/// se cherche avec les personnages. Regrouper les achats ferait deux endroits
+/// où regarder pour une même question — « qu'est-ce que je peux poser comme
+/// PNJ ? » — et l'écart grandirait à chaque achat. Ils arrivent en fin de
+/// rayon, après le socle, ce qui les rend repérables sans déplacer ce que le
+/// MJ a l'habitude de trouver en tête.
 List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
   final owned = [
     for (final key in ownedKeys) ?purchasableBoardAssets[key],
@@ -209,8 +228,16 @@ List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
   if (owned.isEmpty) return boardAssetSections;
 
   return [
-    ...boardAssetSections,
-    BoardAssetSection(title: 'Ma collection', assets: owned),
+    for (final section in boardAssetSections)
+      BoardAssetSection(
+        title: section.title,
+        assets: [
+          ...section.assets,
+          ...owned.where(
+            (asset) => boardSectionTitleFor(asset.kind) == section.title,
+          ),
+        ],
+      ),
   ];
 }
 

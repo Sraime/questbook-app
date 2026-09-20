@@ -53,7 +53,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
-- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones, puis **Ma collection** si le compte a acheté des pions). Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
@@ -591,9 +591,17 @@ et déplie au passage les rayons repliés.
 Le catalogue n'est plus une constante : c'est la somme d'un socle commun et de
 ce que le compte a acheté, assemblée par `boardAssetSectionsFor` et servie par
 `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`)
-au tiroir comme à `/assets`. La collection ferme la marche, parce que le socle
-est ce dont on se sert à chaque partie et qu'aller chercher un rond rouge sous
-une rubrique qui grandit à chaque achat serait une corvée.
+au tiroir comme à `/assets`.
+
+**Un pion acheté se range dans les rayons existants, d'après sa nature** — le
+Grand Ancien est un personnage, il se trouve avec les personnages — et non dans
+une vitrine « ma collection » à part. Deux endroits où regarder pour une même
+question (« qu'est-ce que je peux poser comme PNJ ? ») se seraient écartés un
+peu plus à chaque achat. `boardSectionTitleFor` fait ce rangement à partir du
+`BoardTokenKind`, et un test vérifie que le socle lui-même s'y conforme, ce qui
+interdit à un rayon de dériver de la nature qu'il affiche. Les achats arrivent
+en fin de rayon : repérables, sans déplacer ce que le MJ a l'habitude de
+trouver en tête.
 
 Le serveur ne décrit pas à quoi ressemble un pion : la boutique n'envoie qu'une
 `assetKey`, et le dessin qui lui correspond vit dans `purchasableBoardAssets`,

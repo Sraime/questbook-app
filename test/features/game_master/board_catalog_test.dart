@@ -60,14 +60,29 @@ void main() {
       expect(boardAssetSectionsFor(const {}), same(boardAssetSections));
     });
 
-    test('ce qui a été acheté rejoint le catalogue, à la suite du socle', () {
+    test('un pion acheté se range avec les siens, pas dans une vitrine à part',
+        () {
       final sections = boardAssetSectionsFor(const {'grand_ancien'});
 
-      expect(sections.length, boardAssetSections.length + 1);
-      expect(sections.last.title, 'Ma collection');
-      expect(sections.last.assets.single.name, 'Le Grand Ancien');
+      // Le Grand Ancien est un personnage : il se cherche là où l'on cherche
+      // les personnages, en fin de rayon pour rester repérable.
+      expect(sections.map((s) => s.title), boardAssetSections.map((s) => s.title));
+      final personnages = sections.first;
+      expect(personnages.title, 'Personnages');
+      expect(personnages.assets.last.name, 'Le Grand Ancien');
       // La clé voyage avec le pion : c'est elle que le plateau enregistre.
-      expect(sections.last.assets.single.key, 'grand_ancien');
+      expect(personnages.assets.last.key, 'grand_ancien');
+
+      // Les autres rayons n'ont pas bougé.
+      expect(sections[1].assets, boardAssetSections[1].assets);
+    });
+
+    test('chaque nature de pion connaît son rayon', () {
+      for (final section in boardAssetSections) {
+        for (final asset in section.assets) {
+          expect(boardSectionTitleFor(asset.kind), section.title);
+        }
+      }
     });
 
     test('une clé que cette version ne connaît pas est passée sous silence',

@@ -151,17 +151,16 @@ void main() {
     expect(savedMaps, isEmpty);
   });
 
-  testWidgets('le pion acheté prend sa place dans le tiroir', (tester) async {
+  testWidgets('le pion acheté prend place dans le rayon des personnages',
+      (tester) async {
     await pumpDrawer(tester, ownedKeys: const {'grand_ancien'});
 
-    expect(find.text('Ma collection'), findsOneWidget);
     expect(find.text('Le Grand Ancien'), findsOneWidget);
-  });
 
-  testWidgets('sans achat, le tiroir ne montre pas de rayon vide',
-      (tester) async {
-    await pumpDrawer(tester);
-
-    expect(find.text('Ma collection'), findsNothing);
+    // Replier « Personnages » l'emporte : c'est bien là qu'il est rangé, et
+    // non dans une rubrique à lui.
+    await tester.tap(find.text('Personnages'));
+    await tester.pump();
+    expect(find.text('Le Grand Ancien'), findsNothing);
   });
 }

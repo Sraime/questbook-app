@@ -30,11 +30,18 @@ void main() {
     );
   }
 
-  testWidgets('un pion acheté rejoint la vitrine', (tester) async {
+  testWidgets('un pion acheté rejoint le rayon dont il relève',
+      (tester) async {
     await pumpLibrary(tester, ownedKeys: const {'grand_ancien'});
 
-    expect(find.text('Ma collection'), findsOneWidget);
+    // Pas de rubrique à part : la vitrine range les achats comme le tiroir,
+    // par nature de pion.
     expect(find.text('Le Grand Ancien'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Le Grand Ancien')).dy,
+      lessThan(tester.getCenter(find.text('Environnement')).dy),
+      reason: 'un personnage se range avant le rayon suivant',
+    );
   });
 
   testWidgets('shelves the pions by category', (tester) async {

@@ -161,6 +161,21 @@ flutter build apk --release                                  # build release (si
   `questbook_tablet` dès qu'il s'agit de la sensation du geste**. Robin le
   propose de lui-même ; ne pas conclure d'un test vert que le plateau est
   bon.
+- **`adb shell input swipe` ne déclenche pas un `Draggable`** posé dans une
+  liste : le mouvement part d'un bloc, la `ListView` du tiroir s'en empare, et
+  on croit à un plateau cassé alors que rien ne l'est. Piloter le geste pas à
+  pas, en commençant à l'horizontale, comme un doigt le ferait :
+
+  ```powershell
+  adb -s emulator-5556 shell input motionevent DOWN 2149 636
+  adb -s emulator-5556 shell input motionevent MOVE 2090 640   # d'abord de côté
+  adb -s emulator-5556 shell input motionevent MOVE 1800 740   # puis vers la carte
+  adb -s emulator-5556 shell input motionevent UP 1172 859
+  ```
+
+  Une pause de ~150 ms entre chaque pas suffit. `input tap` et `input swipe`
+  restent bons pour tout le reste — naviguer, défiler, déplacer un pion déjà
+  posé, qui n'a pas de liste avec qui se disputer le geste.
 
 ## Fiche de personnage pilotée par config JSON (`assets/universes/`)
 

@@ -52,8 +52,8 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets dans un rail à gauche : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-obligatoire).
-- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte et sur une tablette : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
+- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par « Animer la session » sur la carte d'une session à venir. Cinq volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
@@ -153,9 +153,9 @@ lib/
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
-│   ├── game_master/             # Mode MJ : plein écran hors du shell, rail de
-│   │                            # cinq volets (plateau, personnages, règles,
-│   │                            # scénario, notes) et seuil tablette
+│   ├── game_master/             # Mode MJ : plein écran hors du shell, cinq
+│   │                            # volets (plateau, personnages, règles,
+│   │                            # scénario, notes) en rail ou en onglets
 │   ├── assets/                  # Vitrine des pions du plateau, hors partie ;
 │   │                            # lit le catalogue de game_master
 │   ├── shop/                    # Boutique : catalogue, page d'un article,
@@ -541,25 +541,38 @@ La fiche d'un autre participant, elle, est lue en ligne et n'est jamais écrite
 sur l'appareil : elle appartient à quelqu'un d'autre, et c'est à lui de la
 changer.
 
-### Mode MJ (tablette obligatoire)
+### Mode MJ (tablette et téléphone)
 
 Le mode MJ (`lib/features/game_master/`) est le seul écran déclaré **hors du
-`StatefulShellRoute`** : une partie prend la tablette entière, et la barre
-d'onglets n'y mène nulle part. Le rail de gauche la remplace, et « Quitter le
-mode MJ » ramène au détail de la table.
+`StatefulShellRoute`** : une partie prend l'appareil entier, et la barre
+d'onglets n'y mène nulle part. « Quitter le mode MJ » ramène au détail de la
+table.
 
-**Il exige 900 × 560 points.** En dessous, il n'y a pas la place de poser trois
-colonnes côte à côte, et un plateau qu'on ne peut pas manipuler ne vaut pas la
-peine d'être affiché. Le seuil et son verdict vivent dans
-`game_master_space.dart` (`measureGameMasterSpace`), qui distingue deux refus :
-une tablette tenue en portrait s'entend dire de pivoter, un téléphone s'entend
-dire que l'écran est trop petit et de revenir depuis une tablette.
+**Aucun écran n'est refusé** : c'est la disposition qui s'adapte, pas l'accès.
+`game_master_layout.dart` (`measureGameMasterLayout`) tranche entre deux
+présentations du même contenu, à partir de la place disponible — 900 × 560
+points, ce qu'il faut pour étaler le rail, la carte et le tiroir de front :
 
-Le bouton « Animer la session » reste **visible sur un téléphone** et affiche
-ce message au lieu d'ouvrir l'écran. Le cacher ferait croire que la
-fonctionnalité n'existe pas, alors qu'elle attend le MJ sur sa tablette. Le
-même verdict est remesuré à chaque `build` de l'écran : pivoter la tablette en
-pleine partie explique la disparition du plateau plutôt que de l'écraser.
+| Disposition | Quand | Ce que ça donne |
+| --- | --- | --- |
+| `rail` | Tablette en paysage | Rail de cinq volets à gauche, tiroir d'assets ouvert à droite de la carte |
+| `tabs` | Téléphone, tablette en portrait, fenêtre réduite | Onglets sous l'entête, tiroir en surimpression |
+
+En disposition compacte, les cinq volets tiennent dans une barre d'onglets
+**en icônes seules** : cinq libellés dans la largeur d'un téléphone seraient
+illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
+les quatre autres ne réclament pas. Faute de rail, l'entête accueille le nom
+de la table et le bouton de sortie.
+
+Le plateau, lui, est le seul volet à ne pas tenir tel quel : la carte et un
+tiroir de 280 points ne cohabitent pas sur un téléphone. Le tiroir y **recouvre
+la carte** au lieu de la pousser, démarre rangé, et **se range de lui-même dès
+qu'on tire un pion** — le garder ouvert reviendrait à viser derrière lui. Une
+languette et une bande de carte restent visibles : on voit toujours ce qu'on
+recouvre.
+
+La disposition est remesurée à chaque `build` : pivoter l'appareil en pleine
+partie bascule du rail aux onglets sans quitter la session.
 
 **L'état du plateau reste sur l'appareil**, dans la table Drift
 `session_boards` (clé primaire `{sessionId, accountId}`, voir
@@ -636,7 +649,7 @@ une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
 appel qui les autorise) — le volet Personnages en montre le résumé et ouvre
 la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
 **pas lisibles hors ligne**, et le
-plateau ne quitte pas l'appareil — un MJ qui change de tablette repart d'une
+plateau ne quitte pas l'appareil — un MJ qui change d'appareil repart d'une
 carte vierge.
 
 ### Notifications push (Firebase Cloud Messaging)
@@ -1177,7 +1190,7 @@ ni les mots de passe** (volontairement, ils sont gitignorés). Deux cas :
 - Le palier de "Bonus aux dégâts" (IMP) est simplifié en indice de palier (-2 à 5+) plutôt qu'en expression de dés (`+1D4`, `+2D6`…) : le schéma stocke les stats en entier, pas en expression. Voir le champ `description` de `IMP` dans le fichier de config pour la correspondance réelle.
 - Pas de support desktop/web packagé nativement (voir ci-dessus).
 - Le **Livre de règle** ne couvre que les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), rédigés en dur dans `features/rulebook/content/`. Compétences et occupations n'y sont pas, et un second univers devrait apporter son propre catalogue.
-- Le **mode MJ** demande une tablette (900 × 560 points) et ne quitte pas l'appareil : ni plateau ni notes ne remontent au serveur, donc changer de tablette repart d'une carte vierge. Les fiches des joueurs, elles, viennent de l'API une par une et ne sont pas lisibles hors ligne. Deux fonds de carte seulement, écrits en dur dans `board_catalog.dart` ; le catalogue viendra du back avec les scénarios. Les pions sont des formes colorées nommées, sans illustration.
+- Le **mode MJ** tourne sur téléphone comme sur tablette, mais ne quitte pas l'appareil : ni plateau ni notes ne remontent au serveur, donc changer d'appareil repart d'une carte vierge. Sur un écran étroit, le plateau reste le volet le plus à l'étroit — la carte y est petite, et les poignées de redimensionnement sont d'autant plus serrées que le pion l'est. Les fiches des joueurs, elles, viennent de l'API une par une et ne sont pas lisibles hors ligne. Deux fonds de carte seulement, écrits en dur dans `board_catalog.dart` ; le catalogue viendra du back avec les scénarios. Les pions sont des formes colorées nommées, sans illustration.
 - L'écriture hors ligne ne couvre que les personnages (stats, ressources, inventaire), et encore : elle est bloquée par la consultation seule tant que le serveur ne répond pas. Les tables et les sessions ne s'écrivent qu'en ligne.
 - Hors ligne, l'onglet Tables ne montre que ce qui a déjà été ouvert au moins une fois avec du réseau : le détail d'une table jamais consultée n'a pas de copie à rejouer. Les notifications ne sont pas mises en cache du tout.
 - La sonde de retour réseau tourne toutes les 20 s tant qu'on est hors ligne. Le retour peut donc mettre jusqu'à 20 s à être remarqué si l'utilisateur ne touche à rien, un compromis assumé face à une dépendance à `connectivity_plus` qui, elle, ne dirait rien de la joignabilité réelle du serveur.

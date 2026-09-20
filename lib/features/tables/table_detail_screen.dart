@@ -9,13 +9,11 @@ import '../../data/remote/remote_table.dart';
 import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
-import '../../design_system/components/qb_dialog.dart';
 import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
-import '../game_master/game_master_space.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
 import 'widgets/attendee_character_sheet.dart';
@@ -194,39 +192,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     }
   }
 
-  /// Le mode MJ ne tient pas sur un téléphone. Le bouton reste offert plutôt
-  /// que caché : un MJ qui ne le voit nulle part conclut que la fonctionnalité
-  /// n'existe pas, alors qu'elle l'attend sur sa tablette.
   void _openGameMasterMode() {
-    final space = measureGameMasterSpace(MediaQuery.sizeOf(context));
-
-    if (!space.isSufficient) {
-      showQBDialog<void>(
-        context: context,
-        title: 'Écran trop petit',
-        builder: (dialogContext) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              space.message,
-              style: QBType.body().copyWith(
-                fontSize: QBType.sm,
-                color: QBColors.textBody,
-              ),
-            ),
-            const SizedBox(height: QBSpace.s5),
-            QBButton(
-              label: 'Compris',
-              size: QBButtonSize.sm,
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     context.go(
       '/tables/${widget.table.id}/sessions/${widget.session.id}/mj',
     );

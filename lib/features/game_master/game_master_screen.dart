@@ -7,13 +7,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
 import '../../data/remote/remote_table.dart';
-import '../../design_system/components/qb_button.dart';
+import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
 import '../tables/providers/table_providers.dart';
 import '../tables/table_formatting.dart';
-import 'game_master_space.dart';
+import 'game_master_layout.dart';
 import 'models/board_token.dart';
 import 'panels/board_panel.dart';
 import 'panels/characters_panel.dart';
@@ -39,8 +39,12 @@ enum GameMasterPanel {
 /// fiches des joueurs, l'aide-mémoire des règles, le scénario et ses notes.
 ///
 /// Vit hors du shell à onglets — c'est le seul écran de l'app dans ce cas. Une
-/// partie occupe la tablette entière ; la barre du bas et le tiroir n'y ont
-/// rien à faire, et le rail de gauche les remplace.
+/// partie occupe l'appareil entier ; la barre du bas et le tiroir n'y ont rien
+/// à faire.
+///
+/// Deux dispositions pour un même contenu, choisies par
+/// [measureGameMasterLayout] : le rail de gauche quand l'écran est assez
+/// large, une barre d'onglets sous l'entête sinon.
 class GameMasterScreen extends ConsumerStatefulWidget {
   const GameMasterScreen({
     super.key,
@@ -154,52 +158,64 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Mesuré à chaque build : faire pivoter la tablette en portrait au milieu
-    // d'une partie doit expliquer la disparition du plateau, pas l'écraser.
-    final space = measureGameMasterSpace(MediaQuery.sizeOf(context));
-    if (!space.isSufficient) {
-      return _Refusal(space: space, onExit: _exit);
-    }
-
+    // Mesuré à chaque build : pivoter l'appareil en pleine partie change la
+    // disposition, jamais ce qu'on est en train de faire.
+    final layout = measureGameMasterLayout(MediaQuery.sizeOf(context));
     final detail = ref.watch(tableDetailProvider(widget.tableId));
     final session = detail.value?.sessions
         .where((entry) => entry.id == widget.sessionId)
         .firstOrNull;
+    final tableName = detail.value?.table.title ?? 'Table';
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Header(
+          session: session,
+          // L'entête ne porte le nom de la table et la sortie que faute de
+          // rail pour les accueillir.
+          tableName: layout.isCompact ? tableName : null,
+          onExit: layout.isCompact ? _exit : null,
+        ),
+        if (layout.isCompact)
+          _PanelTabs(
+            active: _panel,
+            onSelect: (panel) => setState(() => _panel = panel),
+          ),
+        Expanded(
+          child: !_loaded || session == null
+              ? const Center(child: CircularProgressIndicator())
+              : _panelBody(session, compact: layout.isCompact),
+        ),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: QBColors.bgPage,
       body: SafeArea(
-        child: Row(
-          children: [
-            _Rail(
-              tableName: detail.value?.table.title ?? 'Table',
-              active: _panel,
-              onSelect: (panel) => setState(() => _panel = panel),
-              onExit: _exit,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: layout.isCompact
+            ? body
+            : Row(
                 children: [
-                  _Header(session: session),
-                  Expanded(
-                    child: !_loaded || session == null
-                        ? const Center(child: CircularProgressIndicator())
-                        : _panelBody(session),
+                  _Rail(
+                    tableName: tableName,
+                    active: _panel,
+                    onSelect: (panel) => setState(() => _panel = panel),
+                    onExit: _exit,
                   ),
+                  Expanded(child: body),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _panelBody(RemoteGameSession session) => switch (_panel) {
+  Widget _panelBody(RemoteGameSession session, {required bool compact}) =>
+      switch (_panel) {
         GameMasterPanel.board => BoardPanel(
             initialTokens: _tokens,
             initialMapId: _mapId,
+            compact: compact,
             onTokensPersisted: _persistTokens,
             onMapPersisted: _persistMap,
           ),
@@ -389,16 +405,25 @@ class _RailExit extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.session});
+  const _Header({
+    required this.session,
+    this.tableName,
+    this.onExit,
+  });
 
   final RemoteGameSession? session;
+
+  /// Renseignés en disposition compacte seulement : sans rail, c'est l'entête
+  /// qui dit où l'on est et par où l'on sort.
+  final String? tableName;
+  final VoidCallback? onExit;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: QBColors.leather800,
-      padding: const EdgeInsets.symmetric(
-        horizontal: QBSpace.s6,
+      padding: EdgeInsets.symmetric(
+        horizontal: onExit == null ? QBSpace.s6 : QBSpace.s4,
         vertical: QBSpace.s4,
       ),
       child: Row(
@@ -407,6 +432,20 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (tableName case final name?) ...[
+                  Text(
+                    'Mode MJ · $name',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: QBType.game().copyWith(
+                      fontWeight: QBType.weightBold,
+                      fontSize: 11,
+                      letterSpacing: 11 * QBType.trackingWide,
+                      color: QBColors.gold500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
                 Text(
                   session?.title ?? 'Session',
                   maxLines: 1,
@@ -433,61 +472,116 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (onExit case final exit?) ...[
+            const SizedBox(width: QBSpace.s3),
+            QBIconButton(
+              icon: const Icon(
+                LucideIcons.logOut,
+                size: 16,
+                color: QBColors.paper100,
+              ),
+              label: 'Quitter le mode MJ',
+              size: 36,
+              variant: QBIconButtonVariant.solid,
+              onPressed: exit,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Ce que voit un MJ qui a ouvert le mode puis réduit sa fenêtre, ou qui est
-/// arrivé ici par une URL depuis un téléphone.
-class _Refusal extends StatelessWidget {
-  const _Refusal({required this.space, required this.onExit});
+/// Les cinq volets en une ligne, quand il n'y a pas la place d'un rail.
+///
+/// Icônes seules : cinq libellés dans la largeur d'un téléphone seraient
+/// illisibles. Seul le volet actif est nommé, et il prend pour cela toute la
+/// place que les quatre autres ne réclament pas.
+class _PanelTabs extends StatelessWidget {
+  const _PanelTabs({required this.active, required this.onSelect});
 
-  final GameMasterSpace space;
-  final VoidCallback onExit;
+  final GameMasterPanel active;
+  final ValueChanged<GameMasterPanel> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: QBColors.bgPage,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(QBSpace.s6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Écran trop petit',
-                    textAlign: TextAlign.center,
+    return Container(
+      color: QBColors.leather900,
+      padding: const EdgeInsets.symmetric(
+        horizontal: QBSpace.s2,
+        vertical: QBSpace.s2,
+      ),
+      child: Row(
+        children: [
+          for (final panel in GameMasterPanel.values)
+            if (panel == active)
+              Expanded(child: _PanelTab(panel: panel, selected: true))
+            else
+              _PanelTab(panel: panel, onTap: () => onSelect(panel)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelTab extends StatelessWidget {
+  const _PanelTab({required this.panel, this.selected = false, this.onTap});
+
+  /// Largeur d'un onglet au repos : de quoi viser l'icône sans plus.
+  static const double _restingWidth = 50;
+
+  final GameMasterPanel panel;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? QBColors.ink900 : QBColors.paper200;
+
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: panel.label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: selected ? null : _restingWidth,
+          height: 40,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: EdgeInsets.symmetric(horizontal: selected ? QBSpace.s3 : 0),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [QBColors.juicyGoldTop, QBColors.juicyGoldBottom],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(QBRadius.md),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(panel.icon, size: 17, color: foreground),
+              if (selected) ...[
+                const SizedBox(width: QBSpace.s2),
+                Flexible(
+                  child: Text(
+                    panel.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: QBType.game().copyWith(
-                      fontWeight: QBType.weightBold,
-                      fontSize: 18,
-                      color: QBColors.ink900,
+                      fontWeight: QBType.weightSemibold,
+                      fontSize: 12,
+                      letterSpacing: 12 * QBType.trackingWide,
+                      color: foreground,
                     ),
                   ),
-                  const SizedBox(height: QBSpace.s3),
-                  Text(
-                    space.message,
-                    textAlign: TextAlign.center,
-                    style: QBType.body().copyWith(
-                      fontSize: QBType.sm,
-                      color: QBColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: QBSpace.s6),
-                  QBButton(
-                    label: 'Revenir à la table',
-                    size: QBButtonSize.sm,
-                    onPressed: onExit,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

@@ -231,11 +231,14 @@ du README pour le détail.
  depuis `general_configuration` qui en porte une copie non lue/inerte) —
  `ConfigRulesEngine` prend `(CreationModeConfig, UniverseConfig)` en
  constructeur.
-- Le joueur choisit "Univers" puis (même carte, avec nom/description du
- personnage) "Mode de création" en haut de l'écran de création
- (`CharacterCreationScreen`), ce qui pilote
+- **L'univers ne se choisit plus** : l'appli est dédiée à l'Appel de
+ Cthulhu, et le mot n'apparaît nulle part à l'écran. Le joueur ne choisit
+ que "Mode de création" (même carte que nom/description du personnage,
+ dans `CharacterCreationScreen`), ce qui pilote
  `selectedCreationModeIdProvider`/`selectedCreationModeProvider`/
  `selectedUniverseProvider` — dont dépend tout le reste du formulaire.
+ Le mécanisme multi-univers reste entier sous le capot : y revenir, c'est
+ remettre un sélecteur, pas refaire la config.
  Ajouter un mode de création (ex. un futur "Débutant") = un nouveau
  fichier de surcharges + une entrée dans `creation_modes` de son univers,
  aucun changement Dart. Chaque personnage garde son `systemId` d'origine

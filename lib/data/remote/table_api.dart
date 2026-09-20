@@ -39,15 +39,9 @@ class TableApi {
     );
   }
 
-  Future<RemoteGameTable> create({
-    required String title,
-    String? universeLabel,
-  }) {
+  Future<RemoteGameTable> create({required String title}) {
     return _client.send(
-      (dio) => dio.post<dynamic>(
-        '/tables',
-        data: {'title': title, 'universeLabel': universeLabel},
-      ),
+      (dio) => dio.post<dynamic>('/tables', data: {'title': title}),
       parse: _parseTable,
     );
   }

@@ -86,19 +86,14 @@ class _Body extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: QBSpace.s2),
-          // En Wrap et non en Row : sur un téléphone étroit, un nom d'univers
-          // un peu long poussait le badge de rôle hors de l'écran.
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (table.universeLabel != null)
-                QBBadge(label: table.universeLabel!, tone: QBTone.info),
-              QBBadge(
-                label: table.isGameMaster ? 'Tu es MJ' : 'Joueur',
-                tone: table.isGameMaster ? QBTone.warning : QBTone.neutral,
-              ),
-            ],
+          // Aligné à la main : dans une ListView, un badge seul s'étirerait
+          // sur toute la largeur.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: QBBadge(
+              label: table.isGameMaster ? 'Tu es MJ' : 'Joueur',
+              tone: table.isGameMaster ? QBTone.warning : QBTone.neutral,
+            ),
           ),
           if (detail.cachedAt case final fetchedAt?) ...[
             const SizedBox(height: QBSpace.s3),

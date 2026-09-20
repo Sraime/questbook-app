@@ -2,6 +2,8 @@
 
 Questbook est une application Flutter de compagnon de jeu de rôle sur table : création et suivi de personnages, gestion des jets de dés, et organisation de tables de jeu. Le premier système supporté (« seedé ») est **L'Appel de Cthulhu, 7e édition**, mais l'architecture est pensée pour accueillir d'autres systèmes sans réécrire l'app.
 
+> Ce que désignent **table**, **session**, **scénario**, **plateau**, **asset** ou **boutique** est défini une fois pour toutes dans le [lexique](../questbook-ia/LEXIQUE.md), commun à l'app et à l'API. Ce README décrit comment c'est fait ; le lexique dit ce que c'est.
+
 ## Sommaire
 
 - [Aperçu fonctionnel](#aperçu-fonctionnel)

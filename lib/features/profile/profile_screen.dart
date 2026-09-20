@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
+import '../../data/remote/auth_tokens.dart';
 import '../../design_system/components/qb_card.dart';
+import '../../design_system/components/qb_icon_button.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import 'widgets/rename_dialog.dart';
 
 /// Where the account answers for itself: who is signed in, and whether this
 /// device is actually in step with the server.
@@ -48,10 +51,66 @@ class ProfileScreen extends ConsumerWidget {
                 color: QBColors.textMuted,
               ),
             ),
+            if (user case final account?) ...[
+              const SizedBox(height: QBSpace.s5),
+              _AccountCard(user: account),
+            ],
             const SizedBox(height: QBSpace.s5),
             _SyncCard(sync: sync),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Le compte tel que les autres le voient. Le pseudo est la seule chose qui
+/// s'y modifie : l'adresse et la photo appartiennent à Google.
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.user});
+
+  final AuthUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    return QBCard(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Pseudo',
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.xs,
+                    color: QBColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  user.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: QBType.game().copyWith(
+                    fontWeight: QBType.weightSemibold,
+                    fontSize: 15,
+                    color: QBColors.ink900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: QBSpace.s3),
+          QBIconButton(
+            icon: const Icon(LucideIcons.pencil, size: 16),
+            label: 'Changer de pseudo',
+            size: 36,
+            onPressed: () => showRenameDialog(context, currentName: user.label),
+          ),
+        ],
       ),
     );
   }

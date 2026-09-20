@@ -120,6 +120,13 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     }
   }
 
+  /// Renomme le compte. Lève une [ApiException] que l'écran de profil
+  /// affiche : c'est un geste explicite, son échec doit se voir.
+  Future<void> rename(String displayName) async {
+    final user = await ref.read(authRepositoryProvider).rename(displayName);
+    state = AsyncValue.data(user);
+  }
+
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
     // The cached tables belong to the account that just left. They are keyed
@@ -158,7 +165,10 @@ class SyncController extends Notifier<SyncState> {
     ref.listen<AsyncValue<AuthUser?>>(authControllerProvider, (previous, next) {
       final user = next.value;
       if (user != null && previous?.value?.id != user.id) {
-        unawaited(synchronize());
+        // Repoussé d'une microtâche : avec `fireImmediately`, un compte déjà
+        // connecté déclencherait la passe depuis ce `build`, et
+        // `synchronize()` lirait un état qui n'existe pas encore.
+        unawaited(Future.microtask(synchronize));
       }
     }, fireImmediately: true);
 

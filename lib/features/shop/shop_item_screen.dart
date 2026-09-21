@@ -14,6 +14,7 @@ import '../../design_system/components/qb_toast.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../scenarios/providers/scenario_providers.dart';
 import 'providers/shop_providers.dart';
 import 'shop_artwork.dart';
 
@@ -114,20 +115,26 @@ class _ArticleState extends ConsumerState<_Article> {
           ),
         ),
         const SizedBox(height: QBSpace.s6),
-        if (item.owned)
+        if (!item.owned)
+          QBButton(
+            label: _busy ? 'Un instant…' : 'Obtenir',
+            // Acheter est une écriture : hors ligne, le bouton attend comme
+            // partout ailleurs dans l'app.
+            onPressed: _busy || !ref.watch(canWriteProvider) ? null : _buy,
+          )
+        else if (item.scenarioId case final scenarioId?)
+          // Une aventure obtenue n'est pas encore lisible : son texte vit sur
+          // le serveur jusqu'à ce qu'on le télécharge. Le geste suit donc
+          // l'achat sur la même page, plutôt que d'envoyer le lecteur le
+          // chercher dans le menu des scénarios.
+          _ScenarioActions(scenarioId: scenarioId)
+        else
           Text(
             'Cet article est à toi. Tu le retrouveras parmi tes assets.',
             style: QBType.body().copyWith(
               fontSize: QBType.sm,
               color: QBColors.textMuted,
             ),
-          )
-        else
-          QBButton(
-            label: _busy ? 'Un instant…' : 'Obtenir',
-            // Acheter est une écriture : hors ligne, le bouton attend comme
-            // partout ailleurs dans l'app.
-            onPressed: _busy || !ref.watch(canWriteProvider) ? null : _buy,
           ),
       ],
     );
@@ -143,6 +150,79 @@ class _ArticleState extends ConsumerState<_Article> {
         '« ${widget.item.title} » est à toi.',
         tone: QBTone.success,
       );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      showQBToast(context, error.message, tone: QBTone.danger);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// Ce qui reste à faire d'une aventure une fois qu'elle est à soi : la
+/// télécharger, puis la lire.
+class _ScenarioActions extends ConsumerStatefulWidget {
+  const _ScenarioActions({required this.scenarioId});
+
+  final String scenarioId;
+
+  @override
+  ConsumerState<_ScenarioActions> createState() => _ScenarioActionsState();
+}
+
+class _ScenarioActionsState extends ConsumerState<_ScenarioActions> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final downloaded = ref.watch(downloadedScenarioProvider(widget.scenarioId));
+
+    // Tant qu'on ne sait pas, ne rien promettre : un bouton « Télécharger »
+    // affiché une fraction de seconde sur une aventure déjà sur l'appareil
+    // ferait douter de ce qui est enregistré.
+    if (downloaded.isLoading && !downloaded.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (downloaded.value != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          QBButton(
+            label: 'Ouvrir',
+            iconLeft: const Icon(LucideIcons.bookOpen, size: 16),
+            onPressed: () => context.go('/scenarios/${widget.scenarioId}'),
+          ),
+          const SizedBox(height: QBSpace.s2),
+          Text(
+            'Téléchargée sur cet appareil. Tu la retrouveras dans Scénarios, '
+            'et tu pourras la rattacher à une session.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Pas de verrou hors ligne, contrairement à l'achat : le même bouton dans
+    // l'écran des scénarios n'en a pas, et la même action refusée d'un côté
+    // et offerte de l'autre ferait passer l'un des deux pour cassé. Sans
+    // réseau, l'appel échoue et le dit.
+    return QBButton(
+      label: _busy ? 'Téléchargement…' : 'Télécharger',
+      iconLeft: const Icon(LucideIcons.download, size: 16),
+      onPressed: _busy ? null : _download,
+    );
+  }
+
+  Future<void> _download() async {
+    setState(() => _busy = true);
+    try {
+      await downloadScenario(ref, widget.scenarioId);
+      if (!mounted) return;
+      showQBToast(context, 'Aventure téléchargée', tone: QBTone.success);
     } on ApiException catch (error) {
       if (!mounted) return;
       showQBToast(context, error.message, tone: QBTone.danger);

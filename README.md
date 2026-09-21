@@ -60,7 +60,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par le bouton « Préparer » ou « Animer » de la carte d'une session. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
-- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Aventures**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -738,6 +738,40 @@ Les routes sont réservées au MJ, lectures comprises : ce qu'il a écrit est
 exactement ce que ses joueurs ne doivent pas savoir. `GET /sessions/:id` ne les
 renvoie pas, il faut les demander — il n'y a donc pas de vue joueur à concevoir
 ni à oublier de protéger.
+
+### Les deux rayons de la boutique
+
+Le catalogue tient deux natures d'articles qui ne se jugent pas de la même
+façon, et `_Catalogue` (`features/shop/shop_screen.dart`) les sépare plutôt
+que de leur imposer un compromis.
+
+**Pions** : une grille de vignettes, trois par ligne au minimum. Un pion se
+reconnaît à son dessin, et son nom suffit — la description attend sa page.
+
+**Aventures** : une liste pleine largeur, où chaque rangée porte le titre, le
+prix et trois lignes de ce dont le scénario parle. On n'achète pas un scénario
+sur un dessin : une vignette de cent points n'en dit rien, et le lecteur
+choisit entre un huis clos ferroviaire et une enquête documentaire. C'est
+pour cela que `description` voyage désormais dans `GET /shop/items` et plus
+seulement dans le détail.
+
+**Obtenir une aventure ne suffit pas à la lire.** Son texte vit sur le serveur
+jusqu'à ce qu'on le télécharge, si bien que l'achat laisse place à
+« Télécharger », puis à « Ouvrir » une fois l'aventure sur l'appareil — les
+trois gestes sur la même page, plutôt que d'envoyer le lecteur les finir dans
+`/scenarios`. L'état lu est `downloadedScenarioProvider`, le même que celui de
+l'écran des scénarios : ce sont deux vues d'un seul fait, pas deux
+comptabilités.
+
+Ce bouton **n'est pas verrouillé hors ligne**, contrairement à « Obtenir ».
+Celui de `/scenarios` ne l'est pas non plus, et la même action refusée d'un
+côté puis offerte de l'autre ferait passer l'un des deux écrans pour cassé.
+Sans réseau, l'appel échoue et le dit.
+
+Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
+colis : `scroll` donne un parchemin aux aventures (`shop_artwork.dart`).
+C'est le repli, pas une illustration — le jour où les scénarios auront des
+couvertures, elles se déclarent là.
 
 ### Notifications push (Firebase Cloud Messaging)
 

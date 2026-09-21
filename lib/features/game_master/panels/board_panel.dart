@@ -14,6 +14,7 @@ import '../../../design_system/tokens/typography.dart';
 import '../../assets/providers/owned_assets_provider.dart';
 import '../models/board_catalog.dart';
 import '../models/board_token.dart';
+import '../widgets/board_surface.dart';
 import '../widgets/board_token_view.dart';
 
 /// La carte, les pions posés dessus, et le tiroir d'où on les tire.
@@ -336,7 +337,7 @@ class _Board extends StatelessWidget {
                       // Isolée des pions : sans cette barrière, déplacer un
                       // pion repeindrait aussi la carte à chaque image.
                       Positioned.fill(
-                        child: RepaintBoundary(child: _MapSurface(map: map)),
+                        child: RepaintBoundary(child: BoardSurface(map: map)),
                       ),
                       // Toucher la carte à côté d'un pion le désélectionne :
                       // sans cela, l'encadré doré reste et le MJ croit à un
@@ -372,49 +373,6 @@ class _Board extends StatelessWidget {
       },
     );
   }
-}
-
-class _MapSurface extends StatelessWidget {
-  const _MapSurface({required this.map});
-
-  final BoardMap map;
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = map.asset;
-    if (asset != null) return Image.asset(asset, fit: BoxFit.fill);
-    return const ColoredBox(
-      color: QBColors.paper100,
-      child: CustomPaint(painter: _GridPainter()),
-    );
-  }
-}
-
-/// La grille de la carte vierge. Douze cases dans la largeur : assez pour
-/// situer des personnages les uns par rapport aux autres, pas assez pour
-/// transformer le plateau en damier illisible.
-class _GridPainter extends CustomPainter {
-  const _GridPainter();
-
-  static const _columns = 12;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final step = size.width / _columns;
-    final line = Paint()
-      ..color = QBColors.borderHairline
-      ..strokeWidth = 1;
-
-    for (var x = step; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
-    }
-    for (var y = step; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_GridPainter oldDelegate) => false;
 }
 
 class _PlacedToken extends StatelessWidget {
@@ -935,7 +893,7 @@ class _MapTile extends StatelessWidget {
                   child: asset == null
                       ? const ColoredBox(
                           color: QBColors.paper200,
-                          child: CustomPaint(painter: _GridPainter()),
+                          child: CustomPaint(painter: BoardGridPainter()),
                         )
                       : Image.asset(asset, fit: BoxFit.cover),
                 ),

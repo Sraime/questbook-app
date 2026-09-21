@@ -21,10 +21,19 @@ class QBDialog extends StatelessWidget {
   final String title;
   final Widget child;
   final VoidCallback? onClose;
+
+  /// Largeur souhaitée. Elle est **réduite si l'écran est plus étroit** : une
+  /// fenêtre pensée pour une tablette déborderait sinon sur un téléphone, où
+  /// les 360 points par défaut occupent déjà presque toute la largeur.
   final double width;
+
+  /// Ce qui reste visible de chaque côté quand la fenêtre touche les bords.
+  static const double _minMargin = QBSpace.s5;
 
   @override
   Widget build(BuildContext context) {
+    final available = MediaQuery.sizeOf(context).width - 2 * _minMargin;
+
     return Padding(
       // Flutter's own Dialog does this; this shell is built from a plain
       // Container, so without it the soft keyboard simply covers the lower
@@ -37,7 +46,7 @@ class QBDialog extends StatelessWidget {
         child: Material(
           type: MaterialType.transparency,
           child: Container(
-            width: width,
+            width: width > available ? available : width,
             padding: const EdgeInsets.all(QBSpace.s6),
             decoration: BoxDecoration(
               color: QBColors.surfaceCard,

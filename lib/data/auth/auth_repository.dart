@@ -103,6 +103,30 @@ class AuthRepository {
     }
   }
 
+  /// Le profil en cache suit aussitôt : c'est lui qu'un démarrage hors ligne
+  /// relit, et il montrerait sinon l'ancien pseudo jusqu'à la prochaine
+  /// connexion réussie.
+  Future<AuthUser> rename(String displayName) async {
+    final user = await _api.rename(displayName);
+    await _store.writeUser(user);
+    return user;
+  }
+
+  /// Efface le compte côté serveur, puis referme la session ici.
+  ///
+  /// L'appel réseau passe d'abord : si le serveur refuse, l'appareil reste
+  /// connecté à un compte qui existe toujours, ce qui est la vérité. Ensuite
+  /// seulement les jetons partent — inutile de révoquer quoi que ce soit, la
+  /// suppression a emporté jusqu'aux jetons de rafraîchissement.
+  Future<void> deleteAccount() async {
+    await _api.deleteAccount();
+    await _client.clearTokens();
+
+    if (_initialized) {
+      await GoogleSignIn.instance.signOut();
+    }
+  }
+
   Future<void> signOut() async {
     final tokens = await _store.read();
 

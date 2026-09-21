@@ -37,7 +37,7 @@ class ShopScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Pions et aventures à ajouter à ta collection.',
+                'Pions et scénarios à ajouter à ta collection.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textMuted,
@@ -77,6 +77,11 @@ class ShopScreen extends ConsumerWidget {
   }
 }
 
+/// Le rayon, en deux sections. Un pion se reconnaît à son dessin et se range
+/// en grille ; une aventure ne se juge que sur ce qu'elle raconte, et une
+/// vignette de cent points n'en dit rien. Les deux ne se montrent donc pas
+/// de la même façon, et les mêler les aurait obligés à un compromis qui
+/// n'aurait servi ni l'un ni l'autre.
 class _Catalogue extends StatelessWidget {
   const _Catalogue({required this.items});
 
@@ -94,6 +99,65 @@ class _Catalogue extends StatelessWidget {
       );
     }
 
+    final scenarios = items
+        .where((item) => item.type == ShopItemType.scenario)
+        .toList();
+    final rest = items
+        .where((item) => item.type != ShopItemType.scenario)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (rest.isNotEmpty) ...[
+          // « Pions », et non « le reste » : c'est tout ce que le rayon
+          // contient à côté des scénarios, et les packs ne s'achètent pas
+          // encore. Le jour où ils arrivent, ce titre est à revoir.
+          const _SectionTitle('Pions'),
+          const SizedBox(height: QBSpace.s3),
+          _Tiles(items: rest),
+        ],
+        if (scenarios.isNotEmpty) ...[
+          if (rest.isNotEmpty) const SizedBox(height: QBSpace.s6),
+          // Le même mot que l'écran où on les retrouve ensuite. « Aventure »
+          // explique ce qu'est un scénario, il ne le remplace pas.
+          const _SectionTitle('Scénarios'),
+          const SizedBox(height: QBSpace.s3),
+          for (final item in scenarios) ...[
+            _ScenarioRow(item: item),
+            const SizedBox(height: QBSpace.s3),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: QBType.game().copyWith(
+        fontWeight: QBType.weightSemibold,
+        fontSize: 15,
+        color: QBColors.ink900,
+      ),
+    );
+  }
+}
+
+class _Tiles extends StatelessWidget {
+  const _Tiles({required this.items});
+
+  final List<RemoteShopItem> items;
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Trois par ligne au minimum, davantage dès qu'il y a la place. Un
@@ -112,6 +176,91 @@ class _Catalogue extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Une aventure, pleine largeur : son titre, son prix, et assez de lignes
+/// pour donner envie de l'ouvrir. On n'achète pas un scénario sur un dessin.
+class _ScenarioRow extends StatelessWidget {
+  const _ScenarioRow({required this.item});
+
+  final RemoteShopItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.go('/boutique/${item.id}'),
+      behavior: HitTestBehavior.opaque,
+      child: Semantics(
+        container: true,
+        child: Container(
+          padding: const EdgeInsets.all(QBSpace.s3),
+          decoration: BoxDecoration(
+            color: QBColors.paper50,
+            border: Border.all(color: QBColors.borderDefault),
+            borderRadius: BorderRadius.circular(QBRadius.md),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 34,
+                height: 34,
+                child: ShopArtwork(imageKey: item.imageKey),
+              ),
+              const SizedBox(width: QBSpace.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: QBType.game().copyWith(
+                              fontWeight: QBType.weightBold,
+                              fontSize: 14,
+                              color: QBColors.ink900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: QBSpace.s2),
+                        Text(
+                          item.owned ? 'Possédé' : item.priceLabel,
+                          style: QBType.mono().copyWith(
+                            fontSize: QBType.xs,
+                            fontWeight: QBType.weightBold,
+                            color: item.owned
+                                ? QBColors.semanticSuccess
+                                : QBColors.leather700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: QBSpace.s2),
+                    Text(
+                      item.description,
+                      // Quelques lignes, pas le pitch entier : le reste
+                      // attend sur la page de l'article, où il y a la place
+                      // de le lire.
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: QBType.body().copyWith(
+                        fontSize: QBType.xs,
+                        height: 1.45,
+                        color: QBColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

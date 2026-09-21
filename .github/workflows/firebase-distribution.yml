@@ -61,22 +61,39 @@ jobs:
             echo "Version a distribuer : $version"
           fi
 
+      # Le testeur ne lit que ceci, et c'est a partir de la qu'il decide quoi
+      # aller essayer. Le corps de la PR est deja l'endroit ou l'on ecrit ce
+      # qui change : le recopier ailleurs condamnerait les deux a diverger.
       - name: Compose release notes
         id: notes
         env:
           MANUAL_NOTES: ${{ github.event.inputs.release_notes }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           if [ -n "$MANUAL_NOTES" ]; then
             notes="$MANUAL_NOTES"
+          elif [ -n "$PR_BODY" ]; then
+            notes="$(printf '%s\n\n%s' "$PR_TITLE" "$PR_BODY")"
           else
             notes="PR #${PR_NUMBER} mergee : ${PR_TITLE}"
           fi
+          # Firebase plafonne la note ; un corps demesure ferait echouer la
+          # distribution apres quarante minutes de build, pour un texte.
+          limit=16000
+          if [ "${#notes}" -gt "$limit" ]; then
+            notes="$(printf '%s\n\n%s' \
+              "$(printf '%s' "$notes" | cut -c1-"$limit")" \
+              "(note tronquee, la suite est dans la PR #${PR_NUMBER})")"
+          fi
+          # Le delimiteur est tire au sort : un corps de PR qui contiendrait la
+          # ligne du delimiteur fixe couperait la sortie en deux.
+          delim="NOTES_EOF_$(openssl rand -hex 8)"
           {
-            echo "value<<NOTES_EOF"
+            echo "value<<$delim"
             echo "$notes"
-            echo "NOTES_EOF"
+            echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
   android:

@@ -12,7 +12,7 @@ class QBNavTab {
 }
 
 const List<QBNavTab> qbNavTabs = [
-  QBNavTab(icon: LucideIcons.user, label: 'Perso'),
+  QBNavTab(icon: LucideIcons.user, label: 'Investigateurs'),
   QBNavTab(icon: LucideIcons.calendarDays, label: 'Tables'),
   QBNavTab(icon: LucideIcons.store, label: 'Boutique'),
 ];
@@ -121,13 +121,21 @@ class _NavTabButton extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              tab.label,
-              style: QBType.game().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: 10,
-                letterSpacing: 10 * 0.02,
-                color: selected ? QBColors.ink900 : QBColors.paper300,
+            // « Investigateurs » tient dans son tiers d'écran, mais de
+            // justesse : sur un téléphone étroit, mieux vaut le réduire que
+            // le voir déborder sur ses voisins.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                tab.label,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: QBType.game().copyWith(
+                  fontWeight: QBType.weightSemibold,
+                  fontSize: 10,
+                  letterSpacing: 10 * 0.02,
+                  color: selected ? QBColors.ink900 : QBColors.paper300,
+                ),
               ),
             ),
           ],

@@ -35,6 +35,7 @@ class RemoteShopItem {
     required this.id,
     required this.title,
     required this.type,
+    required this.description,
     required this.priceCents,
     required this.imageKey,
     required this.assetKey,
@@ -45,6 +46,10 @@ class RemoteShopItem {
         id: json['id'] as String,
         title: json['title'] as String,
         type: ShopItemType.fromWire(json['type'] as String),
+        // Absente des serveurs d'avant les scénarios en rayon, et d'un cache
+        // écrit par eux : une vignette sans description se dessine, une
+        // liste qui plante sur une clé manquante ne se dessine pas.
+        description: json['description'] as String? ?? '',
         priceCents: json['priceCents'] as int,
         imageKey: json['imageKey'] as String,
         assetKey: json['assetKey'] as String?,
@@ -54,6 +59,11 @@ class RemoteShopItem {
   final String id;
   final String title;
   final ShopItemType type;
+
+  /// Ce dont parle l'article. Une vignette de pion l'ignore ; une aventure en
+  /// montre les premières lignes, là où elle s'affiche pleine largeur.
+  final String description;
+
   final int priceCents;
   final String imageKey;
   final String? assetKey;
@@ -77,11 +87,11 @@ class RemoteShopItemDetail extends RemoteShopItem {
     required super.id,
     required super.title,
     required super.type,
+    required super.description,
     required super.priceCents,
     required super.imageKey,
     required super.assetKey,
     required super.owned,
-    required this.description,
     required this.scenarioId,
   });
 
@@ -90,14 +100,14 @@ class RemoteShopItemDetail extends RemoteShopItem {
         id: json['id'] as String,
         title: json['title'] as String,
         type: ShopItemType.fromWire(json['type'] as String),
+        description: json['description'] as String? ?? '',
         priceCents: json['priceCents'] as int,
         imageKey: json['imageKey'] as String,
         assetKey: json['assetKey'] as String?,
         owned: json['owned'] as bool? ?? false,
-        description: json['description'] as String,
         scenarioId: json['scenarioId'] as String?,
       );
 
-  final String description;
+  /// Vers quelle aventure pointe un article `scenario`. Nul pour les autres.
   final String? scenarioId;
 }

@@ -85,6 +85,16 @@ jobs:
             --dart-define=QUESTBOOK_API_URL="$QUESTBOOK_API_URL" \
             --dart-define=QUESTBOOK_GOOGLE_SERVER_CLIENT_ID="$QUESTBOOK_GOOGLE_SERVER_CLIENT_ID"
 
+      # L'AAB est gardé avant l'envoi, et non après : le tout premier dépôt sur
+      # une app Play neuve se fait à la main dans la console, et un envoi refusé
+      # ne doit pas emporter le binaire avec lui.
+      - name: Keep the AAB, whatever the store answers
+        uses: actions/upload-artifact@v4
+        with:
+          name: questbook-${{ needs.version.outputs.value }}-android
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
       - name: Require the Play Console service account
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -187,6 +197,13 @@ jobs:
         run: |
           ipa=$(ls build/ios/ipa/*.ipa | head -n1)
           echo "path=$ipa" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the IPA, whatever the store answers
+        uses: actions/upload-artifact@v4
+        with:
+          name: questbook-${{ needs.version.outputs.value }}-ios
+          path: ${{ steps.ipa.outputs.path }}
+          if-no-files-found: error
 
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v4

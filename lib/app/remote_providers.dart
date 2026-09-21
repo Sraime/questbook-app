@@ -120,6 +120,28 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     }
   }
 
+  /// Renomme le compte. Lève une [ApiException] que l'écran de profil
+  /// affiche : c'est un geste explicite, son échec doit se voir.
+  Future<void> rename(String displayName) async {
+    final user = await ref.read(authRepositoryProvider).rename(displayName);
+    state = AsyncValue.data(user);
+  }
+
+  /// Supprime le compte, puis n'en laisse rien sur l'appareil.
+  ///
+  /// La déconnexion épargne les investigateurs, parce qu'ils remonteront à la
+  /// prochaine connexion. Ici il n'y a plus rien où les remonter : les garder
+  /// serait conserver ce qu'on a demandé d'effacer.
+  Future<void> deleteAccount() async {
+    await ref.read(authRepositoryProvider).deleteAccount();
+
+    final database = ref.read(appDatabaseProvider);
+    await CharacterSyncDao(database).forgetAccount();
+    await DownloadedScenarioDao(database).clear();
+    await SessionBoardDao(database).clear();
+    state = const AsyncValue.data(null);
+  }
+
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
     // The cached tables belong to the account that just left. They are keyed
@@ -158,7 +180,10 @@ class SyncController extends Notifier<SyncState> {
     ref.listen<AsyncValue<AuthUser?>>(authControllerProvider, (previous, next) {
       final user = next.value;
       if (user != null && previous?.value?.id != user.id) {
-        unawaited(synchronize());
+        // Repoussé d'une microtâche : avec `fireImmediately`, un compte déjà
+        // connecté déclencherait la passe depuis ce `build`, et
+        // `synchronize()` lirait un état qui n'existe pas encore.
+        unawaited(Future.microtask(synchronize));
       }
     }, fireImmediately: true);
 
@@ -170,6 +195,28 @@ class SyncController extends Notifier<SyncState> {
     ref.onDispose(lifecycle.dispose);
 
     return const SyncState();
+  }
+
+  /// Envoie une fiche au serveur dans la foulée du geste qui l'a changée.
+  ///
+  /// Sans cela, une fiche modifiée attend le prochain retour de l'app au
+  /// premier plan — et pendant une partie, personne ne quitte l'app. Le MJ
+  /// lit les fiches depuis le serveur : des points de vie perdus à la table
+  /// ne lui parviendraient jamais.
+  ///
+  /// L'état de synchronisation n'est pas touché : `isRunning` sert à décrire
+  /// une passe complète, et le faire clignoter à chaque pression sur une
+  /// jauge ne dirait plus rien.
+  Future<void> pushCharacter(String id) async {
+    if (ref.read(authControllerProvider).value == null) return;
+
+    try {
+      await ref.read(syncServiceProvider).pushCharacter(id);
+    } on ApiException {
+      // L'écriture locale, elle, a eu lieu, et la fiche reste marquée : la
+      // prochaine passe complète la reprendra. Rien à dire au joueur, qui
+      // voit déjà sa modification à l'écran.
+    }
   }
 
   Future<void> synchronize() async {

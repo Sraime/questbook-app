@@ -18,8 +18,8 @@ import '../../tables/widgets/session_form.dart';
 /// C'est le volet qui a remplacé les boutons qui encombraient la carte de
 /// session : le MJ y arrive d'un doigt sur la carte, et corrige l'heure sans
 /// sortir du mode MJ.
-class GeneralPanel extends ConsumerWidget {
-  const GeneralPanel({
+class DetailsPanel extends ConsumerWidget {
+  const DetailsPanel({
     super.key,
     required this.tableId,
     required this.session,
@@ -43,7 +43,7 @@ class GeneralPanel extends ConsumerWidget {
       ),
       children: [
         Text(
-          'Général',
+          'Détails',
           style: QBType.game().copyWith(
             fontWeight: QBType.weightBold,
             fontSize: 16,

@@ -395,6 +395,18 @@ class $CharactersTable extends Characters
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -407,6 +419,7 @@ class $CharactersTable extends Characters
     updatedAt,
     deletedAt,
     needsSync,
+    revision,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -488,6 +501,12 @@ class $CharactersTable extends Characters
         needsSync.isAcceptableOrUnknown(data['needs_sync']!, _needsSyncMeta),
       );
     }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
     return context;
   }
 
@@ -537,6 +556,10 @@ class $CharactersTable extends Characters
         DriftSqlType.bool,
         data['${effectivePrefix}needs_sync'],
       )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
     );
   }
 
@@ -570,6 +593,15 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
   /// Defaults to true so characters created before this feature existed are
   /// uploaded on the first sign-in.
   final bool needsSync;
+
+  /// Counts local writes, and nothing else. Never sent anywhere.
+  ///
+  /// It answers one question, asked once the server has acknowledged a push:
+  /// *has the player edited this sheet since I read it?* [updatedAt] cannot
+  /// answer it — Drift stores a date to the second, and two taps on a gauge
+  /// land in the same one. Clearing the flag on that basis would strand the
+  /// second tap on the device until some later edit happened to push it.
+  final int revision;
   const CharacterRow({
     required this.id,
     required this.systemId,
@@ -581,6 +613,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     required this.updatedAt,
     this.deletedAt,
     required this.needsSync,
+    required this.revision,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -601,6 +634,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     map['needs_sync'] = Variable<bool>(needsSync);
+    map['revision'] = Variable<int>(revision);
     return map;
   }
 
@@ -622,6 +656,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           ? const Value.absent()
           : Value(deletedAt),
       needsSync: Value(needsSync),
+      revision: Value(revision),
     );
   }
 
@@ -641,6 +676,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       needsSync: serializer.fromJson<bool>(json['needsSync']),
+      revision: serializer.fromJson<int>(json['revision']),
     );
   }
   @override
@@ -657,6 +693,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'needsSync': serializer.toJson<bool>(needsSync),
+      'revision': serializer.toJson<int>(revision),
     };
   }
 
@@ -671,6 +708,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
     bool? needsSync,
+    int? revision,
   }) => CharacterRow(
     id: id ?? this.id,
     systemId: systemId ?? this.systemId,
@@ -682,6 +720,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     needsSync: needsSync ?? this.needsSync,
+    revision: revision ?? this.revision,
   );
   CharacterRow copyWithCompanion(CharactersCompanion data) {
     return CharacterRow(
@@ -699,6 +738,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       needsSync: data.needsSync.present ? data.needsSync.value : this.needsSync,
+      revision: data.revision.present ? data.revision.value : this.revision,
     );
   }
 
@@ -714,7 +754,8 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('needsSync: $needsSync')
+          ..write('needsSync: $needsSync, ')
+          ..write('revision: $revision')
           ..write(')'))
         .toString();
   }
@@ -731,6 +772,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     updatedAt,
     deletedAt,
     needsSync,
+    revision,
   );
   @override
   bool operator ==(Object other) =>
@@ -745,7 +787,8 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
-          other.needsSync == this.needsSync);
+          other.needsSync == this.needsSync &&
+          other.revision == this.revision);
 }
 
 class CharactersCompanion extends UpdateCompanion<CharacterRow> {
@@ -759,6 +802,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<bool> needsSync;
+  final Value<int> revision;
   final Value<int> rowid;
   const CharactersCompanion({
     this.id = const Value.absent(),
@@ -771,6 +815,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.needsSync = const Value.absent(),
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CharactersCompanion.insert({
@@ -784,6 +829,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.needsSync = const Value.absent(),
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        systemId = Value(systemId),
@@ -800,6 +846,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<bool>? needsSync,
+    Expression<int>? revision,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -813,6 +860,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (needsSync != null) 'needs_sync': needsSync,
+      if (revision != null) 'revision': revision,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -828,6 +876,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
     Value<bool>? needsSync,
+    Value<int>? revision,
     Value<int>? rowid,
   }) {
     return CharactersCompanion(
@@ -841,6 +890,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       needsSync: needsSync ?? this.needsSync,
+      revision: revision ?? this.revision,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -878,6 +928,9 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     if (needsSync.present) {
       map['needs_sync'] = Variable<bool>(needsSync.value);
     }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -897,6 +950,7 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('needsSync: $needsSync, ')
+          ..write('revision: $revision, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3818,6 +3872,7 @@ typedef $$CharactersTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
       Value<bool> needsSync,
+      Value<int> revision,
       Value<int> rowid,
     });
 typedef $$CharactersTableUpdateCompanionBuilder =
@@ -3832,6 +3887,7 @@ typedef $$CharactersTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
       Value<bool> needsSync,
+      Value<int> revision,
       Value<int> rowid,
     });
 
@@ -3968,6 +4024,11 @@ class $$CharactersTableFilterComposer
 
   ColumnFilters<bool> get needsSync => $composableBuilder(
     column: $table.needsSync,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4124,6 +4185,11 @@ class $$CharactersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$GameSystemsTableOrderingComposer get systemId {
     final $$GameSystemsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4187,6 +4253,9 @@ class $$CharactersTableAnnotationComposer
 
   GeneratedColumn<bool> get needsSync =>
       $composableBuilder(column: $table.needsSync, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
 
   $$GameSystemsTableAnnotationComposer get systemId {
     final $$GameSystemsTableAnnotationComposer composer = $composerBuilder(
@@ -4331,6 +4400,7 @@ class $$CharactersTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<bool> needsSync = const Value.absent(),
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion(
                 id: id,
@@ -4343,6 +4413,7 @@ class $$CharactersTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 needsSync: needsSync,
+                revision: revision,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4357,6 +4428,7 @@ class $$CharactersTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<bool> needsSync = const Value.absent(),
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion.insert(
                 id: id,
@@ -4369,6 +4441,7 @@ class $$CharactersTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 needsSync: needsSync,
+                revision: revision,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

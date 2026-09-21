@@ -22,9 +22,11 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Génération de code](#génération-de-code)
 - [Exécution](#exécution)
 - [Compte Google et synchronisation](#compte-google-et-synchronisation)
+  - [Supprimer son compte](#supprimer-son-compte)
   - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
   - [Lancer contre le backend local](#lancer-contre-le-backend-local)
   - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
+    - [Une fiche modifiée part tout de suite](#une-fiche-modifiée-part-tout-de-suite)
   - [Tables : le choix inverse](#tables--le-choix-inverse)
   - [Consultation seule (hors ligne)](#consultation-seule-hors-ligne)
 - [Tests](#tests)
@@ -44,27 +46,30 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 ## Aperçu fonctionnel
 
-- **Accueil (`/perso`)** : liste des personnages créés, avec un badge de points de vie et un accès rapide à la fiche.
-- **Création de personnage (`/perso/create`)** : choix du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
-- **Fiche de personnage (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
+> **Le produit dit « investigateur », le code dit `Character`.** L'app ne parle que de l'Appel de Cthulhu, où le personnage d'un joueur est un investigateur : garder les deux mots à l'écran faisait croire à deux notions. Ce qui s'affiche a donc été renommé, pas le code — `Character`, `characterListProvider`, `/perso` sont inchangés, et ce README continue de les nommer ainsi quand il parle d'eux. Le PNJ, lui, reste un personnage non-joueur : c'est le terme du jeu de rôle, et il désigne justement ce qui n'est pas un investigateur. Voir le lexique dans `questbook-ia/LEXIQUE.md`.
+
+- **Accueil (`/perso`)** : liste des investigateurs créés, avec un badge de points de vie et un accès rapide à la fiche. Tant qu'il n'y en a aucun, l'écran explique ce qu'est un investigateur au lieu de constater qu'il n'y en a pas : pour beaucoup, c'est le premier écran de leur première partie, et le mot vient de l'univers.
+- **Création d'un investigateur (`/perso/create`)** : choix du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
+- **Fiche d'un investigateur (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis à tout moment.
-- **Carte d'une session** : pour le MJ, la carte entière mène au mode MJ ; corriger la session ou l'annuler s'y fait ensuite, dans le volet Général. Elle ne porte donc plus rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal, et le geste le plus fréquent, animer, était le plus petit. Pour un joueur, la carte reste informative : ses boutons à lui sont « Je viens » et « Je passe ».
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
+- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
-- **Participer avec un personnage** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
+- **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
+- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert d'un doigt sur la carte d'une session à venir. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone : **Général** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les fiches des joueurs qui viennent), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
-- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Une carte ne dit que l'image, le titre, le type et le prix ; la description attend la page de l'article (`/boutique/:id`), où « Obtenir » l'accorde. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Acheter un scénario le fait apparaître dans `/scenarios` sans autre geste.
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
-- **Profil (`/profil`)** : le compte connecté et l'état de la synchronisation.
+- **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
 
 - **Connexion (obligatoire)** : l'app démarre sur l'écran de connexion Google tant qu'aucun compte n'a été utilisé sur l'appareil. Il n'y a plus de « Continuer hors ligne ».
 
-> **Sans réseau, l'app passe en consultation seule.** Personnages et tables restent lisibles — les seconds depuis la dernière réponse du serveur, datée à l'écran — mais rien ne peut être modifié tant que le serveur ne répond pas. Voir [Consultation seule](#consultation-seule-hors-ligne).
+> **Sans réseau, l'app passe en consultation seule.** Investigateurs et tables restent lisibles — les seconds depuis la dernière réponse du serveur, datée à l'écran — mais rien ne peut être modifié tant que le serveur ne répond pas. Voir [Consultation seule](#consultation-seule-hors-ligne).
 
 Toute l'interface utilise un design system interne « juicy » (boutons/cartes/dés avec relief, ombres et dégradés) inspiré d'une maquette produit, situé dans `lib/design_system/`.
 
@@ -72,7 +77,7 @@ Toute l'interface utilise un design system interne « juicy » (boutons/cartes/d
 
 Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une seule règle les départage : **le bas est pour les endroits où l'on travaille, le haut pour tout le reste.**
 
-- **En bas**, les trois onglets persistants : Perso, Tables et Boutique. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
+- **En bas**, les trois onglets persistants : Investigateurs, Tables et Boutique. Le plus long des trois tient dans son tiers d'écran par un `FittedBox` : « Investigateurs » fait quatorze lettres là où « Perso » en faisait cinq, et un téléphone de 320 points le réduirait plutôt que de le laisser déborder sur ses voisins. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste. C'est aussi ce qui a permis de retirer les flèches de retour en haut du détail d'une table et du formulaire d'une session : l'onglet ramène à la liste, en grand et toujours au même endroit, là où une flèche de 36 points se visait mal. Renoncer à une session se dit plutôt en toutes lettres, par un bouton « Annuler » sous celui qui enregistre.
 - **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
 
 Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Assets, Livre de règle, Profil, et la déconnexion en bas du panneau.
@@ -85,10 +90,20 @@ Trois conséquences valent d'être notées, parce que ce sont elles qui ont dict
 
 - **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
 - Notifications, Scénarios, Assets, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que déplacer une destination dans la barre ou l'en sortir ne puisse pas laisser les deux en désaccord.
-- Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
+- **La cloche est une bascule.** L'écran des notifications n'a pas de bouton retour : la toucher une seconde fois referme l'historique et rend **l'onglet qu'on a quitté** (`lastTabProvider`), pas un écran choisi d'avance — renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table. Un aller-retour sur la même cible, plutôt qu'une flèche à viser ailleurs.
 - Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
 
-L'`AccountBar` qui coiffait la liste des personnages a disparu : le compte est passé dans le volet, son état de synchronisation dans Profil. Le bouton « Synchroniser » n'a pas été déplacé, il a été **supprimé** — une passe part déjà à la connexion et à chaque retour au premier plan, si bien que le bouton n'offrait qu'une illusion de contrôle, et laissait croire que ce qu'on n'avait pas pressé n'était pas enregistré.
+L'`AccountBar` qui coiffait la liste des investigateurs a disparu : le compte est passé dans le volet, son état de synchronisation dans Profil. Le bouton « Synchroniser » n'a pas été déplacé, il a été **supprimé** — une passe part déjà à la connexion et à chaque retour au premier plan, si bien que le bouton n'offrait qu'une illusion de contrôle, et laissait croire que ce qu'on n'avait pas pressé n'était pas enregistré.
+
+### Ce que l'écran d'une table met en avant
+
+Une table, la plupart du temps, se consulte : on regarde quand est la prochaine séance et qui vient. Tout le reste — proposer, inviter, retirer, dissoudre — est occasionnel, et se peignait pourtant en aussi gros que le contenu. La hiérarchie a été refaite dans ce sens, sans qu'aucune action ne disparaisse.
+
+- **Proposer et Inviter sont passés en sourdine** (`QBButtonVariant.ghost`, taille `sm`) : ils coiffent toujours leur section, mais deux pavés dorés en haut de page criaient plus fort que ce qu'ils annoncent.
+- **Un filet sépare chaque section**, et chaque joueur du suivant. Le dernier de la liste n'en porte pas : celui de la section suit vingt points plus bas, et deux traits si proches se lisent comme une rature.
+- **Chaque joueur porte une pastille**, un livre pour celui qui mène, une silhouette pour les autres. La liste se lit d'un coup d'œil, sans avoir à repérer lequel des noms traîne un « Maître du jeu » en petit.
+- **Les actions sur un joueur tiennent derrière trois points.** « Confier la table » et « Retirer » étaient deux boutons jumeaux de 32 points côte à côte, et se pressaient l'un pour l'autre ; le menu les nomme en toutes lettres et éloigne le geste destructeur, peint en rouge.
+- **Dissoudre la table est devenu un lien discret**, centré sous la liste. C'est le geste le plus rare de l'écran et le plus définitif : le peindre en pavé rouge pleine largeur le mettait sur le chemin de tous les autres, et donnait à une table paisible des airs d'avertissement. La confirmation, elle, n'a pas bougé.
 
 ## Stack technique
 
@@ -151,13 +166,13 @@ lib/
 │   ├── tokens/                # colors, spacing, typography, effects (constantes de design)
 │   └── components/            # Widgets réutilisables préfixés qb_ (bouton, carte, dés, etc.)
 ├── features/                   # Un dossier par écran/flux, avec ses providers Riverpod locaux
-│   ├── home/                   # Écran « Mes personnages »
+│   ├── home/                   # Écran « Mes investigateurs »
 │   ├── character_creation/     # Création de personnage + modale de jet de caractéristique
 │   ├── character_sheet/        # Fiche de personnage + modales (jet de compétence, ressource)
 │   ├── tables/                  # « Mes tables », détail d'une table, formulaire de
 │   │                            # session, notifications
 │   ├── game_master/             # Mode MJ : plein écran hors du shell, six
-│   │                            # volets (général, plateau, personnages,
+│   │                            # volets (détails, plateau, investigateurs,
 │   │                            # règles, scénario, notes) en rail ou onglets
 │   ├── assets/                  # Vitrine des pions du plateau, hors partie ;
 │   │                            # lit le catalogue de game_master
@@ -194,6 +209,8 @@ Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu g
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
 - `SyncMetadata` — curseur de synchronisation et identifiant du compte auquel appartiennent les données locales.
+
+> `Characters` porte, depuis la v8, une colonne `revision` purement locale : elle compte les écritures faites sur l'appareil, et sert à savoir si une fiche a bougé pendant que le serveur répondait. Elle n'est jamais envoyée.
 - `RemoteCache` — la dernière réponse de l'API pour quelques lectures (tables, sessions), conservée telle quelle pour que l'onglet Tables reste lisible sans réseau. Voir [Consultation seule](#consultation-seule-hors-ligne).
 
 Les tables de jeu **ne sont pas modélisées ici** : elles sont partagées entre plusieurs comptes et le serveur en reste la source de vérité. La table Drift `GameTables` de la maquette locale a été supprimée par la migration v2 → v3 ; ce que la v4 réintroduit est une copie en lecture seule, pas un modèle.
@@ -413,6 +430,24 @@ purement local n'avait accès à rien de tout cela.
 **Ne pas confondre avec le réseau.** Une fois connecté, perdre le réseau ne
 déconnecte pas : l'app bascule en **consultation seule**, décrite plus bas.
 
+### Supprimer son compte
+
+Tout en bas de `/profil`, dans une carte à part. Le dialogue de confirmation
+énumère ce qui disparaît, et **compte les tables que le joueur anime** : elles
+seront dissoutes, et disparaîtront aussi pour leurs joueurs. Dire « tes tables
+seront supprimées » ne veut rien dire tant qu'on ne sait pas lesquelles.
+
+C'est le serveur qui fait le travail, en une cascade (`DELETE /auth/me`).
+L'appareil n'agit qu'ensuite, et seulement si le serveur a accepté : jetons
+effacés, puis les personnages, les scénarios téléchargés et les plateaux de
+session. La déconnexion, elle, épargne les personnages — ils remonteront à la
+prochaine connexion. Ici il n'y a plus rien où les remonter, et les garder
+serait conserver ce qu'on a demandé d'effacer.
+
+Si le serveur refuse, rien n'est touché localement et le message s'affiche dans
+le dialogue : l'appareil reste connecté à un compte qui existe toujours, ce qui
+est la vérité.
+
 ### Configuration de build (`--dart-define`)
 
 Rien n'est codé en dur : `lib/config/app_config.dart` lit deux valeurs injectées
@@ -464,20 +499,57 @@ Drift reste la source de vérité de l'UI : tous les écrans lisent les mêmes
 streams locaux, connecté ou non. La synchronisation ne fait que refléter ces
 lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 
-- Chaque écriture locale marque le personnage `needsSync` et avance son
-  `updatedAt` ; une suppression laisse une **pierre tombale** (`deletedAt`) pour
-  que l'effacement se propage au lieu de disparaître silencieusement.
+- Chaque écriture locale marque le personnage `needsSync`, avance son
+  `updatedAt` et **incrémente son `revision`** ; une suppression laisse une
+  **pierre tombale** (`deletedAt`) pour que l'effacement se propage au lieu de
+  disparaître silencieusement.
+- **La fiche part aussitôt**, sans attendre la passe suivante : création,
+  ressource ajustée, objet ajouté ou retiré appellent
+  `SyncController.pushCharacter`, qui envoie cette fiche-là et rien d'autre.
+  Voir [Une fiche modifiée part tout de suite](#une-fiche-modifiée-part-tout-de-suite).
 - Une passe fait d'abord un *push* puis un *pull*, dans cet ordre — sinon un
   personnage créé hors ligne ressemblerait, vu du pull, à quelque chose à
   supprimer.
 - Les conflits se résolvent en **last-write-wins sur le personnage entier**,
   la règle qu'applique aussi l'API, donc les deux côtés désignent toujours le
   même gagnant.
-- Une passe se déclenche à la connexion, au retour au premier plan, et via le
-  bouton ↻ du bandeau de compte.
+- Une passe complète se déclenche à la connexion et au retour au premier plan.
 - Si un **autre compte** se connecte sur l'appareil, les données locales sont
   effacées : les personnages **et** le cache des tables du compte précédent
   ne doivent pas fuiter dans la nouvelle session.
+
+#### Une fiche modifiée part tout de suite
+
+Une fiche n'est pas un brouillon personnel : le MJ la lit **depuis le
+serveur**, pendant la partie. Or pendant une partie personne ne quitte
+l'application, et les deux seuls déclencheurs d'une passe complète sont la
+connexion et le retour au premier plan. Des points de vie perdus à la table
+restaient donc sur le téléphone du joueur, parfois jusqu'au lendemain, sans
+que rien ne le laisse voir — ni au joueur, qui voyait bien sa jauge bouger, ni
+au MJ, qui lisait une valeur périmée sans savoir qu'elle l'était.
+
+L'écriture locale reste première : la jauge bouge sous le doigt quoi que fasse
+le réseau. L'envoi la suit dans la foulée, et se contente de cette fiche —
+pas de *pull*, qui rapatrierait tout le compte pour une pression sur un
+bouton. Un envoi refusé ne coûte rien : la fiche reste marquée, et la
+prochaine passe complète la reprend.
+
+Deux détails ont demandé du soin, et les tests de `sync_service_test.dart` les
+tiennent :
+
+- **Les envois d'une même fiche font la queue.** Deux pressions à un instant
+  d'intervalle partiraient sinon de front, et la plus ancienne reviendrait en
+  conflit avec la version du serveur — que l'appareil adopterait, par-dessus
+  une troisième pression déjà faite.
+- **`revision` existe pour cela.** Une fois le serveur d'accord, il faut
+  savoir si le joueur a retouché la fiche entre-temps, sans quoi on baisse le
+  drapeau sur une modification jamais envoyée. `updatedAt` ne peut pas
+  répondre : **Drift range une date à la seconde**, et deux pressions sur une
+  jauge tombent dans la même. Le symptôme était exactement celui qu'on
+  cherchait à corriger — l'écran à 11 PV, le serveur à 12 — et il n'apparaît
+  qu'à la vitesse d'un vrai doigt. Le compteur, lui, ne se confond pas. Il ne
+  quitte jamais l'appareil : le serveur n'en a que faire, c'est `updatedAt`
+  qui arbitre entre deux téléphones.
 
 Les personnages créés avant cette fonctionnalité sont poussés tels quels à la
 première connexion (migration Drift v1 → v2, voir `lib/data/local/database.dart`).
@@ -568,7 +640,106 @@ les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
 de la table et le bouton de sortie. Un volet de plus rogne cette place :
 ajouter un septième demanderait autre chose qu'une rangée fixe.
 
-Le volet **Général** est celui par lequel une session se corrige. Il réutilise
+#### Le même écran, vu d'une chaise de joueur
+
+Un joueur qui participe ouvre **la même route**, et c'est `SessionSeat`
+(`game_master/models/session_seat.dart`) qui décide de ce qu'il y trouve.
+
+**Le rôle se lit sur la table, pas sur la route.** Une restriction posée sur
+le chemin se contourne en tapant l'autre adresse ; un rôle déduit de
+l'appartenance à la table ne se contourne pas. Tant que la table n'a pas
+répondu, on est joueur — ouvrir les volets du MJ pour les refermer ensuite
+montrerait une seconde ce qui ne le regarde pas.
+
+| | MJ | Joueur |
+| --- | --- | --- |
+| Volets | Les six | **Plateau** et **Investigateurs** |
+| Volet d'accueil | Détails | Plateau |
+| Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
+| Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules, la sienne modifiable |
+
+Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
+dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
+pas, ni **Notes**, qui sont les siennes. Les **Règles** restent à `/regles`
+pour tout le monde. Les PNJ portent eux-mêmes la phrase « tes joueurs ne les
+voient pas » : le volet s'arrête donc aux investigateurs, et le filet qui les
+sépare avec.
+
+Deux volets au lieu de six changent la barre d'onglets : ils ont la place
+d'être **nommés au repos**, là où six imposaient l'icône seule. Un joueur qui
+n'a pas l'habitude de l'écran en a besoin.
+
+Le plateau du joueur est **en lecture, pas désactivé** : aucun tiroir, aucune
+cible de dépôt, aucune poignée, aucun geste câblé. Il n'y a rien à griser, et
+rien qu'un joueur puisse envoyer — le serveur réserve l'écriture au MJ de
+toute façon. Le fond de carte est le même des deux côtés (`BoardSurface`), et
+un pion acheté par le MJ se dessine chez un joueur qui ne le possède pas :
+c'est l'achat qui décide de ce qu'on pose, pas de ce qu'on voit.
+
+Il se branche sur `liveSessionBoardProvider`, qui enchaîne deux sources : un
+`GET /sessions/:id/board` pour avoir un plateau tout de suite — et surtout
+pour rafraîchir le jeton, la poignée de main d'un socket n'ayant pas
+d'intercepteur pour le faire à sa place — puis le canal `wss` qui renvoie le
+plateau entier à chaque poussée. Le provider est `autoDispose` : le socket se
+ferme en quittant le volet.
+
+**Ce dernier point tient à un détail d'implémentation**, et c'est pourquoi
+`socket_lifecycle_test.dart` le fixe : `_panelBody` ne construit qu'un volet à
+la fois, si bien que `WatchedBoardPanel` est démonté dès qu'on le quitte. Le
+jour où l'on voudra garder l'état d'un volet en le laissant monté, un
+`IndexedStack` suffirait à laisser un socket ouvert toute la soirée — rien ne
+se verrait à l'écran, et une table de cinq joueurs qui font l'aller-retour
+entre les volets ferait tenir au serveur des dizaines de sockets fantômes. Le
+MJ, lui, n'en ouvre jamais aucun : il écrit le plateau, c'est le joueur qui
+écoute.
+
+**Une coupure ne vide pas la table.** La dernière valeur reste à l'écran et un
+bandeau dit qu'elle ne bouge plus ; elle y reste tant que le MJ n'a rien
+repoussé, même une fois le canal rebranché. À noter pour les tests : Riverpod
+présente cet état tantôt en `AsyncError`, tantôt en `AsyncLoading` selon qu'il
+retente déjà, et les deux portent la valeur précédente — le volet lit donc
+« ai-je un plateau ? » et « est-ce qu'il bouge encore ? » plutôt que de filtrer
+les cas d'`AsyncValue`.
+
+**`BoardLiveClient` annonce la chute avant de retenter**, et c'est ce qui rend
+ce bandeau atteignable : il se reconnectait d'abord en silence, si bien que le
+flux n'émettait que des plateaux et qu'un joueur regardait une table figée sans
+le savoir — il attendait un pion déjà arrivé chez les autres. La chute passe
+donc en `BoardInterrupted` dans le flux, puis la boucle reprend ; le plateau que
+la reconnexion rapporte efface le bandeau de lui-même.
+
+Le délai de détection n'est pas nul : un réseau qui disparaît sans prévenir
+laisse la socket ouverte jusqu'au `pingInterval`, soit vingt secondes. Un
+Wi-Fi coupé franchement, lui, ferme la socket tout de suite et le bandeau
+apparaît dans la seconde.
+
+### Les deux bornes d'une séance
+
+Une séance ne s'éteint pas à l'heure dite : on joue, et la partie déborde
+toujours. Le serveur envoie donc deux instants avec chaque session, et l'app
+les lit tels quels — la règle lui appartient, et deux implémentations
+finiraient par diverger.
+
+| Champ | Ce qu'il vaut | Ce que l'app en fait |
+| --- | --- | --- |
+| `closesAt` | Début + 24 h | `isPast`, donc le partage entre « Sessions » et « Sessions passées », et l'accès au mode MJ. |
+| `answersCloseAt` | Le plus tard entre le début et création + 1 h | `acceptsAnswers`, donc « Je viens » / « Je passe » et le choix du personnage. |
+
+`isUnderway` s'en déduit : commencée, pas encore close. C'est l'état d'une
+séance qu'on est en train de jouer, et c'est lui qui choisit le mot du bouton
+sur la carte — **Préparer** avant l'heure, **Animer** pendant.
+
+Une réponse mise en cache par une version d'avant la règle n'a ni l'un ni
+l'autre ; le constructeur de `RemoteGameSession` retombe alors sur le début de
+la séance, et sur la fenêtre de 24 h pour `closesAt`. C'est le seul endroit de
+l'app où ces durées sont écrites.
+
+**Le mode MJ s'ouvre sur le volet Détails**, et non sur le plateau : on y
+arrive surtout avant la partie, pour vérifier l'heure, le lieu ou le scénario.
+Poser des pions est le geste d'un soir ; relire ce qu'est la séance, celui de
+tous les jours qui précèdent.
+
+Le volet **Détails** est celui par lequel une session se corrige. Il réutilise
 le formulaire de création (`tables/widgets/session_form.dart`) et n'envoie que
 les champs qui ont bougé — une date renvoyée telle quelle ressemblerait, vue
 du serveur, à un report, et réveillerait toute la table. Enregistrer laisse le
@@ -640,9 +811,10 @@ Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
 enregistrés avant la boutique, et c'est très bien : le socle se décrit
 entièrement par sa forme et sa couleur). **Un pion dont le lecteur ne possède
 pas l'asset se rend en rond rouge** plutôt que de disparaître : perdre une
-position en silence serait pire que l'afficher au mauvais visage. Ce repli est
-aujourd'hui inatteignable — le plateau ne quitte pas l'appareil, donc personne
-d'autre ne le lit — et il est là pour le jour où les plateaux se partageront.
+position en silence serait pire que l'afficher au mauvais visage. Ce repli n'est
+plus théorique depuis que le plateau remonte au serveur : un joueur qui regarde
+la séance lit les pions du MJ, et n'a aucune raison de posséder les assets que
+celui-ci a achetés.
 
 Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
 et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
@@ -656,13 +828,119 @@ et il part sur le disque à la fin du geste. Les notes, elles, s'enregistrent
 500 ms après la dernière frappe — une transaction SQLite par caractère serait
 absurde.
 
-Deux limites assumées pour l'instant : les fiches des joueurs viennent de l'API
+Une limite assumée pour l'instant : les fiches des joueurs viennent de l'API
 une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
 appel qui les autorise) — le volet Personnages en montre le résumé et ouvre
-la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
-**pas lisibles hors ligne**, et le
-plateau ne quitte pas l'appareil — un MJ qui change d'appareil repart d'une
-carte vierge.
+la fiche entière, la même qu'à la table — et ne sont donc **pas lisibles hors
+ligne**.
+
+##### Sa propre fiche se modifie sans quitter la séance
+
+Une partie fait perdre des points de vie, et on les décomptait en sortant de
+l'écran de la séance pour y revenir ensuite. Toucher **sa** carte dans le volet
+Investigateurs ouvre donc la fiche modifiable — jauges, inventaire, lancer de
+dé — et non plus la copie en lecture. Celle d'un camarade reste en lecture, et
+le MJ ne modifie celle de personne : c'est `authControllerProvider` qui
+tranche, en comparant le compte connecté au `userId` de la présence.
+
+C'est le même écran que sous `/perso/:id`, pas une seconde version qui
+dériverait : `CharacterSheetBody` a été extrait de `CharacterSheetScreen` pour
+être posé tel quel dans une feuille (`widgets/own_character_sheet.dart`). La
+route garde donc un seul corps, et un bouton ajouté à la fiche apparaît des
+deux côtés sans y penser.
+
+Ce qui reste en lecture y reste : caractéristiques et compétences ne se
+modifient nulle part dans l'application, et la séance n'est pas l'endroit pour
+commencer. Le MJ, lui, voit le changement **au rafraîchissement** — la fiche
+part au serveur dans le même geste (voir [Une fiche modifiée part tout de
+suite](#une-fiche-modifiée-part-tout-de-suite)), mais rien ne la pousse vers
+son écran ; seul le plateau a un canal temps réel.
+
+##### Le plateau remonte au serveur
+
+Il ne quittait pas l'appareil. Il remonte depuis que les joueurs doivent le
+regarder bouger, par `PUT /sessions/:id/board` après chaque geste terminé —
+poser, déplacer, redimensionner, retirer, changer de carte.
+
+**Le local reste la vérité, et l'ordre des deux écritures le dit** : le DAO
+d'abord, la poussée ensuite, jamais l'inverse. Une soirée dans une cave sans
+couverture continue de marcher, et le MJ n'attend jamais un aller-retour pour
+voir son pion se poser — la poussée n'est pas attendue.
+
+Une poussée refusée n'est pas une panne : le plateau est intact sur l'appareil,
+ce sont les joueurs qui regardent une copie périmée. L'écran retient qu'il reste
+quelque chose à pousser et **réessaie au retour de la connexion**
+(`connectivityProvider`). Sans cela, un MJ ayant déplacé ses pions hors
+couverture les verrait figés chez ses joueurs jusqu'à son geste suivant, qui
+peut ne jamais venir si la partie se termine sur ce plateau.
+
+Un geste terminé vaut une poussée, pas une par image : `BoardPanel` ne remonte
+qu'à la fin d'un glissement, et c'est la même frontière qui évitait déjà
+soixante écritures SQLite par seconde. Les **notes** ne remontent pas du tout —
+ce que le MJ y écrit ne regarde que lui.
+
+Corollaire assumé : un MJ qui change de tablette en pleine partie repart d'une
+carte vierge, puisque c'est l'appareil qui sait. Le serveur détient bien la
+dernière poussée, mais la relire écraserait le cas inverse — la tablette qui a
+joué hors ligne — et il faudrait alors arbitrer entre les deux.
+
+#### Les personnages non-joueurs
+
+Sous les fiches des joueurs, dans le même volet : créatures, indicateurs,
+esprits. Un nom, une description libre, et rien d'autre — ce ne sont pas des
+fiches de personnage, et leur donner des caractéristiques serait une autre
+fonctionnalité. Le MJ en ajoute, en corrige et en retire ; toucher une carte
+rouvre le formulaire rempli, pour qu'une coquille ne force pas à tout retaper.
+
+Ils vivent **sur le serveur**, contrairement au plateau et aux notes, et sont
+attachés à la **session** : ce qu'on prépare pour une veillée n'est pas ce
+qu'on prépare pour la suivante. Le revers est qu'ils ne se lisent pas hors
+ligne, et le volet le dit plutôt que d'afficher une liste vide.
+
+Les routes sont réservées au MJ, lectures comprises : ce qu'il a écrit est
+exactement ce que ses joueurs ne doivent pas savoir. `GET /sessions/:id` ne les
+renvoie pas, il faut les demander — il n'y a donc pas de vue joueur à concevoir
+ni à oublier de protéger.
+
+### Les deux rayons de la boutique
+
+Le catalogue tient deux natures d'articles qui ne se jugent pas de la même
+façon, et `_Catalogue` (`features/shop/shop_screen.dart`) les sépare plutôt
+que de leur imposer un compromis.
+
+**Pions** : une grille de vignettes, trois par ligne au minimum. Un pion se
+reconnaît à son dessin, et son nom suffit — la description attend sa page.
+
+**Scénarios** : une liste pleine largeur, où chaque rangée porte le titre, le
+prix et trois lignes de ce dont le scénario parle. On n'achète pas un scénario
+sur un dessin : une vignette de cent points n'en dit rien, et le lecteur
+choisit entre un huis clos ferroviaire et une enquête documentaire. C'est
+pour cela que `description` voyage désormais dans `GET /shop/items` et plus
+seulement dans le détail.
+
+Le rayon porte **le mot de l'écran où on les retrouve**, et le sous-titre de
+la boutique avec lui. Il a dit « Aventures » un temps : acheter une aventure
+pour la relire sous « Scénarios » fait douter qu'il s'agisse de la même
+chose. « Aventure » explique ce qu'est un scénario, il ne le remplace pas —
+voir le lexique.
+
+**Obtenir un scénario ne suffit pas à le lire.** Son texte vit sur le serveur
+jusqu'à ce qu'on le télécharge, si bien que l'achat laisse place à
+« Télécharger », puis à « Ouvrir » une fois le scénario sur l'appareil — les
+trois gestes sur la même page, plutôt que d'envoyer le lecteur les finir dans
+`/scenarios`. L'état lu est `downloadedScenarioProvider`, le même que celui de
+l'écran des scénarios : ce sont deux vues d'un seul fait, pas deux
+comptabilités.
+
+Ce bouton **n'est pas verrouillé hors ligne**, contrairement à « Obtenir ».
+Celui de `/scenarios` ne l'est pas non plus, et la même action refusée d'un
+côté puis offerte de l'autre ferait passer l'un des deux écrans pour cassé.
+Sans réseau, l'appel échoue et le dit.
+
+Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
+colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
+C'est le repli, pas une illustration — le jour où les scénarios auront des
+couvertures, elles se déclarent là.
 
 ### Notifications push (Firebase Cloud Messaging)
 
@@ -1036,6 +1314,20 @@ Il enchaîne quatre jobs : vérification du numéro de version → build Android
 binaires vers le groupe `testeurs` puis pose du tag. L'APK n'est envoyé
 qu'une fois l'IPA signé, pour qu'un échec iOS ne brûle pas le numéro.
 
+**Le corps de la PR mergée devient la note de version**, précédé de son
+titre. C'est le seul texte qu'un testeur lise, et c'est sur lui qu'il décide
+quoi aller essayer : une ligne suffisait quand une PR vers `main` portait une
+carte, plus du tout quand elle en porte vingt. Le corps est déjà l'endroit où
+l'on écrit ce qui change ; le redire ailleurs condamnerait les deux copies à
+diverger. Un corps vide retombe sur le titre seul, et une exécution manuelle
+depuis l'onglet Actions garde la main avec son champ `release_notes`.
+
+Firebase affiche du texte brut : les `###` et les `**` du markdown se lisent
+tels quels. Ce sont des repères, pas du bruit, et les convertir demanderait un
+rendu maison pour rien. La note est en revanche tronquée à 16 000 caractères
+avant l'envoi — Firebase la plafonne, et un corps démesuré ferait échouer la
+distribution après quarante minutes de build, pour un texte.
+
 Il a besoin de **10 secrets** définis dans
 `Settings → Secrets and variables → Actions` du repo GitHub :
 
@@ -1097,6 +1389,12 @@ gh release create v1.6.0+8 --title "1.6.0" --notes "Invitations sans compte, bou
 Un retry sans recréer la Release : onglet Actions → **Publish to Play Store
 and TestFlight** → Run workflow (il refuse si le tag testeurs n'existe pas).
 
+**Les deux binaires sont gardés en artefacts du run**, avant l'envoi et non
+après. Un store qui refuse ne doit pas emporter le build avec lui : le `.aab`
+et l'`.ipa` restent téléchargeables depuis la page du run, ce qui permet de
+déposer à la main ce que la CI n'a pas réussi à déposer — le cas du tout
+premier dépôt, justement (voir ci-dessous).
+
 Le workflow [`.github/workflows/store-publish.yml`](.github/workflows/store-publish.yml)
 ne construit **pas** le même binaire que Firebase : Play exige un `.aab`,
 TestFlight un IPA signé **App Store** (le profil Ad Hoc des testeurs est
@@ -1122,8 +1420,12 @@ voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
 **Google Play**
 
 1. Créer l'application `com.questbook.questbook` dans Play Console.
-2. Activer la **signature d'application Play** en lui donnant la clé upload
-   déjà utilisée par Firebase (`.secrets/upload-keystore.jks`).
+2. **Déposer le premier `.aab` à la main**, récupéré dans les artefacts du run
+   (voir plus haut). C'est ce dépôt qui inscrit l'app à la **signature
+   d'application Play** et qui enregistre la clé upload — celle du secret
+   `ANDROID_KEYSTORE_BASE64`, la même que pour les testeurs. L'API refuse de
+   servir de premier dépôt sur une app qui n'a jamais rien reçu, et c'est
+   pour cela que l'artefact existe. Les suivants passent par la CI.
 3. Google Cloud → compte de service avec le rôle *Service Account User*,
    puis Play Console → *Utilisateurs et droits* → inviter ce compte
    (permissions *Versions* sur l'app).
@@ -1131,6 +1433,12 @@ voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
 5. Remplir la fiche (politique de confidentialité, captures, questionnaire
    contenu). La CI dépose un **brouillon** sur la piste interne
    (`changesNotSentForReview`) : rien n'est envoyé en review tout seul.
+
+> **La clé upload ne vit que dans les secrets GitHub.** `.secrets/` n'est sur
+> aucune machine de travail, et un secret ne se relit pas. Reconstruire un
+> `.jks` n'est donc pas possible : c'est l'artefact du run, déjà signé par la
+> CI, qui sert de premier dépôt. Perdre ce secret voudrait dire perdre la clé
+> upload, et il faudrait alors en faire enregistrer une nouvelle par Google.
 
 **App Store Connect**
 

@@ -8,6 +8,10 @@ library;
 
 import 'remote_scenario.dart';
 
+/// Absente d'une réponse mise en cache par une version d'avant le champ.
+DateTime? _dateOrNull(Object? raw) =>
+    raw is String ? DateTime.parse(raw).toLocal() : null;
+
 List<T> _listOf<T>(Object? raw, T Function(Map<String, dynamic>) parse) {
   if (raw is! List) return const [];
   return raw
@@ -228,8 +232,70 @@ class RemoteAttendance {
   final RemoteAttendanceCharacter? character;
 }
 
+/// Tout ce qui est à la table sans être un joueur : créature, indicateur,
+/// esprit. Un nom, une description libre, et rien d'autre — ce n'est pas une
+/// fiche d'investigateur.
+///
+/// Attaché à une session et lisible du seul MJ : le serveur ne le renvoie
+/// jamais dans le détail d'une session, il faut aller le chercher.
+class RemoteNpc {
+  const RemoteNpc({
+    required this.id,
+    required this.name,
+    required this.description,
+  });
+
+  factory RemoteNpc.fromJson(Map<String, dynamic> json) => RemoteNpc(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String? ?? '',
+      );
+
+  final String id;
+  final String name;
+  final String description;
+}
+
+/// Le plateau d'une session tel que le serveur le détient : la carte et les
+/// pions, comme le MJ les a poussés la dernière fois.
+///
+/// L'exact inverse du PNJ ci-dessus quant aux droits : tout membre de la table
+/// le lit, seul le MJ l'écrit. Un plateau est fait pour être vu.
+///
+/// [tokens] reste la chaîne JSON opaque que l'app garde déjà en local, si bien
+/// qu'ajouter un champ à un pion ne demande rien au serveur. [revision] monte
+/// de un à chaque poussée et sert à écarter un message arrivé en retard.
+class RemoteSessionBoard {
+  const RemoteSessionBoard({
+    required this.tokens,
+    required this.mapId,
+    required this.revision,
+  });
+
+  factory RemoteSessionBoard.fromJson(Map<String, dynamic> json) =>
+      RemoteSessionBoard(
+        tokens: json['tokens'] as String? ?? '[]',
+        mapId: json['mapId'] as String?,
+        revision: json['revision'] as int? ?? 0,
+      );
+
+  /// Ce que répond le serveur quand rien n'a encore été posé, et ce qu'on
+  /// affiche tant qu'on n'a pas pu le lui demander.
+  static const empty = RemoteSessionBoard(
+    tokens: '[]',
+    mapId: null,
+    revision: 0,
+  );
+
+  final String tokens;
+  final String? mapId;
+  final int revision;
+}
+
 class RemoteGameSession {
-  const RemoteGameSession({
+  /// Non `const` : les deux bornes se calculent à partir de [startsAt] quand
+  /// le serveur ne les a pas envoyées.
+  RemoteGameSession({
     required this.id,
     required this.tableId,
     required this.title,
@@ -242,7 +308,10 @@ class RemoteGameSession {
     required this.myCharacter,
     this.scenarioId,
     this.scenario,
-  });
+    DateTime? closesAt,
+    DateTime? answersCloseAt,
+  })  : closesAt = closesAt ?? startsAt.add(const Duration(hours: 24)),
+        answersCloseAt = answersCloseAt ?? startsAt;
 
   factory RemoteGameSession.fromJson(Map<String, dynamic> json) => RemoteGameSession(
         id: json['id'] as String,
@@ -267,6 +336,8 @@ class RemoteGameSession {
             : RemoteSessionScenario.fromJson(
                 (json['scenario'] as Map).cast<String, dynamic>(),
               ),
+        closesAt: _dateOrNull(json['closesAt']),
+        answersCloseAt: _dateOrNull(json['answersCloseAt']),
       );
 
   final String id;
@@ -288,9 +359,27 @@ class RemoteGameSession {
   final String? scenarioId;
   final RemoteSessionScenario? scenario;
 
+  /// Les deux bornes de la séance, calculées par le serveur et lues telles
+  /// quelles : la règle lui appartient, et deux implémentations finiraient par
+  /// diverger.
+  ///
+  /// Absentes d'une réponse mise en cache par une version d'avant la règle, le
+  /// constructeur retombe alors sur le début de la séance — et pour
+  /// [closesAt], sur la fenêtre que le serveur y ajoute aujourd'hui.
+  final DateTime closesAt;
+  final DateTime answersCloseAt;
+
   bool get isCancelled => status == 'cancelled';
 
-  bool get isPast => startsAt.isBefore(DateTime.now());
+  bool get isPast => closesAt.isBefore(DateTime.now());
+
+  /// La séance a commencé mais n'est pas finie : c'est le moment de l'animer.
+  bool get isUnderway =>
+      !isCancelled && !isPast && startsAt.isBefore(DateTime.now());
+
+  /// Un joueur peut encore dire s'il vient.
+  bool get acceptsAnswers =>
+      !isCancelled && answersCloseAt.isAfter(DateTime.now());
 
   List<RemoteAttendance> get accepted =>
       attendances.where((a) => a.status == AttendanceStatus.yes).toList();

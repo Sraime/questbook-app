@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:questbook/app/remote_providers.dart';
 import 'package:questbook/data/remote/api_exception.dart';
+import 'package:questbook/data/remote/remote_scenario.dart';
 import 'package:questbook/data/remote/remote_shop_item.dart';
 import 'package:questbook/data/remote/shop_api.dart';
+import 'package:questbook/design_system/components/qb_button.dart';
+import 'package:questbook/features/scenarios/providers/scenario_providers.dart';
 import 'package:questbook/features/tables/providers/table_providers.dart';
 import 'package:questbook/features/shop/shop_item_screen.dart';
 import 'package:questbook/features/shop/shop_screen.dart';
@@ -63,6 +66,37 @@ RemoteShopItemDetail _item({
   );
 }
 
+RemoteShopItemDetail _scenarioItem({
+  String id = 'item-2',
+  String title = 'Le Dernier Train de Nuit',
+  bool owned = false,
+}) {
+  return RemoteShopItemDetail(
+    id: id,
+    title: title,
+    type: ShopItemType.scenario,
+    priceCents: 0,
+    imageKey: 'scroll',
+    assetKey: null,
+    owned: owned,
+    description: 'Un wagon-lit entre Paris et Marseille, une porte fermée de '
+        'l’intérieur, et un passager qui n’est jamais descendu.',
+    scenarioId: 'sc-1',
+  );
+}
+
+const _downloaded = RemoteScenarioDetail(
+  id: 'sc-1',
+  title: 'Le Dernier Train de Nuit',
+  description: 'Un wagon-lit entre Paris et Marseille.',
+  minRecommendedPlayers: 3,
+  maxRecommendedPlayers: 5,
+  averageDurationMinutes: 210,
+  context: 'Gare de Lyon, novembre 1926.',
+  rundownMarkdown: '## Mise en place',
+  annexes: [],
+);
+
 RemoteShopItemDetail _ownedCopy(RemoteShopItemDetail item) =>
     RemoteShopItemDetail(
       id: item.id,
@@ -84,6 +118,7 @@ void main() {
     required List<RemoteShopItemDetail> items,
     bool online = true,
     String at = '/boutique',
+    RemoteScenarioDetail? onDevice,
   }) async {
     final api = _FakeShopApi(items);
 
@@ -93,7 +128,7 @@ void main() {
     final router = GoRouter(
       initialLocation: at,
       routes: [
-        GoRoute(
+          GoRoute(
           path: '/boutique',
           builder: (context, state) => const Scaffold(body: ShopScreen()),
           routes: [
@@ -105,6 +140,10 @@ void main() {
             ),
           ],
         ),
+        GoRoute(
+          path: '/scenarios/:id',
+          builder: (context, state) => const Scaffold(body: Text('Le déroulé')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -115,6 +154,9 @@ void main() {
           shopApiProvider.overrideWithValue(api),
           isSignedInProvider.overrideWithValue(true),
           canWriteProvider.overrideWithValue(online),
+          // Ce qui est déjà sur l'appareil, sans base locale : le téléchargement
+          // écrit ailleurs, et c'est l'état affiché qui se vérifie ici.
+          downloadedScenarioProvider.overrideWith((ref, id) async => onDevice),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -230,5 +272,103 @@ void main() {
     await pumpShop(tester, items: [_item(priceCents: 500)]);
 
     expect(find.text('5 €'), findsOneWidget);
+  });
+
+  testWidgets('les pions et les scénarios ont chacun leur rayon',
+      (tester) async {
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
+
+    expect(find.text('Pions'), findsOneWidget);
+    // Le mot du produit, et celui de l'écran où on les retrouve : on
+    // n'achète pas une « aventure » pour la relire sous « Scénarios ».
+    expect(find.text('Scénarios'), findsOneWidget);
+    expect(find.text('Aventures'), findsNothing);
+  });
+
+  testWidgets('un scénario se lit en rayon, un pion ne se lit pas',
+      (tester) async {
+    // On n'achète pas un scénario sur un dessin : sa rangée dit de quoi il
+    // parle, là où une vignette de pion garde sa description pour sa page.
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
+
+    expect(find.textContaining('un passager qui n’est jamais descendu'),
+        findsOneWidget);
+    expect(find.textContaining('emblème'), findsNothing);
+  });
+
+  testWidgets('un scénario prend toute la largeur, un pion un tiers',
+      (tester) async {
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
+
+    final row = tester.getRect(find.text('Le Dernier Train de Nuit'));
+    final tile = tester.getRect(find.text('Le Grand Ancien'));
+
+    expect(row.width, greaterThan(tile.width * 2));
+  });
+
+  testWidgets('acheter un scénario laisse place à son téléchargement',
+      (tester) async {
+    // Pour éviter au joueur d'aller la chercher dans le menu des scénarios.
+    final api = await pumpShop(
+      tester,
+      items: [_scenarioItem()],
+      at: '/boutique/item-2',
+    );
+
+    await tester.tap(find.text('Obtenir'));
+    await tester.pumpAndSettle();
+
+    expect(api.purchases, 1);
+    expect(find.text('Obtenir'), findsNothing);
+    expect(find.widgetWithText(QBButton, 'Télécharger'), findsOneWidget);
+    // Le texte des assets n'a rien à faire là : un scénario ne se retrouve
+    // pas parmi les pions.
+    expect(find.textContaining('parmi tes assets'), findsNothing);
+  });
+
+  testWidgets('un scénario déjà sur l’appareil s’ouvre depuis la boutique',
+      (tester) async {
+    await pumpShop(
+      tester,
+      items: [_scenarioItem(owned: true)],
+      at: '/boutique/item-2',
+      onDevice: _downloaded,
+    );
+
+    expect(find.widgetWithText(QBButton, 'Télécharger'), findsNothing);
+
+    await tester.tap(find.widgetWithText(QBButton, 'Ouvrir'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Le déroulé'), findsOneWidget);
+  });
+
+  testWidgets('hors ligne, le téléchargement reste offert comme dans Scénarios',
+      (tester) async {
+    // La même action refusée d'un côté et offerte de l'autre ferait passer
+    // l'un des deux écrans pour cassé.
+    await pumpShop(
+      tester,
+      items: [_scenarioItem(owned: true)],
+      at: '/boutique/item-2',
+      online: false,
+    );
+
+    final button = tester.widget<QBButton>(
+      find.widgetWithText(QBButton, 'Télécharger'),
+    );
+    expect(button.onPressed, isNotNull);
+  });
+
+  testWidgets('un pion possédé renvoie toujours vers les assets',
+      (tester) async {
+    await pumpShop(
+      tester,
+      items: [_item(owned: true)],
+      at: '/boutique/item-1',
+    );
+
+    expect(find.textContaining('parmi tes assets'), findsOneWidget);
+    expect(find.widgetWithText(QBButton, 'Télécharger'), findsNothing);
   });
 }

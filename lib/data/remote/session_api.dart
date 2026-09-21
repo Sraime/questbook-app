@@ -143,6 +143,97 @@ class SessionApi {
     );
   }
 
+  // --- Personnages non-joueurs ---
+  //
+  // Réservés au MJ, lectures comprises : ce qu'il a préparé est exactement ce
+  // que ses joueurs ne doivent pas savoir. Appeler ces routes depuis un compte
+  // joueur vaut un 403, et c'est voulu.
+
+  Future<List<RemoteNpc>> listNpcs(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/npcs'),
+      parse: (data) {
+        final npcs = (data as Map)['npcs'];
+        if (npcs is! List) return const <RemoteNpc>[];
+        return npcs
+            .whereType<Map>()
+            .map((entry) => RemoteNpc.fromJson(entry.cast<String, dynamic>()))
+            .toList(growable: false);
+      },
+    );
+  }
+
+  Future<RemoteNpc> createNpc(
+    String sessionId, {
+    required String name,
+    String? description,
+  }) {
+    return _client.send(
+      (dio) => dio.post<dynamic>(
+        '/sessions/$sessionId/npcs',
+        data: {'name': name, 'description': ?description},
+      ),
+      parse: _parseNpc,
+    );
+  }
+
+  Future<RemoteNpc> updateNpc(
+    String sessionId,
+    String npcId, {
+    String? name,
+    String? description,
+  }) {
+    return _client.send(
+      (dio) => dio.patch<dynamic>(
+        '/sessions/$sessionId/npcs/$npcId',
+        data: {'name': ?name, 'description': ?description},
+      ),
+      parse: _parseNpc,
+    );
+  }
+
+  Future<void> deleteNpc(String sessionId, String npcId) {
+    return _client.send(
+      (dio) => dio.delete<dynamic>('/sessions/$sessionId/npcs/$npcId'),
+      parse: (_) {},
+    );
+  }
+
+  // --- Le plateau ---
+  //
+  // L'inverse des PNJ juste au-dessus : tout membre lit, seul le MJ écrit. Un
+  // plateau est fait pour être vu.
+
+  Future<RemoteSessionBoard> board(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/board'),
+      parse: _parseBoard,
+    );
+  }
+
+  /// Remonte le plateau entier, et non ce qui vient de changer : l'appareil du
+  /// MJ détient la vérité complète, et envoyer une différence laisserait les
+  /// deux s'écarter au premier message perdu.
+  Future<RemoteSessionBoard> pushBoard(
+    String sessionId, {
+    required String tokens,
+    String? mapId,
+  }) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$sessionId/board',
+        data: {'tokens': tokens, 'mapId': mapId},
+      ),
+      parse: _parseBoard,
+    );
+  }
+
   RemoteGameSession _parseSession(Object? data) =>
       RemoteGameSession.fromJson((data as Map).cast<String, dynamic>());
+
+  RemoteNpc _parseNpc(Object? data) =>
+      RemoteNpc.fromJson((data as Map).cast<String, dynamic>());
+
+  RemoteSessionBoard _parseBoard(Object? data) =>
+      RemoteSessionBoard.fromJson((data as Map).cast<String, dynamic>());
 }

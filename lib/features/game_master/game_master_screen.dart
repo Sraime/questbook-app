@@ -15,27 +15,17 @@ import '../tables/providers/table_providers.dart';
 import '../tables/table_formatting.dart';
 import 'game_master_layout.dart';
 import 'models/board_token.dart';
+import 'models/session_seat.dart';
 import 'panels/board_panel.dart';
 import 'panels/characters_panel.dart';
-import 'panels/general_panel.dart';
+import 'panels/details_panel.dart';
 import 'panels/notes_panel.dart';
 import 'panels/rules_panel.dart';
 import 'panels/scenario_panel.dart';
+import 'panels/watched_board_panel.dart';
 import 'providers/game_master_providers.dart';
 
-enum GameMasterPanel {
-  general('Général', LucideIcons.settings),
-  board('Plateau', LucideIcons.map),
-  characters('Personnages', LucideIcons.users),
-  rules('Règles', LucideIcons.bookOpen),
-  scenario('Scénario', LucideIcons.scroll),
-  notes('Notes', LucideIcons.notebookPen);
-
-  const GameMasterPanel(this.label, this.icon);
-
-  final String label;
-  final IconData icon;
-}
+export 'models/session_seat.dart' show GameMasterPanel, SessionSeat;
 
 /// L'écran depuis lequel le MJ anime sa session : le plateau et ses pions, les
 /// fiches des joueurs, l'aide-mémoire des règles, le scénario et ses notes.
@@ -66,7 +56,10 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
   /// ferait une transaction SQLite par caractère.
   static const _notesDebounce = Duration(milliseconds: 500);
 
-  GameMasterPanel _panel = GameMasterPanel.board;
+  /// Le mode MJ s'ouvre sur ce qu'est la séance, pas sur le plateau : on
+  /// arrive ici avant la partie, pour vérifier l'heure et le lieu, bien plus
+  /// souvent qu'on n'y arrive une carte à la main.
+  GameMasterPanel _panel = GameMasterPanel.details;
 
   /// Plateau et notes ne s'affichent que dans leur propre volet, qui en est
   /// le seul manipulateur. Les garder hors de l'état de cet écran évite de
@@ -77,6 +70,11 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
   String? _accountId;
   bool _loaded = false;
   Timer? _notesTimer;
+
+  /// Une poussée que le serveur a refusée, faute de réseau le plus souvent.
+  /// Le plateau est intact sur l'appareil ; ce sont les joueurs qui regardent
+  /// une copie périmée, et c'est ce qu'on répare au retour de la connexion.
+  bool _pendingPush = false;
 
   @override
   void initState() {
@@ -92,6 +90,14 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
       },
       fireImmediately: true,
     );
+
+    // Le réseau qui revient doit rattraper ce qui s'est joué sans lui. Sans
+    // cela, un MJ ayant déplacé ses pions hors couverture les verrait figés
+    // chez ses joueurs jusqu'à son geste suivant — qui peut ne jamais venir
+    // si la partie se termine sur ce plateau.
+    ref.listenManual(connectivityProvider, (was, isNow) {
+      if (isNow && was == false && _pendingPush) _push();
+    });
   }
 
   @override
@@ -128,6 +134,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
             BoardToken.encode(tokens),
           ),
     );
+    _push();
   }
 
   void _persistMap(String mapId) {
@@ -139,6 +146,24 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
       ref
           .read(sessionBoardDaoProvider)
           .saveMap(accountId, widget.sessionId, mapId),
+    );
+    _push();
+  }
+
+  /// Montre le plateau aux joueurs qui le regardent, après l'avoir écrit sur
+  /// l'appareil et jamais avant : le local est la vérité, le serveur la copie.
+  ///
+  /// Sans attendre la réponse. Le MJ vient de déposer un pion et n'a pas à
+  /// patienter le temps d'un aller-retour ; en cas d'échec on retient
+  /// seulement qu'il reste quelque chose à pousser.
+  void _push() {
+    unawaited(
+      pushSessionBoard(
+        ref,
+        sessionId: widget.sessionId,
+        tokens: BoardToken.encode(_tokens),
+        mapId: _mapId,
+      ).then((pushed) => _pendingPush = !pushed),
     );
   }
 
@@ -169,11 +194,24 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
         .firstOrNull;
     final tableName = detail.value?.table.title ?? 'Table';
 
+    // Tant que la table n'a pas répondu, on est joueur : ouvrir les volets du
+    // MJ pour les refermer ensuite montrerait une seconde ce qui ne le
+    // regarde pas.
+    final seat = detail.value?.table.isGameMaster ?? false
+        ? SessionSeat.gameMaster
+        : SessionSeat.player;
+
+    // Un joueur qui atterrirait sur le volet d'un MJ — en pivotant l'appareil
+    // après un changement de rôle, ou parce qu'on a confié la table en pleine
+    // partie — retombe sur le sien.
+    final panel = seat.panels.contains(_panel) ? _panel : seat.landing;
+
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Header(
           session: session,
+          seat: seat,
           // L'entête ne porte le nom de la table et la sortie que faute de
           // rail pour les accueillir.
           tableName: layout.isCompact ? tableName : null,
@@ -181,13 +219,19 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
         ),
         if (layout.isCompact)
           _PanelTabs(
-            active: _panel,
-            onSelect: (panel) => setState(() => _panel = panel),
+            seat: seat,
+            active: panel,
+            onSelect: (next) => setState(() => _panel = next),
           ),
         Expanded(
           child: !_loaded || session == null
               ? const Center(child: CircularProgressIndicator())
-              : _panelBody(session, compact: layout.isCompact),
+              : _panelBody(
+                  session,
+                  panel: panel,
+                  seat: seat,
+                  compact: layout.isCompact,
+                ),
         ),
       ],
     );
@@ -201,8 +245,9 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
                 children: [
                   _Rail(
                     tableName: tableName,
-                    active: _panel,
-                    onSelect: (panel) => setState(() => _panel = panel),
+                    seat: seat,
+                    active: panel,
+                    onSelect: (next) => setState(() => _panel = next),
                     onExit: _exit,
                   ),
                   Expanded(child: body),
@@ -212,21 +257,38 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
     );
   }
 
-  Widget _panelBody(RemoteGameSession session, {required bool compact}) =>
-      switch (_panel) {
-        GameMasterPanel.general => GeneralPanel(
+  Widget _panelBody(
+    RemoteGameSession session, {
+    required GameMasterPanel panel,
+    required SessionSeat seat,
+    required bool compact,
+  }) =>
+      switch (panel) {
+        GameMasterPanel.details => DetailsPanel(
             tableId: widget.tableId,
             session: session,
             onCancelled: _exit,
           ),
-        GameMasterPanel.board => BoardPanel(
-            initialTokens: _tokens,
-            initialMapId: _mapId,
+        // Deux plateaux pour un seul volet : celui que le MJ dispose, rangé
+        // sur son appareil, et celui que le joueur regarde, qui arrive du
+        // serveur. Le même widget les dessine.
+        GameMasterPanel.board => seat.isGameMaster
+            ? BoardPanel(
+                initialTokens: _tokens,
+                initialMapId: _mapId,
+                compact: compact,
+                onTokensPersisted: _persistTokens,
+                onMapPersisted: _persistMap,
+              )
+            : WatchedBoardPanel(
+                sessionId: widget.sessionId,
+                compact: compact,
+              ),
+        GameMasterPanel.characters => CharactersPanel(
+            session: session,
+            seat: seat,
             compact: compact,
-            onTokensPersisted: _persistTokens,
-            onMapPersisted: _persistMap,
           ),
-        GameMasterPanel.characters => CharactersPanel(session: session),
         GameMasterPanel.rules => const RulesPanel(),
         GameMasterPanel.scenario => ScenarioPanel(session: session),
         GameMasterPanel.notes => NotesPanel(
@@ -239,12 +301,14 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
 class _Rail extends StatelessWidget {
   const _Rail({
     required this.tableName,
+    required this.seat,
     required this.active,
     required this.onSelect,
     required this.onExit,
   });
 
   final String tableName;
+  final SessionSeat seat;
   final GameMasterPanel active;
   final ValueChanged<GameMasterPanel> onSelect;
   final VoidCallback onExit;
@@ -264,7 +328,7 @@ class _Rail extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Mode MJ',
+                  seat.isGameMaster ? 'Mode MJ' : 'À table',
                   style: QBType.game().copyWith(
                     fontWeight: QBType.weightBold,
                     fontSize: 15,
@@ -286,9 +350,10 @@ class _Rail extends StatelessWidget {
             ),
           ),
           const SizedBox(height: QBSpace.s6),
-          for (final panel in GameMasterPanel.values)
+          for (final panel in seat.panels)
             _RailEntry(
               panel: panel,
+              label: seat.labelFor(panel),
               selected: panel == active,
               onTap: () => onSelect(panel),
             ),
@@ -303,11 +368,13 @@ class _Rail extends StatelessWidget {
 class _RailEntry extends StatelessWidget {
   const _RailEntry({
     required this.panel,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
   final GameMasterPanel panel;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -350,7 +417,7 @@ class _RailEntry extends StatelessWidget {
               const SizedBox(width: QBSpace.s3),
               Expanded(
                 child: Text(
-                  panel.label,
+                  label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: QBType.game().copyWith(
@@ -394,7 +461,7 @@ class _RailExit extends StatelessWidget {
               const SizedBox(width: QBSpace.s3),
               Expanded(
                 child: Text(
-                  'Quitter le mode MJ',
+                  'Quitter',
                   style: QBType.game().copyWith(
                     fontWeight: QBType.weightSemibold,
                     fontSize: 11,
@@ -414,11 +481,13 @@ class _RailExit extends StatelessWidget {
 class _Header extends StatelessWidget {
   const _Header({
     required this.session,
+    required this.seat,
     this.tableName,
     this.onExit,
   });
 
   final RemoteGameSession? session;
+  final SessionSeat seat;
 
   /// Renseignés en disposition compacte seulement : sans rail, c'est l'entête
   /// qui dit où l'on est et par où l'on sort.
@@ -441,7 +510,7 @@ class _Header extends StatelessWidget {
               children: [
                 if (tableName case final name?) ...[
                   Text(
-                    'Mode MJ · $name',
+                    seat.isGameMaster ? 'Mode MJ · $name' : 'À table · $name',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: QBType.game().copyWith(
@@ -487,7 +556,7 @@ class _Header extends StatelessWidget {
                 size: 16,
                 color: QBColors.paper100,
               ),
-              label: 'Quitter le mode MJ',
+              label: seat.isGameMaster ? 'Quitter le mode MJ' : 'Quitter',
               size: 36,
               variant: QBIconButtonVariant.solid,
               onPressed: exit,
@@ -505,8 +574,13 @@ class _Header extends StatelessWidget {
 /// illisibles. Seul le volet actif est nommé, et il prend pour cela toute la
 /// place que les cinq autres ne réclament pas.
 class _PanelTabs extends StatelessWidget {
-  const _PanelTabs({required this.active, required this.onSelect});
+  const _PanelTabs({
+    required this.seat,
+    required this.active,
+    required this.onSelect,
+  });
 
+  final SessionSeat seat;
   final GameMasterPanel active;
   final ValueChanged<GameMasterPanel> onSelect;
 
@@ -520,11 +594,26 @@ class _PanelTabs extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (final panel in GameMasterPanel.values)
-            if (panel == active)
-              Expanded(child: _PanelTab(panel: panel, selected: true))
+          // Les deux volets d'un joueur méritent chacun leur nom : ce qui
+          // forçait l'icône seule, c'est six volets sur la largeur d'un
+          // téléphone, pas deux.
+          for (final panel in seat.panels)
+            if (panel == active || seat.panels.length <= 2)
+              Expanded(
+                child: _PanelTab(
+                  panel: panel,
+                  label: seat.labelFor(panel),
+                  selected: panel == active,
+                  named: true,
+                  onTap: panel == active ? null : () => onSelect(panel),
+                ),
+              )
             else
-              _PanelTab(panel: panel, onTap: () => onSelect(panel)),
+              _PanelTab(
+                panel: panel,
+                label: seat.labelFor(panel),
+                onTap: () => onSelect(panel),
+              ),
         ],
       ),
     );
@@ -532,7 +621,13 @@ class _PanelTabs extends StatelessWidget {
 }
 
 class _PanelTab extends StatelessWidget {
-  const _PanelTab({required this.panel, this.selected = false, this.onTap});
+  const _PanelTab({
+    required this.panel,
+    required this.label,
+    this.selected = false,
+    this.named = false,
+    this.onTap,
+  });
 
   /// Largeur d'un onglet au repos : de quoi viser l'icône sans plus. Six
   /// volets sur la largeur d'un téléphone ne laissent pas de quoi être plus
@@ -540,7 +635,13 @@ class _PanelTab extends StatelessWidget {
   static const double _restingWidth = 46;
 
   final GameMasterPanel panel;
+  final String label;
   final bool selected;
+
+  /// Nommé même au repos. Vrai pour les deux volets d'un joueur, qui ont la
+  /// place ; faux chez le MJ, où seul l'actif se paie son libellé.
+  final bool named;
+
   final VoidCallback? onTap;
 
   @override
@@ -550,16 +651,18 @@ class _PanelTab extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: panel.label,
+      label: label,
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: selected ? null : _restingWidth,
+          width: selected || named ? null : _restingWidth,
           height: 40,
           margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: EdgeInsets.symmetric(horizontal: selected ? QBSpace.s3 : 0),
+          padding: EdgeInsets.symmetric(
+            horizontal: selected || named ? QBSpace.s3 : 0,
+          ),
           decoration: BoxDecoration(
             gradient: selected
                 ? const LinearGradient(
@@ -574,11 +677,11 @@ class _PanelTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(panel.icon, size: 17, color: foreground),
-              if (selected) ...[
+              if (selected || named) ...[
                 const SizedBox(width: QBSpace.s2),
                 Flexible(
                   child: Text(
-                    panel.label,
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: QBType.game().copyWith(

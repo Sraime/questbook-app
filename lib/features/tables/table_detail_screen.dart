@@ -62,26 +62,17 @@ class _Body extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 90),
         children: [
-          Row(
-            children: [
-              QBIconButton(
-                icon: const Icon(LucideIcons.arrowLeft, size: 18),
-                label: 'Retour',
-                size: 36,
-                onPressed: () => context.go('/tables'),
-              ),
-              const SizedBox(width: QBSpace.s2),
-              Expanded(
-                child: Text(
-                  table.title,
-                  style: QBType.game().copyWith(
-                    fontWeight: QBType.weightBold,
-                    fontSize: 20,
-                    color: QBColors.ink900,
-                  ),
-                ),
-              ),
-            ],
+          // Sans bouton retour : l'onglet Tables, en bas, ramène à la liste
+          // et ne bouge jamais. Une flèche de plus en haut de chaque écran
+          // faisait viser une cible de 36 points pour ce que la barre offre
+          // déjà, en grand et au même endroit.
+          Text(
+            table.title,
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightBold,
+              fontSize: 20,
+              color: QBColors.ink900,
+            ),
           ),
           const SizedBox(height: QBSpace.s2),
           // Aligné à la main : dans une ListView, un badge seul s'étirerait

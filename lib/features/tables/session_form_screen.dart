@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../design_system/components/qb_icon_button.dart';
+import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
@@ -37,33 +36,34 @@ class SessionFormScreen extends ConsumerWidget {
             90 + MediaQuery.viewInsetsOf(context).bottom,
           ),
           children: [
-            Row(
-              children: [
-                QBIconButton(
-                  icon: const Icon(LucideIcons.arrowLeft, size: 18),
-                  label: 'Retour',
-                  size: 36,
-                  onPressed: () => context.go('/tables/$tableId'),
-                ),
-                const SizedBox(width: QBSpace.s2),
-                Expanded(
-                  child: Text(
-                    'Nouvelle session',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: QBType.game().copyWith(
-                      fontWeight: QBType.weightBold,
-                      fontSize: 20,
-                      color: QBColors.ink900,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              'Nouvelle session',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: QBType.game().copyWith(
+                fontWeight: QBType.weightBold,
+                fontSize: 20,
+                color: QBColors.ink900,
+              ),
             ),
             const SizedBox(height: QBSpace.s5),
             SessionForm(
               tableId: tableId,
               onSaved: () => context.go('/tables/$tableId'),
+            ),
+            const SizedBox(height: QBSpace.s3),
+            // En bas plutôt qu'en flèche dans l'angle : renoncer est la
+            // symétrie d'enregistrer, et se décide après avoir relu ses
+            // champs, pas avant de les avoir remplis.
+            //
+            // Ici et non dans `SessionForm` : le même formulaire sert au MJ à
+            // corriger sa séance, et il y a déjà un « Annuler la session »
+            // qui veut dire tout autre chose.
+            QBButton(
+              label: 'Annuler',
+              variant: QBButtonVariant.ghost,
+              expand: true,
+              onPressed: () => context.go('/tables/$tableId'),
             ),
           ],
         ),

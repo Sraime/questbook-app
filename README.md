@@ -73,7 +73,7 @@ Toute l'interface utilise un design system interne « juicy » (boutons/cartes/d
 
 Deux barres de chrome cuir encadrent chaque écran une fois connecté, et une seule règle les départage : **le bas est pour les endroits où l'on travaille, le haut pour tout le reste.**
 
-- **En bas**, les trois onglets persistants : Perso, Tables et Boutique. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste.
+- **En bas**, les trois onglets persistants : Perso, Tables et Boutique. Chacun garde sa pile — revenir à Tables retrouve la table qu'on lisait, pas la liste. C'est aussi ce qui a permis de retirer les flèches de retour en haut du détail d'une table et du formulaire d'une session : l'onglet ramène à la liste, en grand et toujours au même endroit, là où une flèche de 36 points se visait mal. Renoncer à une session se dit plutôt en toutes lettres, par un bouton « Annuler » sous celui qui enregistre.
 - **En haut**, le burger à gauche, le sigle au centre, la cloche des notifications à droite avec son sceau de non-lus.
 
 Le volet du burger tient ce qui ne mérite pas un onglet : le compte connecté, Scénarios, Assets, Livre de règle, Profil, et la déconnexion en bas du panneau.
@@ -86,7 +86,7 @@ Trois conséquences valent d'être notées, parce que ce sont elles qui ont dict
 
 - **Les notifications ne sont plus rangées sous `/tables`.** La cloche est visible depuis partout ; ouvrir l'historique depuis une fiche de personnage allumait l'onglet Tables et faisait perdre sa place au lecteur. Une invitation arrive d'ailleurs avant qu'aucune table n'existe.
 - Notifications, Scénarios, Assets, Profil et Livre de règle vivent donc dans une **branche sans onglet** (`StatefulShellBranch`), la dernière : aucun onglet ne s'allume pendant qu'elles sont à l'écran, ce qui est la vérité — elles n'appartiennent à aucun. Son index n'est pas écrit en dur dans `AppShell` mais lu sur `qbNavTabs.length`, pour que déplacer une destination dans la barre ou l'en sortir ne puisse pas laisser les deux en désaccord.
-- Le « Retour » des notifications ramène à **l'onglet qu'on a quitté** (`lastTabProvider`), pas à un écran choisi d'avance. Renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table.
+- **La cloche est une bascule.** L'écran des notifications n'a pas de bouton retour : la toucher une seconde fois referme l'historique et rend **l'onglet qu'on a quitté** (`lastTabProvider`), pas un écran choisi d'avance — renvoyer tout le monde vers les personnages aurait égaré celui qui venait d'une table. Un aller-retour sur la même cible, plutôt qu'une flèche à viser ailleurs.
 - Le compteur de non-lus a quitté l'onglet Tables : la cloche le porte désormais, et l'afficher aux deux bouts de l'écran ne disait rien de plus.
 
 L'`AccountBar` qui coiffait la liste des personnages a disparu : le compte est passé dans le volet, son état de synchronisation dans Profil. Le bouton « Synchroniser » n'a pas été déplacé, il a été **supprimé** — une passe part déjà à la connexion et à chaque retour au premier plan, si bien que le bouton n'offrait qu'une illusion de contrôle, et laissait croire que ce qu'on n'avait pas pressé n'était pas enregistré.

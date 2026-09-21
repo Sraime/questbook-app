@@ -64,6 +64,10 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     final offline = !ref.watch(connectivityProvider);
 
+    // Lu sur la route et non sur la branche : les notifications la partagent
+    // avec les scénarios, les assets, le profil et les règles.
+    final reading = GoRouterState.of(context).uri.path == '/notifications';
+
     // Everything the chrome occupies, handed to the pages as if it were a
     // status bar. They already wrap themselves in a SafeArea, so this is all
     // it takes for each of them to start below the mark — and it leaves them
@@ -99,7 +103,15 @@ class _AppShellState extends ConsumerState<AppShell> {
                 QBTopAppBar(
                   unread: unread,
                   onMenu: () => _scaffoldKey.currentState?.openDrawer(),
-                  onNotifications: () => context.go('/notifications'),
+                  // Une bascule, pas un aller simple : l'écran des
+                  // notifications n'a plus de bouton retour, et c'est la
+                  // cloche qui l'a ouvert qui le referme. Le lecteur retrouve
+                  // l'onglet qu'il avait quitté, pas les tables — la cloche
+                  // s'atteint de partout.
+                  onNotifications: () => reading
+                      ? widget.navigationShell
+                          .goBranch(ref.read(lastTabProvider))
+                      : context.go('/notifications'),
                 ),
                 // Under the bar rather than above it: being offline is a
                 // property of the app, but the chrome is the app's frame and

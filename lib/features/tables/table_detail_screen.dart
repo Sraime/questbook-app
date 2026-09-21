@@ -88,7 +88,7 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: QBSpace.s3),
             _MutedText('Dernière mise à jour ${formatRelative(fetchedAt)}.'),
           ],
-          const SizedBox(height: QBSpace.s5),
+          const _Separator(),
           _SectionTitle(
             title: 'Sessions',
             action: table.isGameMaster && canWrite
@@ -119,7 +119,7 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: QBSpace.s2),
             ],
           ],
-          const SizedBox(height: QBSpace.s6),
+          const _Separator(),
           _SectionTitle(
             title: 'Joueurs',
             action: table.isGameMaster && canWrite
@@ -131,10 +131,15 @@ class _Body extends ConsumerWidget {
                 : null,
           ),
           const SizedBox(height: QBSpace.s3),
-          for (final member in table.members) ...[
-            _MemberRow(member: member, table: table),
-            const SizedBox(height: QBSpace.s2),
-          ],
+          for (final (index, member) in table.members.indexed)
+            _MemberRow(
+              member: member,
+              table: table,
+              // Le dernier ne porte pas de trait : celui de la section suit
+              // juste après, et deux filets à vingt points l'un de l'autre se
+              // lisent comme une rature.
+              rule: index < table.members.length - 1,
+            ),
           if (table.pendingInvitations.isNotEmpty) ...[
             const SizedBox(height: QBSpace.s4),
             _SectionTitle(title: 'Invitations en attente'),
@@ -145,7 +150,7 @@ class _Body extends ConsumerWidget {
             ],
           ],
           if (canWrite) ...[
-            const SizedBox(height: QBSpace.s6),
+            const _Separator(),
             _DangerZone(table: table),
           ],
         ],
@@ -518,70 +523,102 @@ class _PastSessionRow extends StatelessWidget {
 }
 
 class _MemberRow extends ConsumerWidget {
-  const _MemberRow({required this.member, required this.table});
+  const _MemberRow({
+    required this.member,
+    required this.table,
+    this.rule = true,
+  });
 
   final RemoteTableMember member;
   final RemoteGameTable table;
+
+  /// Le filet sous la rangée, qui la sépare de la suivante.
+  final bool rule;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The game master is the one member who cannot be removed: the table would
     // be left with nobody able to schedule anything.
-    final canRemove = table.isGameMaster &&
-        !member.role.isGameMaster &&
-        ref.watch(canWriteProvider);
+    final isGm = member.role.isGameMaster;
+    final canRemove =
+        table.isGameMaster && !isGm && ref.watch(canWriteProvider);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                member.user.label,
-                style: QBType.body().copyWith(
-                  fontSize: QBType.sm,
-                  color: QBColors.textBody,
-                ),
-              ),
-              if (member.role.isGameMaster)
-                Text(
-                  'Maître du jeu',
-                  style: QBType.body().copyWith(
-                    fontSize: QBType.xs,
-                    color: QBColors.textMuted,
-                  ),
-                ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
+      decoration: BoxDecoration(
+        border: Border(
+          // Transparent plutôt qu'absent : la rangée garde sa hauteur, et la
+          // liste ne se resserre pas sur sa dernière ligne.
+          bottom: BorderSide(
+            color: rule ? QBColors.borderHairline : Colors.transparent,
           ),
         ),
-        if (canRemove) ...[
-          QBIconButton(
-            icon: const Icon(LucideIcons.crown, size: 16),
-            label: 'Confier la table à ${member.user.label}',
-            size: 32,
-            onPressed: () => _transfer(context, ref),
+      ),
+      child: Row(
+        children: [
+          // Une pastille par joueur, et un livre pour celui qui mène : la
+          // liste se lit d'un coup d'œil, sans avoir à chercher lequel des
+          // noms porte la mention en petit.
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: isGm ? QBColors.surfaceSunken : QBColors.paper100,
+              borderRadius: BorderRadius.circular(QBRadius.md),
+              border: Border.all(color: QBColors.borderHairline),
+            ),
+            child: Icon(
+              isGm ? LucideIcons.bookOpen : LucideIcons.user,
+              size: 16,
+              color: isGm ? QBColors.leather700 : QBColors.ink500,
+            ),
           ),
-          QBIconButton(
-            icon: const Icon(LucideIcons.userMinus, size: 16),
-            label: 'Retirer ${member.user.label}',
-            size: 32,
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                await ref
-                    .read(tableApiProvider)
-                    .removeMember(table.id, member.userId);
-                refreshTables(ref, tableId: table.id);
-              } on ApiException catch (error) {
-                messenger.showSnackBar(SnackBar(content: Text(error.message)));
-              }
-            },
+          const SizedBox(width: QBSpace.s3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  member.user.label,
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.sm,
+                    color: QBColors.textBody,
+                  ),
+                ),
+                if (isGm)
+                  Text(
+                    'Maître du jeu',
+                    style: QBType.body().copyWith(
+                      fontSize: QBType.xs,
+                      color: QBColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
           ),
+          if (canRemove)
+            // Un seul point d'entrée plutôt que deux boutons jumeaux :
+            // confier la table et retirer quelqu'un se ressemblaient trop
+            // pour être côte à côte, et se pressaient l'un pour l'autre.
+            _MemberMenu(
+              label: member.user.label,
+              onTransfer: () => _transfer(context, ref),
+              onRemove: () => _remove(context, ref),
+            ),
         ],
-      ],
+      ),
     );
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(tableApiProvider).removeMember(table.id, member.userId);
+      refreshTables(ref, tableId: table.id);
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   /// Handing over is not a small thing: the current game master loses every
@@ -620,6 +657,88 @@ class _MemberRow extends ConsumerWidget {
     } on ApiException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+}
+
+/// Ce qu'un MJ peut faire d'un de ses joueurs, replié derrière trois points.
+class _MemberMenu extends StatelessWidget {
+  const _MemberMenu({
+    required this.label,
+    required this.onTransfer,
+    required this.onRemove,
+  });
+
+  final String label;
+  final VoidCallback onTransfer;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<VoidCallback>(
+      tooltip: 'Options de $label',
+      icon: const Icon(
+        LucideIcons.ellipsisVertical,
+        size: 18,
+        color: QBColors.ink500,
+      ),
+      padding: EdgeInsets.zero,
+      color: QBColors.paper50,
+      // Les libellés par défaut plafonnent à 280 points, et « Désigner comme
+      // MJ » y tient de justesse selon la police chargée.
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 320),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(QBRadius.md),
+        side: const BorderSide(color: QBColors.borderStrong, width: 2),
+      ),
+      onSelected: (action) => action(),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: onTransfer,
+          child: _MenuLine(
+            icon: LucideIcons.crown,
+            label: 'Désigner comme MJ',
+          ),
+        ),
+        PopupMenuItem(
+          value: onRemove,
+          child: _MenuLine(
+            icon: LucideIcons.userMinus,
+            label: 'Retirer de la table',
+            danger: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuLine extends StatelessWidget {
+  const _MenuLine({
+    required this.icon,
+    required this.label,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? QBColors.semanticDanger : QBColors.ink800;
+
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: QBSpace.s2),
+        Flexible(
+          child: Text(
+            label,
+            style: QBType.body().copyWith(fontSize: QBType.sm, color: color),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -677,55 +796,90 @@ class _DangerZone extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isGm = table.isGameMaster;
+    final label = isGm ? 'Dissoudre la table' : 'Quitter la table';
 
-    return QBButton(
-      label: isGm ? 'Dissoudre la table' : 'Quitter la table',
-      variant: QBButtonVariant.danger,
-      size: QBButtonSize.sm,
-      expand: true,
-      onPressed: () async {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(isGm ? 'Dissoudre la table ?' : 'Quitter la table ?'),
-            content: Text(
-              isGm
-                  ? 'La table et toutes ses sessions seront supprimées pour '
-                      'tout le monde. C’est définitif.'
-                  : 'Tu ne verras plus cette table ni ses sessions.',
+    // Un lien discret plutôt qu'un pavé rouge pleine largeur : c'est le geste
+    // le plus rare de l'écran, et le plus définitif. Le peindre en grand le
+    // mettait sur le chemin de tous les autres, et donnait à une table
+    // paisible des airs d'avertissement.
+    return Center(
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _confirm(context, ref, isGm: isGm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  LucideIcons.trash2,
+                  size: 15,
+                  color: QBColors.semanticDanger,
+                ),
+                const SizedBox(width: QBSpace.s2),
+                Text(
+                  label,
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.sm,
+                    color: QBColors.semanticDanger,
+                  ),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Non'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(isGm ? 'Dissoudre' : 'Quitter'),
-              ),
-            ],
           ),
-        );
-
-        if (confirmed != true || !context.mounted) return;
-
-        final messenger = ScaffoldMessenger.of(context);
-        final router = GoRouter.of(context);
-
-        try {
-          final api = ref.read(tableApiProvider);
-          if (isGm) {
-            await api.delete(table.id);
-          } else {
-            await api.leave(table.id);
-          }
-          refreshTables(ref);
-          router.go('/tables');
-        } on ApiException catch (error) {
-          messenger.showSnackBar(SnackBar(content: Text(error.message)));
-        }
-      },
+        ),
+      ),
     );
+  }
+
+  Future<void> _confirm(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isGm,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isGm ? 'Dissoudre la table ?' : 'Quitter la table ?'),
+        content: Text(
+          isGm
+              ? 'La table et toutes ses sessions seront supprimées pour '
+                  'tout le monde. C’est définitif.'
+              : 'Tu ne verras plus cette table ni ses sessions.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Non'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(isGm ? 'Dissoudre' : 'Quitter'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    try {
+      final api = ref.read(tableApiProvider);
+      if (isGm) {
+        await api.delete(table.id);
+      } else {
+        await api.leave(table.id);
+      }
+      refreshTables(ref);
+      router.go('/tables');
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 
@@ -752,12 +906,32 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
         if (action != null)
+          // En sourdine : proposer une session et inviter un joueur sont des
+          // gestes occasionnels, et deux pavés dorés en haut de chaque
+          // section criaient plus fort que ce qu'elles contiennent.
           QBButton(
             label: action!.label,
             size: QBButtonSize.sm,
+            variant: QBButtonVariant.ghost,
             onPressed: action!.onTap,
           ),
       ],
+    );
+  }
+}
+
+/// Le trait qui sépare deux sections. Une page qui empile titres et cartes
+/// sans respiration se lit comme une seule liste ; le trait dit où l'une
+/// s'arrête.
+class _Separator extends StatelessWidget {
+  const _Separator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: QBSpace.s5),
+      color: QBColors.borderHairline,
     );
   }
 }

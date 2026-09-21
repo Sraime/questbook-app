@@ -389,17 +389,6 @@ class _Sheet extends StatelessWidget {
                 ],
               ),
             ),
-            Wrap(
-              spacing: QBSpace.s2,
-              children: [
-                for (final resource in character.resources)
-                  QBBadge(
-                    label:
-                        '${resource.label} ${resource.current}/${resource.max}',
-                    tone: _toneOf(resource.tone),
-                  ),
-              ],
-            ),
             const SizedBox(width: QBSpace.s2),
             const Icon(
               LucideIcons.chevronRight,
@@ -408,6 +397,26 @@ class _Sheet extends StatelessWidget {
             ),
           ],
         ),
+        // Sous l'identité et non à côté, comme sur la fiche que le joueur
+        // ouvre depuis l'accueil. Trois jauges tiennent la largeur d'un
+        // téléphone à elles seules : en haut de la même ligne, elles ne
+        // laissaient au nom qu'une colonne d'une lettre de large, et
+        // débordaient quand même.
+        if (character.resources.isNotEmpty) ...[
+          const SizedBox(height: QBSpace.s3),
+          Wrap(
+            spacing: QBSpace.s2,
+            runSpacing: QBSpace.s2,
+            children: [
+              for (final resource in character.resources)
+                QBBadge(
+                  label:
+                      '${resource.label} ${resource.current}/${resource.max}',
+                  tone: _toneOf(resource.tone),
+                ),
+            ],
+          ),
+        ],
         if (skills.isNotEmpty) ...[
           const SizedBox(height: QBSpace.s3),
           // Les meilleures compétences d'abord : pendant une partie, le MJ

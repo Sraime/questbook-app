@@ -5,6 +5,16 @@ import 'package:web_socket_channel/io.dart';
 
 import 'remote_table.dart';
 
+/// Le canal est tombé et l'app retente. Portée jusqu'à l'écran plutôt que
+/// ravalée : un joueur a le droit de savoir que ce qu'il regarde ne bouge
+/// plus.
+class BoardInterrupted implements Exception {
+  const BoardInterrupted();
+
+  @override
+  String toString() => 'BoardInterrupted';
+}
+
 /// Le plateau d'une session, tel qu'il bouge sous les doigts du MJ.
 ///
 /// Un canal temps réel plutôt qu'une interrogation périodique : un pion qu'on
@@ -49,7 +59,7 @@ class BoardLiveClient {
 
       try {
         channel = IOWebSocketChannel.connect(
-          Uri.parse('$_wsOrigin/api/v1/sessions/$sessionId/board/live'),
+          Uri.parse('$wsOrigin/api/v1/sessions/$sessionId/board/live'),
           headers: {'Authorization': 'Bearer $token'},
           // Sans cela, un réseau qui disparaît sans prévenir — un tunnel, un
           // Wi-Fi qui ne route plus — laisse le socket ouvert pour toujours
@@ -74,6 +84,14 @@ class BoardLiveClient {
         await messages.close();
       }
 
+      // Le canal est tombé. **On le dit avant de retenter**, au lieu de se
+      // reconnecter en silence : un plateau qui se figera sans un mot se lit
+      // comme un plateau que le MJ n'a pas touché, et c'est précisément ce
+      // qu'un plateau partagé ne doit pas laisser croire. Le bandeau tombe de
+      // lui-même à la reconnexion, que le serveur ouvre en renvoyant le
+      // plateau entier.
+      yield* Stream<RemoteSessionBoard>.error(const BoardInterrupted());
+
       // La boucle reprend après une pause : un serveur qui refuse la
       // connexion la refuserait tout autant si on la retentait aussitôt, en
       // boucle serrée.
@@ -81,7 +99,8 @@ class BoardLiveClient {
     }
   }
 
-  String get _wsOrigin => origin.startsWith('https')
+  /// `https` devient `wss`, une URL de développement en clair reste en clair.
+  String get wsOrigin => origin.startsWith('https')
       ? origin.replaceFirst('https', 'wss')
       : origin.replaceFirst('http', 'ws');
 

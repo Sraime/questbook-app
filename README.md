@@ -651,6 +651,18 @@ retente déjà, et les deux portent la valeur précédente — le volet lit donc
 « ai-je un plateau ? » et « est-ce qu'il bouge encore ? » plutôt que de filtrer
 les cas d'`AsyncValue`.
 
+**`BoardLiveClient` annonce la chute avant de retenter**, et c'est ce qui rend
+ce bandeau atteignable : il se reconnectait d'abord en silence, si bien que le
+flux n'émettait que des plateaux et qu'un joueur regardait une table figée sans
+le savoir — il attendait un pion déjà arrivé chez les autres. La chute passe
+donc en `BoardInterrupted` dans le flux, puis la boucle reprend ; le plateau que
+la reconnexion rapporte efface le bandeau de lui-même.
+
+Le délai de détection n'est pas nul : un réseau qui disparaît sans prévenir
+laisse la socket ouverte jusqu'au `pingInterval`, soit vingt secondes. Un
+Wi-Fi coupé franchement, lui, ferme la socket tout de suite et le bandeau
+apparaît dans la seconde.
+
 ### Les deux bornes d'une séance
 
 Une séance ne s'éteint pas à l'heure dite : on joue, et la partie déborde

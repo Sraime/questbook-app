@@ -656,7 +656,7 @@ montrerait une seconde ce qui ne le regarde pas.
 | Volets | Les six | **Plateau** et **Investigateurs** |
 | Volet d'accueil | Détails | Plateau |
 | Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
-| Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules |
+| Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules, la sienne modifiable |
 
 Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
 dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
@@ -821,8 +821,30 @@ absurde.
 Une limite assumée pour l'instant : les fiches des joueurs viennent de l'API
 une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
 appel qui les autorise) — le volet Personnages en montre le résumé et ouvre
-la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
-**pas lisibles hors ligne**.
+la fiche entière, la même qu'à la table — et ne sont donc **pas lisibles hors
+ligne**.
+
+##### Sa propre fiche se modifie sans quitter la séance
+
+Une partie fait perdre des points de vie, et on les décomptait en sortant de
+l'écran de la séance pour y revenir ensuite. Toucher **sa** carte dans le volet
+Investigateurs ouvre donc la fiche modifiable — jauges, inventaire, lancer de
+dé — et non plus la copie en lecture. Celle d'un camarade reste en lecture, et
+le MJ ne modifie celle de personne : c'est `authControllerProvider` qui
+tranche, en comparant le compte connecté au `userId` de la présence.
+
+C'est le même écran que sous `/perso/:id`, pas une seconde version qui
+dériverait : `CharacterSheetBody` a été extrait de `CharacterSheetScreen` pour
+être posé tel quel dans une feuille (`widgets/own_character_sheet.dart`). La
+route garde donc un seul corps, et un bouton ajouté à la fiche apparaît des
+deux côtés sans y penser.
+
+Ce qui reste en lecture y reste : caractéristiques et compétences ne se
+modifient nulle part dans l'application, et la séance n'est pas l'endroit pour
+commencer. Le MJ, lui, voit le changement **au rafraîchissement** — la fiche
+part au serveur dans le même geste (voir [Une fiche modifiée part tout de
+suite](#une-fiche-modifiée-part-tout-de-suite)), mais rien ne la pousse vers
+son écran ; seul le plateau a un canal temps réel.
 
 ##### Le plateau remonte au serveur
 

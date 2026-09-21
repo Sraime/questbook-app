@@ -26,17 +26,51 @@ import 'widgets/skill_roll_dialog.dart';
 
 /// Screens 1c (Aperçu) / 1d (Inventaire) — a single sheet screen, tabs
 /// toggled in-page, matching the mockup.
-class CharacterSheetScreen extends ConsumerStatefulWidget {
+class CharacterSheetScreen extends StatelessWidget {
   const CharacterSheetScreen({super.key, required this.characterId});
 
   final String characterId;
 
   @override
-  ConsumerState<CharacterSheetScreen> createState() =>
-      _CharacterSheetScreenState();
+  Widget build(BuildContext context) {
+    return QBPageBackground(
+      child: SafeArea(
+        bottom: false,
+        child: CharacterSheetBody(
+          characterId: characterId,
+          padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
+        ),
+      ),
+    );
+  }
 }
 
-class _CharacterSheetScreenState extends ConsumerState<CharacterSheetScreen> {
+/// La fiche elle-même, sans le fond ni la marge de l'écran qui la porte.
+///
+/// Extraite pour qu'une séance en cours n'ait pas à en redessiner une
+/// approximation : un joueur qui ajuste ses points de vie à la table doit
+/// retrouver **la** fiche, jauges et inventaire compris, et non une version
+/// allégée qui divergerait au premier changement fait d'un seul côté.
+class CharacterSheetBody extends ConsumerStatefulWidget {
+  const CharacterSheetBody({
+    super.key,
+    required this.characterId,
+    required this.padding,
+    this.controller,
+  });
+
+  final String characterId;
+  final EdgeInsets padding;
+
+  /// Fourni par une feuille glissante, qui a besoin de piloter le défilement
+  /// pour savoir quand la refermer.
+  final ScrollController? controller;
+
+  @override
+  ConsumerState<CharacterSheetBody> createState() => _CharacterSheetBodyState();
+}
+
+class _CharacterSheetBodyState extends ConsumerState<CharacterSheetBody> {
   String _tab = 'Aperçu';
 
   @override
@@ -44,36 +78,32 @@ class _CharacterSheetScreenState extends ConsumerState<CharacterSheetScreen> {
     final characterAsync =
         ref.watch(characterDetailProvider(widget.characterId));
 
-    return QBPageBackground(
-      child: SafeArea(
-        bottom: false,
-        child: characterAsync.when(
-          data: (character) {
-            if (character == null) {
-              return const Center(child: Text('Investigateur introuvable'));
-            }
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
-              children: [
-                _Header(character: character),
-                const SizedBox(height: QBSpace.s4),
-                QBTabs(
-                  tabs: const ['Aperçu', 'Inventaire'],
-                  active: _tab,
-                  onChanged: (tab) => setState(() => _tab = tab),
-                ),
-                const SizedBox(height: QBSpace.s5),
-                if (_tab == 'Aperçu')
-                  _OverviewTab(character: character)
-                else
-                  _InventoryTab(character: character),
-              ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(child: Text('Erreur : $error')),
-        ),
-      ),
+    return characterAsync.when(
+      data: (character) {
+        if (character == null) {
+          return const Center(child: Text('Investigateur introuvable'));
+        }
+        return ListView(
+          controller: widget.controller,
+          padding: widget.padding,
+          children: [
+            _Header(character: character),
+            const SizedBox(height: QBSpace.s4),
+            QBTabs(
+              tabs: const ['Aperçu', 'Inventaire'],
+              active: _tab,
+              onChanged: (tab) => setState(() => _tab = tab),
+            ),
+            const SizedBox(height: QBSpace.s5),
+            if (_tab == 'Aperçu')
+              _OverviewTab(character: character)
+            else
+              _InventoryTab(character: character),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Erreur : $error')),
     );
   }
 }

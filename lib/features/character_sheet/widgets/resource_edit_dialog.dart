@@ -65,23 +65,30 @@ class ResourceEditDialog extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: QBSpace.s5),
-                Text.rich(
-                  TextSpan(
-                    text: '${resource.current}',
-                    style: QBType.mono().copyWith(
-                      fontWeight: QBType.weightBold,
-                      fontSize: 36,
-                      color: QBColors.ink900,
-                    ),
-                    children: [
+                // Les deux pastilles ne cèdent rien : c'est au nombre de
+                // rétrécir quand la jauge compte large.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text.rich(
                       TextSpan(
-                        text: '/${resource.max}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: QBColors.textMuted,
+                        text: '${resource.current}',
+                        style: QBType.mono().copyWith(
+                          fontWeight: QBType.weightBold,
+                          fontSize: 36,
+                          color: QBColors.ink900,
                         ),
+                        children: [
+                          TextSpan(
+                            text: '/${resource.max}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: QBColors.textMuted,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: QBSpace.s5),

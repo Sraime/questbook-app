@@ -13,6 +13,7 @@ import '../../../design_system/components/qb_icon_button.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../character_sheet/widgets/own_character_sheet.dart';
 import '../../tables/providers/table_providers.dart';
 import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/session_seat.dart';
@@ -299,27 +300,35 @@ class _AttendeeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sheet = ref.watch(
-      attendeeCharacterProvider(
-        AttendeeCharacterRef(sessionId: sessionId, userId: attendance.userId),
-      ),
-    );
+    final reference =
+        AttendeeCharacterRef(sessionId: sessionId, userId: attendance.userId);
+    final sheet = ref.watch(attendeeCharacterProvider(reference));
 
-    // Le résumé tient en une carte, mais le MJ a parfois besoin de tout :
-    // caractéristiques, compétences, inventaire. C'est la même fiche que
-    // celle ouverte depuis la table, en lecture seule.
-    final open = sheet.hasValue
-        ? () => showAttendeeCharacterSheet(
-              context,
-              sessionId: sessionId,
-              userId: attendance.userId,
-              playerLabel: attendance.user.label,
-            )
-        : null;
+    // Une partie fait perdre des points de vie et ramasser des objets : sa
+    // propre fiche s'ouvre donc modifiable, la même que sous `/perso/:id`.
+    // Celle d'un camarade reste en lecture seule — c'est son investigateur,
+    // et le MJ n'y touche pas davantage.
+    final mine =
+        ref.watch(authControllerProvider).value?.id == attendance.userId;
+
+    final open = !sheet.hasValue
+        ? null
+        : mine
+            ? () => _editMine(context, ref, reference)
+            : () => showAttendeeCharacterSheet(
+                  context,
+                  sessionId: sessionId,
+                  userId: attendance.userId,
+                  playerLabel: attendance.user.label,
+                );
 
     return Semantics(
       button: open != null,
-      label: open == null ? null : 'Ouvrir la fiche de ${sheet.value!.name}',
+      label: open == null
+          ? null
+          : mine
+              ? 'Modifier la fiche de ${sheet.value!.name}'
+              : 'Ouvrir la fiche de ${sheet.value!.name}',
       child: GestureDetector(
         onTap: open,
         behavior: HitTestBehavior.opaque,
@@ -344,6 +353,22 @@ class _AttendeeCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// La carte, elle, vient du serveur : après une modification faite en
+  /// local, elle porterait encore les anciennes valeurs. On la relit donc en
+  /// refermant la feuille, ce que #114 rend immédiat — la fiche est déjà
+  /// partie au moment où l'on rouvre les yeux dessus.
+  Future<void> _editMine(
+    BuildContext context,
+    WidgetRef ref,
+    AttendeeCharacterRef reference,
+  ) async {
+    final characterId = attendance.character?.id;
+    if (characterId == null) return;
+
+    await showOwnCharacterSheet(context, characterId: characterId);
+    ref.invalidate(attendeeCharacterProvider(reference));
   }
 }
 

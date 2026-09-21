@@ -7,6 +7,18 @@ import '../remote/remote_character.dart';
 /// pushed, applies the ones coming back from the API, and keeps the pull
 /// cursor.
 ///
+/// An aggregate on its way to the server, and the local revision it was read
+/// at.
+///
+/// The two travel together because the answer comes back late: by then the
+/// player may have tapped again, and the revision is what says so.
+class PendingPush {
+  const PendingPush(this.character, this.revision);
+
+  final RemoteCharacter character;
+  final int revision;
+}
+
 /// It works on rows rather than on domain models on purpose — the sync engine
 /// needs `updatedAt`/`needsSync`, which are storage concerns deliberately
 /// absent from [Character].
@@ -69,20 +81,35 @@ class CharacterSyncDao {
   // --- Push ----------------------------------------------------------------
 
   /// Every locally modified aggregate, tombstones included.
-  Future<List<RemoteCharacter>> pendingPushes() async {
+  Future<List<PendingPush>> pendingPushes() async {
     final rows = await (_db.select(_db.characters)
           ..where((c) => c.needsSync.equals(true)))
         .get();
-    return Future.wait(rows.map(_toRemote));
+    return Future.wait(rows.map(_toPending));
   }
+
+  /// The one aggregate a screen has just touched, if it is still waiting to
+  /// leave the device.
+  ///
+  /// Returns null when the row is already clean: a full pass running next to
+  /// the edit may have taken it on the way, and pushing it a second time
+  /// would only earn a conflict.
+  Future<PendingPush?> pendingPush(String id) async {
+    final row = await (_db.select(_db.characters)
+          ..where((c) => c.id.equals(id) & c.needsSync.equals(true)))
+        .getSingleOrNull();
+    return row == null ? null : _toPending(row);
+  }
+
+  Future<PendingPush> _toPending(CharacterRow row) async =>
+      PendingPush(await _toRemote(row), row.revision);
 
   /// Clears the dirty flag, but only if the row has not been edited again
   /// since the push started — otherwise that concurrent edit would never be
   /// uploaded.
-  Future<void> markSynced(String id, DateTime pushedUpdatedAt) async {
+  Future<void> markSynced(String id, int pushedRevision) async {
     await (_db.update(_db.characters)
-          ..where((c) =>
-              c.id.equals(id) & c.updatedAt.equals(pushedUpdatedAt)))
+          ..where((c) => c.id.equals(id) & c.revision.equals(pushedRevision)))
         .write(const CharactersCompanion(needsSync: Value(false)));
   }
 
@@ -122,6 +149,9 @@ class CharacterSyncDao {
               createdAt: remote.createdAt,
               updatedAt: remote.updatedAt,
               needsSync: false,
+              // Rien de local ne reste à compter : la fiche vient d'être
+              // remplacée par celle du serveur.
+              revision: 0,
             ),
           );
 

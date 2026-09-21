@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../app/remote_providers.dart';
 import '../../../domain/models/character_resource.dart';
 import '../../../domain/models/character_stat.dart';
 import '../../../domain/models/creation_mode_config.dart';
@@ -432,6 +433,14 @@ class CharacterCreationNotifier extends Notifier<CharacterCreationState> {
         stats: stats,
         resources: resources,
       );
+
+      // Un investigateur se crée en ligne — l'accueil n'en propose pas
+      // d'autre — et sert en général dans la minute : le joueur l'attache à
+      // la session qui commence, et le MJ la lit depuis le serveur. Attendre
+      // le prochain retour de l'app au premier plan pour l'y envoyer, c'est
+      // le temps d'une soirée entière.
+      await ref.read(syncControllerProvider.notifier).pushCharacter(created.id);
+
       return created.id;
     } finally {
       state = state.copyWith(isSubmitting: false);

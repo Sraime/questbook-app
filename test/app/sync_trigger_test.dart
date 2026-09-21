@@ -11,12 +11,16 @@ import 'package:questbook/data/sync/sync_service.dart';
 /// tests guard the wiring that carries that responsibility.
 class _RecordingSyncService implements SyncService {
   final List<String> accountIds = [];
+  final List<String> pushed = [];
 
   @override
   Future<SyncReport> synchronize({required String accountId}) async {
     accountIds.add(accountId);
     return const SyncReport();
   }
+
+  @override
+  Future<void> pushCharacter(String id) async => pushed.add(id);
 }
 
 const _user = AuthUser(
@@ -116,5 +120,27 @@ void main() {
     await controller.synchronize();
 
     expect(service.accountIds, isEmpty);
+  });
+
+  test('an edited sheet leaves on its own, without a full pass', () async {
+    final controller = await startSession();
+    publishSession(_user);
+    await pumpEventQueue();
+
+    await controller.pushCharacter('perso-1');
+
+    expect(service.pushed, ['perso-1']);
+    // Sending one sheet is not a reason to pull the whole account back: the
+    // player is mid-edit, and the pass that ran on sign-in is the only one
+    // to have happened.
+    expect(service.accountIds, hasLength(1));
+  });
+
+  test('a sheet edited while signed out stays where it is', () async {
+    final controller = await startSession();
+
+    await controller.pushCharacter('perso-1');
+
+    expect(service.pushed, isEmpty);
   });
 }

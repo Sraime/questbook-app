@@ -197,6 +197,28 @@ class SyncController extends Notifier<SyncState> {
     return const SyncState();
   }
 
+  /// Envoie une fiche au serveur dans la foulée du geste qui l'a changée.
+  ///
+  /// Sans cela, une fiche modifiée attend le prochain retour de l'app au
+  /// premier plan — et pendant une partie, personne ne quitte l'app. Le MJ
+  /// lit les fiches depuis le serveur : des points de vie perdus à la table
+  /// ne lui parviendraient jamais.
+  ///
+  /// L'état de synchronisation n'est pas touché : `isRunning` sert à décrire
+  /// une passe complète, et le faire clignoter à chaque pression sur une
+  /// jauge ne dirait plus rien.
+  Future<void> pushCharacter(String id) async {
+    if (ref.read(authControllerProvider).value == null) return;
+
+    try {
+      await ref.read(syncServiceProvider).pushCharacter(id);
+    } on ApiException {
+      // L'écriture locale, elle, a eu lieu, et la fiche reste marquée : la
+      // prochaine passe complète la reprendra. Rien à dire au joueur, qui
+      // voit déjà sa modification à l'écran.
+    }
+  }
+
   Future<void> synchronize() async {
     final user = ref.read(authControllerProvider).value;
     if (user == null || state.isRunning) return;

@@ -1375,6 +1375,12 @@ gh release create v1.6.0+8 --title "1.6.0" --notes "Invitations sans compte, bou
 Un retry sans recréer la Release : onglet Actions → **Publish to Play Store
 and TestFlight** → Run workflow (il refuse si le tag testeurs n'existe pas).
 
+**Les deux binaires sont gardés en artefacts du run**, avant l'envoi et non
+après. Un store qui refuse ne doit pas emporter le build avec lui : le `.aab`
+et l'`.ipa` restent téléchargeables depuis la page du run, ce qui permet de
+déposer à la main ce que la CI n'a pas réussi à déposer — le cas du tout
+premier dépôt, justement (voir ci-dessous).
+
 Le workflow [`.github/workflows/store-publish.yml`](.github/workflows/store-publish.yml)
 ne construit **pas** le même binaire que Firebase : Play exige un `.aab`,
 TestFlight un IPA signé **App Store** (le profil Ad Hoc des testeurs est
@@ -1400,8 +1406,12 @@ voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
 **Google Play**
 
 1. Créer l'application `com.questbook.questbook` dans Play Console.
-2. Activer la **signature d'application Play** en lui donnant la clé upload
-   déjà utilisée par Firebase (`.secrets/upload-keystore.jks`).
+2. **Déposer le premier `.aab` à la main**, récupéré dans les artefacts du run
+   (voir plus haut). C'est ce dépôt qui inscrit l'app à la **signature
+   d'application Play** et qui enregistre la clé upload — celle du secret
+   `ANDROID_KEYSTORE_BASE64`, la même que pour les testeurs. L'API refuse de
+   servir de premier dépôt sur une app qui n'a jamais rien reçu, et c'est
+   pour cela que l'artefact existe. Les suivants passent par la CI.
 3. Google Cloud → compte de service avec le rôle *Service Account User*,
    puis Play Console → *Utilisateurs et droits* → inviter ce compte
    (permissions *Versions* sur l'app).
@@ -1409,6 +1419,12 @@ voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
 5. Remplir la fiche (politique de confidentialité, captures, questionnaire
    contenu). La CI dépose un **brouillon** sur la piste interne
    (`changesNotSentForReview`) : rien n'est envoyé en review tout seul.
+
+> **La clé upload ne vit que dans les secrets GitHub.** `.secrets/` n'est sur
+> aucune machine de travail, et un secret ne se relit pas. Reconstruire un
+> `.jks` n'est donc pas possible : c'est l'artefact du run, déjà signé par la
+> CI, qui sert de premier dépôt. Perdre ce secret voudrait dire perdre la clé
+> upload, et il faudrait alors en faire enregistrer une nouvelle par Google.
 
 **App Store Connect**
 

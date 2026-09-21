@@ -39,7 +39,8 @@ class ScenariosScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Aventures à préparer. Télécharge-les pour les lire hors ligne.',
+                'À préparer avant la séance. Télécharge-les pour les lire '
+                'hors ligne.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textMuted,

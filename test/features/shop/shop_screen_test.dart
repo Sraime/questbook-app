@@ -66,7 +66,7 @@ RemoteShopItemDetail _item({
   );
 }
 
-RemoteShopItemDetail _adventure({
+RemoteShopItemDetail _scenarioItem({
   String id = 'item-2',
   String title = 'Le Dernier Train de Nuit',
   bool owned = false,
@@ -274,28 +274,31 @@ void main() {
     expect(find.text('5 €'), findsOneWidget);
   });
 
-  testWidgets('les pions et les aventures ont chacun leur rayon',
+  testWidgets('les pions et les scénarios ont chacun leur rayon',
       (tester) async {
-    await pumpShop(tester, items: [_item(), _adventure()]);
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
 
     expect(find.text('Pions'), findsOneWidget);
-    expect(find.text('Aventures'), findsOneWidget);
+    // Le mot du produit, et celui de l'écran où on les retrouve : on
+    // n'achète pas une « aventure » pour la relire sous « Scénarios ».
+    expect(find.text('Scénarios'), findsOneWidget);
+    expect(find.text('Aventures'), findsNothing);
   });
 
-  testWidgets('une aventure se lit en rayon, un pion ne se lit pas',
+  testWidgets('un scénario se lit en rayon, un pion ne se lit pas',
       (tester) async {
     // On n'achète pas un scénario sur un dessin : sa rangée dit de quoi il
     // parle, là où une vignette de pion garde sa description pour sa page.
-    await pumpShop(tester, items: [_item(), _adventure()]);
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
 
     expect(find.textContaining('un passager qui n’est jamais descendu'),
         findsOneWidget);
     expect(find.textContaining('emblème'), findsNothing);
   });
 
-  testWidgets('une aventure prend toute la largeur, un pion un tiers',
+  testWidgets('un scénario prend toute la largeur, un pion un tiers',
       (tester) async {
-    await pumpShop(tester, items: [_item(), _adventure()]);
+    await pumpShop(tester, items: [_item(), _scenarioItem()]);
 
     final row = tester.getRect(find.text('Le Dernier Train de Nuit'));
     final tile = tester.getRect(find.text('Le Grand Ancien'));
@@ -303,12 +306,12 @@ void main() {
     expect(row.width, greaterThan(tile.width * 2));
   });
 
-  testWidgets('acheter une aventure laisse place à son téléchargement',
+  testWidgets('acheter un scénario laisse place à son téléchargement',
       (tester) async {
     // Pour éviter au joueur d'aller la chercher dans le menu des scénarios.
     final api = await pumpShop(
       tester,
-      items: [_adventure()],
+      items: [_scenarioItem()],
       at: '/boutique/item-2',
     );
 
@@ -318,16 +321,16 @@ void main() {
     expect(api.purchases, 1);
     expect(find.text('Obtenir'), findsNothing);
     expect(find.widgetWithText(QBButton, 'Télécharger'), findsOneWidget);
-    // Le texte des assets n'a rien à faire là : une aventure ne se retrouve
+    // Le texte des assets n'a rien à faire là : un scénario ne se retrouve
     // pas parmi les pions.
     expect(find.textContaining('parmi tes assets'), findsNothing);
   });
 
-  testWidgets('une aventure déjà sur l’appareil s’ouvre depuis la boutique',
+  testWidgets('un scénario déjà sur l’appareil s’ouvre depuis la boutique',
       (tester) async {
     await pumpShop(
       tester,
-      items: [_adventure(owned: true)],
+      items: [_scenarioItem(owned: true)],
       at: '/boutique/item-2',
       onDevice: _downloaded,
     );
@@ -346,7 +349,7 @@ void main() {
     // l'un des deux écrans pour cassé.
     await pumpShop(
       tester,
-      items: [_adventure(owned: true)],
+      items: [_scenarioItem(owned: true)],
       at: '/boutique/item-2',
       online: false,
     );

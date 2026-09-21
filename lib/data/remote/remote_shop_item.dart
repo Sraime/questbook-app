@@ -46,7 +46,7 @@ class RemoteShopItem {
         id: json['id'] as String,
         title: json['title'] as String,
         type: ShopItemType.fromWire(json['type'] as String),
-        // Absente des serveurs d'avant les aventures en rayon, et d'un cache
+        // Absente des serveurs d'avant les scénarios en rayon, et d'un cache
         // écrit par eux : une vignette sans description se dessine, une
         // liste qui plante sur une clé manquante ne se dessine pas.
         description: json['description'] as String? ?? '',

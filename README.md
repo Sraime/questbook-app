@@ -51,7 +51,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création d'un investigateur (`/perso/create`)** : choix du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche d'un investigateur (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
 - **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
@@ -61,7 +61,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
-- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Aventures**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -839,16 +839,22 @@ que de leur imposer un compromis.
 **Pions** : une grille de vignettes, trois par ligne au minimum. Un pion se
 reconnaît à son dessin, et son nom suffit — la description attend sa page.
 
-**Aventures** : une liste pleine largeur, où chaque rangée porte le titre, le
+**Scénarios** : une liste pleine largeur, où chaque rangée porte le titre, le
 prix et trois lignes de ce dont le scénario parle. On n'achète pas un scénario
 sur un dessin : une vignette de cent points n'en dit rien, et le lecteur
 choisit entre un huis clos ferroviaire et une enquête documentaire. C'est
 pour cela que `description` voyage désormais dans `GET /shop/items` et plus
 seulement dans le détail.
 
-**Obtenir une aventure ne suffit pas à la lire.** Son texte vit sur le serveur
+Le rayon porte **le mot de l'écran où on les retrouve**, et le sous-titre de
+la boutique avec lui. Il a dit « Aventures » un temps : acheter une aventure
+pour la relire sous « Scénarios » fait douter qu'il s'agisse de la même
+chose. « Aventure » explique ce qu'est un scénario, il ne le remplace pas —
+voir le lexique.
+
+**Obtenir un scénario ne suffit pas à le lire.** Son texte vit sur le serveur
 jusqu'à ce qu'on le télécharge, si bien que l'achat laisse place à
-« Télécharger », puis à « Ouvrir » une fois l'aventure sur l'appareil — les
+« Télécharger », puis à « Ouvrir » une fois le scénario sur l'appareil — les
 trois gestes sur la même page, plutôt que d'envoyer le lecteur les finir dans
 `/scenarios`. L'état lu est `downloadedScenarioProvider`, le même que celui de
 l'écran des scénarios : ce sont deux vues d'un seul fait, pas deux
@@ -860,7 +866,7 @@ côté puis offerte de l'autre ferait passer l'un des deux écrans pour cassé.
 Sans réseau, l'appel échoue et le dit.
 
 Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
-colis : `scroll` donne un parchemin aux aventures (`shop_artwork.dart`).
+colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
 C'est le repli, pas une illustration — le jour où les scénarios auront des
 couvertures, elles se déclarent là.
 

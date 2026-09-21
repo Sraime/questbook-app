@@ -683,6 +683,16 @@ d'intercepteur pour le faire à sa place — puis le canal `wss` qui renvoie le
 plateau entier à chaque poussée. Le provider est `autoDispose` : le socket se
 ferme en quittant le volet.
 
+**Ce dernier point tient à un détail d'implémentation**, et c'est pourquoi
+`socket_lifecycle_test.dart` le fixe : `_panelBody` ne construit qu'un volet à
+la fois, si bien que `WatchedBoardPanel` est démonté dès qu'on le quitte. Le
+jour où l'on voudra garder l'état d'un volet en le laissant monté, un
+`IndexedStack` suffirait à laisser un socket ouvert toute la soirée — rien ne
+se verrait à l'écran, et une table de cinq joueurs qui font l'aller-retour
+entre les volets ferait tenir au serveur des dizaines de sockets fantômes. Le
+MJ, lui, n'en ouvre jamais aucun : il écrit le plateau, c'est le joueur qui
+écoute.
+
 **Une coupure ne vide pas la table.** La dernière valeur reste à l'écran et un
 bandeau dit qu'elle ne bouge plus ; elle y reste tant que le MJ n'a rien
 repoussé, même une fois le canal rebranché. À noter pour les tests : Riverpod

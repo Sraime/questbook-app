@@ -37,7 +37,7 @@ class ShopScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Pions et aventures à ajouter à ta collection.',
+                'Pions et scénarios à ajouter à ta collection.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textMuted,
@@ -111,7 +111,7 @@ class _Catalogue extends StatelessWidget {
       children: [
         if (rest.isNotEmpty) ...[
           // « Pions », et non « le reste » : c'est tout ce que le rayon
-          // contient à côté des aventures, et les packs ne s'achètent pas
+          // contient à côté des scénarios, et les packs ne s'achètent pas
           // encore. Le jour où ils arrivent, ce titre est à revoir.
           const _SectionTitle('Pions'),
           const SizedBox(height: QBSpace.s3),
@@ -119,7 +119,9 @@ class _Catalogue extends StatelessWidget {
         ],
         if (scenarios.isNotEmpty) ...[
           if (rest.isNotEmpty) const SizedBox(height: QBSpace.s6),
-          const _SectionTitle('Aventures'),
+          // Le même mot que l'écran où on les retrouve ensuite. « Aventure »
+          // explique ce qu'est un scénario, il ne le remplace pas.
+          const _SectionTitle('Scénarios'),
           const SizedBox(height: QBSpace.s3),
           for (final item in scenarios) ...[
             _ScenarioRow(item: item),

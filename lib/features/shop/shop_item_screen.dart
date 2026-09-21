@@ -222,7 +222,7 @@ class _ScenarioActionsState extends ConsumerState<_ScenarioActions> {
     try {
       await downloadScenario(ref, widget.scenarioId);
       if (!mounted) return;
-      showQBToast(context, 'Aventure téléchargée', tone: QBTone.success);
+      showQBToast(context, 'Scénario téléchargé', tone: QBTone.success);
     } on ApiException catch (error) {
       if (!mounted) return;
       showQBToast(context, error.message, tone: QBTone.danger);

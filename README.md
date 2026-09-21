@@ -1351,6 +1351,17 @@ nouveaux testeurs sont enregistrés chez Apple.
 Les App ID Firebase et le Project ID ne sont *pas* secrets — ils sont en dur
 dans le workflow (`env:` en tête de fichier).
 
+**L'`https` du VPS ne tient qu'à la ligne `QUESTBOOK_API_URL` de ce même
+`env:`, et un test l'épingle** (`test/config/distributed_builds_speak_https_test.dart`).
+Rien d'autre ne l'impose : le défaut du code est `http://10.0.2.2:3000`,
+l'adresse de l'émulateur, et le système ne rattraperait pas l'erreur — les
+sockets de `dart:io` ne consultent ni `usesCleartextTraffic` sous Android, ni
+ATS sous iOS, ce qui est justement ce qui permet au mode dev d'atteindre
+l'hôte en clair sans rien déclarer. Une ligne effacée par mégarde partirait
+donc aux testeurs en échouant à chaque appel, sans que rien ne le signale. Le
+test lit les deux workflows et vérifie au passage que le plateau en direct
+suit le schéma : `https` donne `wss`, une API de développement reste en clair.
+
 > ⚠️ `firebase login:ci` / l'option `--token` de `firebase-tools` sont
 > marquées comme dépréciées par Google au profit de l'authentification par
 > compte de service. Elles fonctionnent encore avec `firebase-tools` 15.x

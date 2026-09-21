@@ -697,9 +697,10 @@ Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
 enregistrés avant la boutique, et c'est très bien : le socle se décrit
 entièrement par sa forme et sa couleur). **Un pion dont le lecteur ne possède
 pas l'asset se rend en rond rouge** plutôt que de disparaître : perdre une
-position en silence serait pire que l'afficher au mauvais visage. Ce repli est
-aujourd'hui inatteignable — le plateau ne quitte pas l'appareil, donc personne
-d'autre ne le lit — et il est là pour le jour où les plateaux se partageront.
+position en silence serait pire que l'afficher au mauvais visage. Ce repli n'est
+plus théorique depuis que le plateau remonte au serveur : un joueur qui regarde
+la séance lit les pions du MJ, et n'a aucune raison de posséder les assets que
+celui-ci a achetés.
 
 Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
 et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
@@ -713,13 +714,39 @@ et il part sur le disque à la fin du geste. Les notes, elles, s'enregistrent
 500 ms après la dernière frappe — une transaction SQLite par caractère serait
 absurde.
 
-Deux limites assumées pour l'instant : les fiches des joueurs viennent de l'API
+Une limite assumée pour l'instant : les fiches des joueurs viennent de l'API
 une par une (`GET /sessions/:id/attendances/:userId/character` est le seul
 appel qui les autorise) — le volet Personnages en montre le résumé et ouvre
 la fiche entière, la même qu'à la table, en lecture seule — et ne sont donc
-**pas lisibles hors ligne**, et le
-plateau ne quitte pas l'appareil — un MJ qui change d'appareil repart d'une
-carte vierge.
+**pas lisibles hors ligne**.
+
+##### Le plateau remonte au serveur
+
+Il ne quittait pas l'appareil. Il remonte depuis que les joueurs doivent le
+regarder bouger, par `PUT /sessions/:id/board` après chaque geste terminé —
+poser, déplacer, redimensionner, retirer, changer de carte.
+
+**Le local reste la vérité, et l'ordre des deux écritures le dit** : le DAO
+d'abord, la poussée ensuite, jamais l'inverse. Une soirée dans une cave sans
+couverture continue de marcher, et le MJ n'attend jamais un aller-retour pour
+voir son pion se poser — la poussée n'est pas attendue.
+
+Une poussée refusée n'est pas une panne : le plateau est intact sur l'appareil,
+ce sont les joueurs qui regardent une copie périmée. L'écran retient qu'il reste
+quelque chose à pousser et **réessaie au retour de la connexion**
+(`connectivityProvider`). Sans cela, un MJ ayant déplacé ses pions hors
+couverture les verrait figés chez ses joueurs jusqu'à son geste suivant, qui
+peut ne jamais venir si la partie se termine sur ce plateau.
+
+Un geste terminé vaut une poussée, pas une par image : `BoardPanel` ne remonte
+qu'à la fin d'un glissement, et c'est la même frontière qui évitait déjà
+soixante écritures SQLite par seconde. Les **notes** ne remontent pas du tout —
+ce que le MJ y écrit ne regarde que lui.
+
+Corollaire assumé : un MJ qui change de tablette en pleine partie repart d'une
+carte vierge, puisque c'est l'appareil qui sait. Le serveur détient bien la
+dernière poussée, mais la relire écraserait le cas inverse — la tablette qui a
+joué hors ligne — et il faudrait alors arbitrer entre les deux.
 
 #### Les personnages non-joueurs
 

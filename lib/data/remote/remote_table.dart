@@ -256,6 +256,42 @@ class RemoteNpc {
   final String description;
 }
 
+/// Le plateau d'une session tel que le serveur le détient : la carte et les
+/// pions, comme le MJ les a poussés la dernière fois.
+///
+/// L'exact inverse du PNJ ci-dessus quant aux droits : tout membre de la table
+/// le lit, seul le MJ l'écrit. Un plateau est fait pour être vu.
+///
+/// [tokens] reste la chaîne JSON opaque que l'app garde déjà en local, si bien
+/// qu'ajouter un champ à un pion ne demande rien au serveur. [revision] monte
+/// de un à chaque poussée et sert à écarter un message arrivé en retard.
+class RemoteSessionBoard {
+  const RemoteSessionBoard({
+    required this.tokens,
+    required this.mapId,
+    required this.revision,
+  });
+
+  factory RemoteSessionBoard.fromJson(Map<String, dynamic> json) =>
+      RemoteSessionBoard(
+        tokens: json['tokens'] as String? ?? '[]',
+        mapId: json['mapId'] as String?,
+        revision: json['revision'] as int? ?? 0,
+      );
+
+  /// Ce que répond le serveur quand rien n'a encore été posé, et ce qu'on
+  /// affiche tant qu'on n'a pas pu le lui demander.
+  static const empty = RemoteSessionBoard(
+    tokens: '[]',
+    mapId: null,
+    revision: 0,
+  );
+
+  final String tokens;
+  final String? mapId;
+  final int revision;
+}
+
 class RemoteGameSession {
   /// Non `const` : les deux bornes se calculent à partir de [startsAt] quand
   /// le serveur ne les a pas envoyées.

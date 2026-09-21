@@ -199,9 +199,41 @@ class SessionApi {
     );
   }
 
+  // --- Le plateau ---
+  //
+  // L'inverse des PNJ juste au-dessus : tout membre lit, seul le MJ écrit. Un
+  // plateau est fait pour être vu.
+
+  Future<RemoteSessionBoard> board(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/board'),
+      parse: _parseBoard,
+    );
+  }
+
+  /// Remonte le plateau entier, et non ce qui vient de changer : l'appareil du
+  /// MJ détient la vérité complète, et envoyer une différence laisserait les
+  /// deux s'écarter au premier message perdu.
+  Future<RemoteSessionBoard> pushBoard(
+    String sessionId, {
+    required String tokens,
+    String? mapId,
+  }) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$sessionId/board',
+        data: {'tokens': tokens, 'mapId': mapId},
+      ),
+      parse: _parseBoard,
+    );
+  }
+
   RemoteGameSession _parseSession(Object? data) =>
       RemoteGameSession.fromJson((data as Map).cast<String, dynamic>());
 
   RemoteNpc _parseNpc(Object? data) =>
       RemoteNpc.fromJson((data as Map).cast<String, dynamic>());
+
+  RemoteSessionBoard _parseBoard(Object? data) =>
+      RemoteSessionBoard.fromJson((data as Map).cast<String, dynamic>());
 }

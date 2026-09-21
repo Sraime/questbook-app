@@ -81,6 +81,11 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
   bool _loaded = false;
   Timer? _notesTimer;
 
+  /// Une poussée que le serveur a refusée, faute de réseau le plus souvent.
+  /// Le plateau est intact sur l'appareil ; ce sont les joueurs qui regardent
+  /// une copie périmée, et c'est ce qu'on répare au retour de la connexion.
+  bool _pendingPush = false;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +100,14 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
       },
       fireImmediately: true,
     );
+
+    // Le réseau qui revient doit rattraper ce qui s'est joué sans lui. Sans
+    // cela, un MJ ayant déplacé ses pions hors couverture les verrait figés
+    // chez ses joueurs jusqu'à son geste suivant — qui peut ne jamais venir
+    // si la partie se termine sur ce plateau.
+    ref.listenManual(connectivityProvider, (was, isNow) {
+      if (isNow && was == false && _pendingPush) _push();
+    });
   }
 
   @override
@@ -131,6 +144,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
             BoardToken.encode(tokens),
           ),
     );
+    _push();
   }
 
   void _persistMap(String mapId) {
@@ -142,6 +156,24 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
       ref
           .read(sessionBoardDaoProvider)
           .saveMap(accountId, widget.sessionId, mapId),
+    );
+    _push();
+  }
+
+  /// Montre le plateau aux joueurs qui le regardent, après l'avoir écrit sur
+  /// l'appareil et jamais avant : le local est la vérité, le serveur la copie.
+  ///
+  /// Sans attendre la réponse. Le MJ vient de déposer un pion et n'a pas à
+  /// patienter le temps d'un aller-retour ; en cas d'échec on retient
+  /// seulement qu'il reste quelque chose à pousser.
+  void _push() {
+    unawaited(
+      pushSessionBoard(
+        ref,
+        sessionId: widget.sessionId,
+        tokens: BoardToken.encode(_tokens),
+        mapId: _mapId,
+      ).then((pushed) => _pendingPush = !pushed),
     );
   }
 

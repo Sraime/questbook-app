@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/remote_providers.dart';
 import '../../../data/remote/api_exception.dart';
+import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_button.dart';
 import '../../../design_system/components/qb_dialog.dart';
 import '../../../design_system/tokens/colors.dart';
@@ -11,21 +12,31 @@ import '../../../design_system/tokens/typography.dart';
 import '../../home/providers/character_list_provider.dart';
 import '../providers/table_providers.dart';
 
-/// Lets a player say who they are playing for one session, change their mind,
-/// or take the character back off.
+/// Le choix de l'investigateur avec lequel on vient à une séance.
+///
+/// Deux moments pour un même geste, distingués par [confirming] :
+///
+/// - **En confirmant sa venue.** Répondre « Je viens » ouvre ce choix, et
+///   c'est le choix qui répond. Rien n'est envoyé tant qu'un investigateur
+///   n'est pas désigné : une chaise sans fiche ne sert ni le MJ, qui ne sait
+///   pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la
+///   séance. Fermer la fenêtre revient à ne pas avoir répondu.
+/// - **En cours de route**, pour en changer. La réponse, elle, ne bouge pas.
 Future<void> showSessionCharacterDialog(
   BuildContext context, {
   required String tableId,
   required String sessionId,
   required String? currentCharacterId,
+  bool confirming = false,
 }) {
   return showQBDialog(
     context: context,
-    title: 'Ton investigateur',
+    title: confirming ? 'Avec qui viens-tu ?' : 'Ton investigateur',
     builder: (_) => _CharacterPicker(
       tableId: tableId,
       sessionId: sessionId,
       currentCharacterId: currentCharacterId,
+      confirming: confirming,
     ),
   );
 }
@@ -35,11 +46,13 @@ class _CharacterPicker extends ConsumerStatefulWidget {
     required this.tableId,
     required this.sessionId,
     required this.currentCharacterId,
+    required this.confirming,
   });
 
   final String tableId;
   final String sessionId;
   final String? currentCharacterId;
+  final bool confirming;
 
   @override
   ConsumerState<_CharacterPicker> createState() => _CharacterPickerState();
@@ -49,18 +62,26 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _choose(String? characterId) async {
+  Future<void> _choose(String characterId) async {
     setState(() {
       _busy = true;
       _error = null;
     });
 
     final navigator = Navigator.of(context);
+    final api = ref.read(sessionApiProvider);
 
     try {
-      await ref
-          .read(sessionApiProvider)
-          .setAttendanceCharacter(widget.sessionId, characterId);
+      // Un seul appel quand on confirme : venir et dire avec qui sont une même
+      // décision, et deux requêtes laisseraient une réponse sans fiche si la
+      // seconde échouait.
+      await (widget.confirming
+          ? api.setAttendance(
+              widget.sessionId,
+              AttendanceStatus.yes,
+              characterId: characterId,
+            )
+          : api.setAttendanceCharacter(widget.sessionId, characterId));
       refreshTables(ref, tableId: widget.tableId);
       await navigator.maybePop();
     } on ApiException catch (error) {
@@ -86,8 +107,10 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Le maître du jeu saura avec qui tu viens. Tu peux en changer '
-          'jusqu’à la session.',
+          widget.confirming
+              ? 'Choisis-en un et ta place est prise. Tu pourras en changer '
+                  'jusqu’à la fin de la séance.'
+              : 'Le maître du jeu saura avec qui tu viens.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,
             color: QBColors.textMuted,
@@ -133,16 +156,6 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
               fontSize: QBType.xs,
               color: QBColors.semanticDanger,
             ),
-          ),
-        ],
-        if (widget.currentCharacterId != null) ...[
-          const SizedBox(height: QBSpace.s4),
-          QBButton(
-            label: 'Venir sans investigateur',
-            variant: QBButtonVariant.ghost,
-            size: QBButtonSize.sm,
-            expand: true,
-            onPressed: _busy ? null : () => _choose(null),
           ),
         ],
       ],

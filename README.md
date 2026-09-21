@@ -53,12 +53,13 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : aventures possédées, listées par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
-- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène au mode MJ — **Préparer** avant l'heure, **Animer** une fois la séance commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Pour un joueur, la carte reste informative : ses boutons à lui sont « Je viens » et « Je passe », jusqu'à ce que les inscriptions ferment — ils cèdent alors la place à un rappel de ce qu'il avait répondu, plutôt que de disparaître sans un mot. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
+- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
-- **Participer avec un investigateur** : après avoir confirmé, un joueur dit avec qui il vient — ou le renseigne plus tard, les deux gestes étant séparés. Les autres membres peuvent alors consulter sa fiche en lecture seule, depuis la liste des présents.
+- **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
+- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Mode MJ (`/tables/:id/sessions/:sessionId/mj`)** : l'écran depuis lequel le maître du jeu anime sa séance, ouvert par le bouton « Préparer » ou « Animer » de la carte d'une session. Six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Aventures**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
@@ -598,6 +599,57 @@ illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
 les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
 de la table et le bouton de sortie. Un volet de plus rogne cette place :
 ajouter un septième demanderait autre chose qu'une rangée fixe.
+
+#### Le même écran, vu d'une chaise de joueur
+
+Un joueur qui participe ouvre **la même route**, et c'est `SessionSeat`
+(`game_master/models/session_seat.dart`) qui décide de ce qu'il y trouve.
+
+**Le rôle se lit sur la table, pas sur la route.** Une restriction posée sur
+le chemin se contourne en tapant l'autre adresse ; un rôle déduit de
+l'appartenance à la table ne se contourne pas. Tant que la table n'a pas
+répondu, on est joueur — ouvrir les volets du MJ pour les refermer ensuite
+montrerait une seconde ce qui ne le regarde pas.
+
+| | MJ | Joueur |
+| --- | --- | --- |
+| Volets | Les six | **Plateau** et **Investigateurs** |
+| Volet d'accueil | Détails | Plateau |
+| Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
+| Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules |
+
+Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
+dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
+pas, ni **Notes**, qui sont les siennes. Les **Règles** restent à `/regles`
+pour tout le monde. Les PNJ portent eux-mêmes la phrase « tes joueurs ne les
+voient pas » : le volet s'arrête donc aux investigateurs, et le filet qui les
+sépare avec.
+
+Deux volets au lieu de six changent la barre d'onglets : ils ont la place
+d'être **nommés au repos**, là où six imposaient l'icône seule. Un joueur qui
+n'a pas l'habitude de l'écran en a besoin.
+
+Le plateau du joueur est **en lecture, pas désactivé** : aucun tiroir, aucune
+cible de dépôt, aucune poignée, aucun geste câblé. Il n'y a rien à griser, et
+rien qu'un joueur puisse envoyer — le serveur réserve l'écriture au MJ de
+toute façon. Le fond de carte est le même des deux côtés (`BoardSurface`), et
+un pion acheté par le MJ se dessine chez un joueur qui ne le possède pas :
+c'est l'achat qui décide de ce qu'on pose, pas de ce qu'on voit.
+
+Il se branche sur `liveSessionBoardProvider`, qui enchaîne deux sources : un
+`GET /sessions/:id/board` pour avoir un plateau tout de suite — et surtout
+pour rafraîchir le jeton, la poignée de main d'un socket n'ayant pas
+d'intercepteur pour le faire à sa place — puis le canal `wss` qui renvoie le
+plateau entier à chaque poussée. Le provider est `autoDispose` : le socket se
+ferme en quittant le volet.
+
+**Une coupure ne vide pas la table.** La dernière valeur reste à l'écran et un
+bandeau dit qu'elle ne bouge plus ; elle y reste tant que le MJ n'a rien
+repoussé, même une fois le canal rebranché. À noter pour les tests : Riverpod
+présente cet état tantôt en `AsyncError`, tantôt en `AsyncLoading` selon qu'il
+retente déjà, et les deux portent la valeur précédente — le volet lit donc
+« ai-je un plateau ? » et « est-ce qu'il bouge encore ? » plutôt que de filtrer
+les cas d'`AsyncValue`.
 
 ### Les deux bornes d'une séance
 

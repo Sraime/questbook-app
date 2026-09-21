@@ -15,24 +15,30 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../../tables/providers/table_providers.dart';
 import '../../tables/widgets/attendee_character_sheet.dart';
+import '../models/session_seat.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/npc_dialog.dart';
 
-/// Qui sera là ce soir : les fiches des joueurs attendus, puis tout le reste
-/// de la distribution — créatures, indicateurs, esprits.
+/// Qui sera là ce soir : les fiches des joueurs attendus, puis — pour le MJ
+/// seul — tout le reste de la distribution : créatures, indicateurs, esprits.
 ///
-/// Les fiches des joueurs viennent de l'API une par une : c'est la présence du
-/// joueur à la session qui autorise le MJ à les lire, et il n'existe pas
-/// d'appel qui les rendrait toutes d'un coup. Sans réseau, la liste reste donc
-/// vide.
+/// Les fiches des joueurs viennent de l'API une par une : c'est la présence à
+/// la session qui autorise à les lire, et il n'existe pas d'appel qui les
+/// rendrait toutes d'un coup. Sans réseau, la liste reste donc vide.
 class CharactersPanel extends ConsumerWidget {
   const CharactersPanel({
     super.key,
     required this.session,
+    this.seat = SessionSeat.gameMaster,
     this.compact = false,
   });
 
   final RemoteGameSession session;
+
+  /// Le volet sert aux deux rôles, mais pas au même titre : le joueur y
+  /// retrouve ses camarades de table, le MJ y ajoute en plus ce qu'ils vont
+  /// rencontrer.
+  final SessionSeat seat;
 
   /// Sur un écran étroit, le bouton d'ajout ne tient pas à côté du titre de sa
   /// section : il passe dessous.
@@ -85,12 +91,17 @@ class CharactersPanel extends ConsumerWidget {
             const SizedBox(height: QBSpace.s3),
             _AttendeeCard(sessionId: session.id, attendance: attendance),
           ],
-        // Les investigateurs et les PNJ se suivent : sans filet, la seconde
-        // liste se lit comme la suite de la première.
-        const SizedBox(height: QBSpace.s5),
-        Container(height: 1, color: QBColors.borderHairline),
-        const SizedBox(height: QBSpace.s5),
-        _NpcSection(sessionId: session.id, compact: compact),
+        // Les PNJ sont la préparation du MJ — « tes joueurs ne les voient
+        // pas » est écrit dans la section elle-même. Un joueur s'arrête donc
+        // aux investigateurs, et le filet qui les sépare avec.
+        if (seat.isGameMaster) ...[
+          // Les investigateurs et les PNJ se suivent : sans filet, la seconde
+          // liste se lit comme la suite de la première.
+          const SizedBox(height: QBSpace.s5),
+          Container(height: 1, color: QBColors.borderHairline),
+          const SizedBox(height: QBSpace.s5),
+          _NpcSection(sessionId: session.id, compact: compact),
+        ],
       ],
     );
   }

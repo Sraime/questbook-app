@@ -188,7 +188,19 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     }
   }
 
-  void _openGameMasterMode() {
+  /// Venir, c'est venir avec quelqu'un : la réponse et l'investigateur se
+  /// donnent d'un seul geste, dans la fenêtre. Un « oui » sans fiche laissait
+  /// le MJ sans savoir qui il avait en face, et le joueur avec une séance à
+  /// laquelle il ne pouvait pas participer.
+  void _confirmComing() => showSessionCharacterDialog(
+        context,
+        tableId: widget.table.id,
+        sessionId: widget.session.id,
+        currentCharacterId: widget.session.myCharacter?.id,
+        confirming: true,
+      );
+
+  void _openSession() {
     context.go(
       '/tables/${widget.table.id}/sessions/${widget.session.id}/mj',
     );
@@ -209,6 +221,14 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     // pleine partie sans emporter l'outil avec lui, d'où le `canWrite` absent
     // ici.
     final runnable = widget.table.isGameMaster && !session.isCancelled;
+
+    // Le joueur, lui, n'entre qu'une fois la partie commencée, et seulement
+    // s'il en est : il vient voir le plateau bouger, ce qui n'a rien à montrer
+    // avant le premier pion posé.
+    final joinable = !widget.table.isGameMaster &&
+        session.isUnderway &&
+        session.myStatus == AttendanceStatus.yes &&
+        session.myCharacter != null;
 
     // The game master runs the evening rather than attending it, so they are
     // neither expected to answer nor counted among those who have not.
@@ -267,11 +287,30 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
               variant: session.isUnderway
                   ? QBButtonVariant.primary
                   : QBButtonVariant.secondary,
-              onPressed: _openGameMasterMode,
+              onPressed: _openSession,
             ),
+          ] else if (joinable) ...[
+            const SizedBox(height: QBSpace.s3),
+            QBButton(
+              label: 'Participer',
+              size: QBButtonSize.sm,
+              expand: true,
+              onPressed: _openSession,
+            ),
+            const SizedBox(height: QBSpace.s2),
+            _MyCharacterRow(session: session, tableId: widget.table.id),
           ] else if (!widget.table.isGameMaster && !session.acceptsAnswers) ...[
             const SizedBox(height: QBSpace.s3),
             _ClosedAnswers(session: session),
+            // Changer d'investigateur reste possible pendant la partie, là où
+            // répondre ne l'est plus : le MJ a compté ses joueurs, mais qui
+            // joue quoi bouge encore une fois la table assise.
+            if (session.myStatus == AttendanceStatus.yes &&
+                !session.isPast &&
+                canWrite) ...[
+              const SizedBox(height: QBSpace.s2),
+              _MyCharacterRow(session: session, tableId: widget.table.id),
+            ],
           ] else if (!widget.table.isGameMaster && canWrite) ...[
             const SizedBox(height: QBSpace.s3),
             Row(
@@ -284,8 +323,7 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                     variant: session.myStatus == AttendanceStatus.yes
                         ? QBButtonVariant.primary
                         : QBButtonVariant.secondary,
-                    onPressed:
-                        _busy ? null : () => _answer(AttendanceStatus.yes),
+                    onPressed: _busy ? null : _confirmComing,
                   ),
                 ),
                 const SizedBox(width: QBSpace.s2),
@@ -303,8 +341,6 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
                 ),
               ],
             ),
-            // Answering and saying who you are playing are two moments: the
-            // player confirms first, and names a character whenever they know.
             if (session.myStatus == AttendanceStatus.yes) ...[
               const SizedBox(height: QBSpace.s2),
               _MyCharacterRow(session: session, tableId: widget.table.id),
@@ -367,7 +403,7 @@ class _MyCharacterRow extends StatelessWidget {
           Expanded(
             child: Text(
               character == null
-                              ? 'Choisir ton investigateur'
+                  ? 'Choisir ton investigateur'
                   : 'Tu joues ${character.name}',
               style: QBType.body().copyWith(
                 fontSize: QBType.xs,

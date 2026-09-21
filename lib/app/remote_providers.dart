@@ -129,7 +129,7 @@ class AuthController extends AsyncNotifier<AuthUser?> {
 
   /// Supprime le compte, puis n'en laisse rien sur l'appareil.
   ///
-  /// La déconnexion épargne les personnages, parce qu'ils remonteront à la
+  /// La déconnexion épargne les investigateurs, parce qu'ils remonteront à la
   /// prochaine connexion. Ici il n'y a plus rien où les remonter : les garder
   /// serait conserver ce qu'on a demandé d'effacer.
   Future<void> deleteAccount() async {

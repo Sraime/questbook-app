@@ -28,7 +28,7 @@ class HomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
           children: [
             Text(
-              'Mes personnages',
+              'Mes investigateurs',
               style: QBType.game().copyWith(
                 fontWeight: QBType.weightBold,
                 fontSize: 22,
@@ -37,7 +37,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Reprends ton aventure ou commence une nouvelle légende.',
+              'Les personnages que tu joues dans tes aventures.',
               style: QBType.body().copyWith(
                 fontSize: QBType.sm,
                 color: QBColors.textMuted,
@@ -74,16 +74,44 @@ class _CharacterList extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Pour beaucoup, c'est le premier écran de leur première partie : il
+        // dit ce qu'est un investigateur plutôt que de constater qu'il n'y en
+        // a pas. Le mot vient de l'univers, et personne ne le devine.
         if (characters.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Aucun personnage pour l’instant. Et si tu commençais '
-              'une nouvelle légende ?',
-              style: QBType.body().copyWith(
-                fontSize: QBType.base,
-                color: QBColors.textMuted,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tu n’as pas encore d’investigateur.',
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.base,
+                    fontWeight: QBType.weightSemibold,
+                    color: QBColors.textBody,
+                  ),
+                ),
+                const SizedBox(height: QBSpace.s2),
+                Text(
+                  'C’est le personnage que tu incarnes à la table : un nom, '
+                  'un métier, ce qu’il sait faire — et une santé mentale qui '
+                  's’effrite à mesure qu’il comprend ce qu’il n’aurait pas dû '
+                  'voir. Le maître du jeu raconte l’histoire, ton '
+                  'investigateur y enquête.',
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.sm,
+                    color: QBColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: QBSpace.s2),
+                Text(
+                  'Crées-en un pour rejoindre une partie.',
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.sm,
+                    color: QBColors.textMuted,
+                  ),
+                ),
+              ],
             ),
           )
         else
@@ -143,7 +171,7 @@ class _CharacterList extends ConsumerWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                '+ Nouvelle légende',
+                '+ Nouvel investigateur',
                 style: QBType.game().copyWith(
                   fontWeight: QBType.weightSemibold,
                   fontSize: 15,

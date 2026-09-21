@@ -26,7 +26,7 @@ void main() {
   test('the tab bar holds the places one works in', () {
     expect(
       qbNavTabs.map((tab) => tab.label),
-      ['Perso', 'Tables', 'Boutique'],
+      ['Investigateurs', 'Tables', 'Boutique'],
     );
   });
 

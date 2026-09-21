@@ -144,7 +144,7 @@ class _DeleteAccountCard extends StatelessWidget {
           ),
           const SizedBox(height: QBSpace.s2),
           Text(
-            'Supprimer ton compte efface tes personnages, tes scénarios et '
+            'Supprimer ton compte efface tes investigateurs, tes scénarios et '
             'tes achats, ici comme sur le serveur.',
             style: QBType.body().copyWith(
               fontSize: QBType.xs,
@@ -211,7 +211,7 @@ class _SyncCard extends ConsumerWidget {
           ),
           const SizedBox(height: QBSpace.s2),
           Text(
-            'Tes personnages remontent tout seuls à la connexion et à chaque '
+            'Tes investigateurs remontent tout seuls à la connexion et à chaque '
             'retour dans l’application.',
             style: QBType.body().copyWith(
               fontSize: QBType.xs,

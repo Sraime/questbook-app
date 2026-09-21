@@ -234,7 +234,7 @@ class _Unavailable extends StatelessWidget {
         child: Text(
           api != null && api.isMissing
               ? 'Cette fiche n’est plus consultable. Le joueur a peut-être '
-                  'changé de personnage.'
+                  'changé d’investigateur.'
               : api?.message ?? 'Impossible de charger la fiche.',
           textAlign: TextAlign.center,
           style: QBType.body().copyWith(

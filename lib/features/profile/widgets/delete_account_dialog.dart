@@ -69,7 +69,7 @@ class _DeleteAccountFormState extends ConsumerState<_DeleteAccountForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Tes personnages, tes scénarios et tes achats seront effacés. '
+          'Tes investigateurs, tes scénarios et tes achats seront effacés. '
           'C’est définitif : rien ne se restaure ensuite.',
           style: QBType.body().copyWith(
             fontSize: QBType.sm,

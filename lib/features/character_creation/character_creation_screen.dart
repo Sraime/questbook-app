@@ -19,7 +19,7 @@ import 'providers/character_creation_provider.dart';
 import 'widgets/characteristic_choice_dialog.dart';
 import 'widgets/characteristic_roll_dialog.dart';
 
-/// Screen 1b — Créer un personnage.
+/// Screen 1b — Créer un investigateur.
 class CharacterCreationScreen extends ConsumerStatefulWidget {
   const CharacterCreationScreen({super.key});
 
@@ -133,7 +133,7 @@ class _CharacterCreationScreenState
           padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
           children: [
             Text(
-              'Crée ton personnage',
+              'Crée ton investigateur',
               style: QBType.game().copyWith(
                 fontWeight: QBType.weightBold,
                 fontSize: 22,
@@ -158,7 +158,7 @@ class _CharacterCreationScreenState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   QBInput(
-                    label: 'Nom du personnage',
+                    label: 'Nom de l’investigateur',
                     controller: _nameController,
                     hint: 'Laisse vide pour un nom généré',
                     onChanged:
@@ -166,7 +166,7 @@ class _CharacterCreationScreenState
                   ),
                   const SizedBox(height: QBSpace.s4),
                   QBInput(
-                    label: 'Décris ton personnage',
+                    label: 'Décris ton investigateur',
                     controller: _descriptionController,
                     placeholder:
                         'Une occultiste solitaire, ancienne bibliothécaire '
@@ -324,7 +324,7 @@ class _CharacterCreationScreenState
             _SkillsCard(sheet: sheet),
             const SizedBox(height: QBSpace.s4),
             QBButton(
-              label: 'Créer mon personnage',
+              label: 'Créer mon investigateur',
               variant: QBButtonVariant.primary,
               expand: true,
               onPressed: state.isSubmitting ? null : _submit,

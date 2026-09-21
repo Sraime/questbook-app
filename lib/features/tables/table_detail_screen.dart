@@ -367,7 +367,7 @@ class _MyCharacterRow extends StatelessWidget {
           Expanded(
             child: Text(
               character == null
-                  ? 'Choisir ton personnage'
+                              ? 'Choisir ton investigateur'
                   : 'Tu joues ${character.name}',
               style: QBType.body().copyWith(
                 fontSize: QBType.xs,

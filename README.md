@@ -1314,6 +1314,20 @@ Il enchaîne quatre jobs : vérification du numéro de version → build Android
 binaires vers le groupe `testeurs` puis pose du tag. L'APK n'est envoyé
 qu'une fois l'IPA signé, pour qu'un échec iOS ne brûle pas le numéro.
 
+**Le corps de la PR mergée devient la note de version**, précédé de son
+titre. C'est le seul texte qu'un testeur lise, et c'est sur lui qu'il décide
+quoi aller essayer : une ligne suffisait quand une PR vers `main` portait une
+carte, plus du tout quand elle en porte vingt. Le corps est déjà l'endroit où
+l'on écrit ce qui change ; le redire ailleurs condamnerait les deux copies à
+diverger. Un corps vide retombe sur le titre seul, et une exécution manuelle
+depuis l'onglet Actions garde la main avec son champ `release_notes`.
+
+Firebase affiche du texte brut : les `###` et les `**` du markdown se lisent
+tels quels. Ce sont des repères, pas du bruit, et les convertir demanderait un
+rendu maison pour rien. La note est en revanche tronquée à 16 000 caractères
+avant l'envoi — Firebase la plafonne, et un corps démesuré ferait échouer la
+distribution après quarante minutes de build, pour un texte.
+
 Il a besoin de **10 secrets** définis dans
 `Settings → Secrets and variables → Actions` du repo GitHub :
 

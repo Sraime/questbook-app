@@ -1,3 +1,5 @@
+import 'dart:async';
+
 // `isNull`/`isNotNull` exist in both drift (SQL predicates) and matcher.
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
@@ -26,6 +28,10 @@ class FakeCharacterApi implements CharacterApi {
   /// Hook to simulate the user editing a character while the pass is running.
   Future<void> Function()? beforeList;
 
+  /// Same, for a single upload: the player keeps tapping while the answer to
+  /// the previous tap is in the air.
+  Future<void> Function(RemoteCharacter)? beforePush;
+
   DateTime? lastSince;
 
   @override
@@ -41,6 +47,8 @@ class FakeCharacterApi implements CharacterApi {
 
   @override
   Future<RemoteCharacter> push(RemoteCharacter character) async {
+    await beforePush?.call(character);
+
     final failure = failures[character.id];
     if (failure != null) throw failure;
 
@@ -116,6 +124,7 @@ void main() {
     String name = 'Ernest',
     bool needsSync = true,
     DateTime? deletedAt,
+    int revision = 0,
   }) async {
     await db.into(db.characters).insert(
           CharacterRow(
@@ -127,6 +136,7 @@ void main() {
             updatedAt: updatedAt,
             needsSync: needsSync,
             deletedAt: deletedAt,
+            revision: revision,
           ),
         );
   }
@@ -134,6 +144,22 @@ void main() {
   Future<CharacterRow?> localRow(String id) =>
       (db.select(db.characters)..where((c) => c.id.equals(id)))
           .getSingleOrNull();
+
+  /// What the repository does on any local write, revision bump included —
+  /// without it a test would model an edit the sync engine cannot see.
+  Future<void> editLocally(
+    String id, {
+    required String name,
+    required DateTime updatedAt,
+  }) async {
+    await (db.update(db.characters)..where((c) => c.id.equals(id)))
+        .write(CharactersCompanion.custom(
+      name: Variable(name),
+      updatedAt: Variable(updatedAt),
+      needsSync: const Constant(true),
+      revision: db.characters.revision + const Constant(1),
+    ));
+  }
 
   group('push', () {
     test('uploads dirty characters and clears their flag', () async {
@@ -213,6 +239,168 @@ void main() {
         isTrue,
         reason: 'the character must be retried on the next pass',
       );
+    });
+  });
+
+  /// Une fiche part au serveur dans la foulée du geste qui l'a changée, sans
+  /// attendre la passe complète : à une table de jeu, le MJ lit les fiches
+  /// depuis le serveur, et personne ne quitte l'app pour déclencher une passe.
+  group('push immédiat', () {
+    test('envoie la fiche touchée, et elle seule', () async {
+      await insertLocal(id: 'a', updatedAt: DateTime.utc(2025, 6));
+      await insertLocal(id: 'b', updatedAt: DateTime.utc(2025, 6));
+
+      await service.pushCharacter('a');
+
+      expect(api.pushed.map((c) => c.id), ['a']);
+      expect((await localRow('a'))!.needsSync, isFalse);
+      expect(
+        (await localRow('b'))!.needsSync,
+        isTrue,
+        reason: 'la passe complète s’occupera des autres',
+      );
+    });
+
+    test('ne rappelle pas le serveur pour une fiche déjà à jour', () async {
+      await insertLocal(
+        id: 'a',
+        updatedAt: DateTime.utc(2025, 6),
+        needsSync: false,
+      );
+
+      await service.pushCharacter('a');
+
+      expect(api.pushed, isEmpty);
+    });
+
+    test('ne va pas chercher ce que le serveur a de neuf', () async {
+      await insertLocal(id: 'a', updatedAt: DateTime.utc(2025, 6));
+      api.pages.add(RemoteSyncPage(
+        characters: [remoteCharacter(id: 'b', updatedAt: DateTime.utc(2025, 8))],
+        syncedAt: DateTime.utc(2025, 9),
+      ));
+
+      await service.pushCharacter('a');
+
+      expect(
+        await localRow('b'),
+        isNull,
+        reason: 'une pression sur une jauge ne rapatrie pas tout le compte',
+      );
+      expect(api.pages, hasLength(1), reason: 'la page n’a pas été consommée');
+    });
+
+    test('laisse la fiche marquée quand le serveur ne répond pas', () async {
+      await insertLocal(id: 'a', updatedAt: DateTime.utc(2025, 6));
+      api.failures['a'] = const ApiException(
+        code: 'NETWORK_ERROR',
+        message: 'Impossible de joindre le serveur Questbook.',
+      );
+
+      await expectLater(
+        service.pushCharacter('a'),
+        throwsA(isA<ApiException>()),
+      );
+
+      expect(
+        (await localRow('a'))!.needsSync,
+        isTrue,
+        reason: 'la prochaine passe complète la reprendra',
+      );
+    });
+
+    test('deux pressions coup sur coup arrivent dans l’ordre', () async {
+      await insertLocal(id: 'a', name: 'Un', updatedAt: DateTime.utc(2025, 6));
+
+      // Le premier envoi est retenu en vol pendant que le second est
+      // demandé : sans file par fiche, les deux partiraient de front, et le
+      // plus ancien reviendrait en conflit avec la version du serveur.
+      final inFlight = Completer<void>();
+      final release = Completer<void>();
+      api.beforePush = (character) async {
+        api.beforePush = null;
+        inFlight.complete();
+        await release.future;
+      };
+
+      final first = service.pushCharacter('a');
+      await inFlight.future;
+
+      await editLocally('a', name: 'Deux', updatedAt: DateTime.utc(2025, 7));
+      final second = service.pushCharacter('a');
+
+      release.complete();
+      await Future.wait([first, second]);
+
+      expect(api.pushed.map((c) => c.name), ['Un', 'Deux']);
+      expect(
+        (await localRow('a'))!.needsSync,
+        isFalse,
+        reason: 'le serveur a fini par recevoir le dernier état',
+      );
+    });
+
+    test('deux pressions dans la même seconde comptent pour deux', () async {
+      // Le piège que ce test épingle : Drift range une date à la seconde, si
+      // bien que deux pressions coup sur coup portent le même `updatedAt`.
+      // Tant que le drapeau était levé sur cette base, la seconde pression
+      // était réputée envoyée et restait sur le téléphone — le MJ lisait des
+      // points de vie faux sans que rien ne le signale.
+      final meme = DateTime.utc(2025, 6, 1, 20, 30, 15);
+      await insertLocal(id: 'a', name: 'Un', updatedAt: meme);
+
+      final inFlight = Completer<void>();
+      final release = Completer<void>();
+      api.beforePush = (character) async {
+        api.beforePush = null;
+        inFlight.complete();
+        await release.future;
+      };
+
+      final first = service.pushCharacter('a');
+      await inFlight.future;
+
+      await editLocally('a', name: 'Deux', updatedAt: meme);
+      final second = service.pushCharacter('a');
+
+      release.complete();
+      await Future.wait([first, second]);
+
+      expect(api.pushed.map((c) => c.name), ['Un', 'Deux']);
+    });
+
+    test('n’écrase pas une modification faite pendant l’envoi', () async {
+      await insertLocal(
+        id: 'a',
+        name: 'Version locale',
+        updatedAt: DateTime.utc(2025, 6),
+      );
+      api.conflicts['a'] = remoteCharacter(
+        id: 'a',
+        name: 'Version serveur',
+        updatedAt: DateTime.utc(2025, 7),
+      );
+      // Le joueur enchaîne sur la jauge suivante pendant que la réponse du
+      // serveur est en vol.
+      api.beforePush = (character) async {
+        api.beforePush = null;
+        await editLocally(
+          'a',
+          name: 'Tapé juste après',
+          updatedAt: DateTime.utc(2025, 12),
+        );
+      };
+
+      await service.pushCharacter('a');
+
+      final row = await localRow('a');
+      expect(
+        row!.name,
+        'Tapé juste après',
+        reason: 'adopter le serveur ici déferait une modification sous les '
+            'yeux du joueur',
+      );
+      expect(row.needsSync, isTrue);
     });
   });
 
@@ -307,12 +495,10 @@ void main() {
       );
 
       api.beforeList = () async {
-        await (db.update(db.characters)..where((c) => c.id.equals('d'))).write(
-          CharactersCompanion(
-            name: const Value('Édité pendant la sync'),
-            updatedAt: Value(DateTime.utc(2025, 11)),
-            needsSync: const Value(true),
-          ),
+        await editLocally(
+          'd',
+          name: 'Édité pendant la sync',
+          updatedAt: DateTime.utc(2025, 11),
         );
       };
       api.pages.add(RemoteSyncPage(

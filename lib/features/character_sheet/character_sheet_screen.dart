@@ -353,7 +353,10 @@ class _InventoryTabState extends ConsumerState<_InventoryTab> {
                         onRemove: canWrite
                             ? () => ref
                                 .read(characterActionsProvider)
-                                .removeInventoryItem(item.id)
+                                .removeInventoryItem(
+                                  widget.character.id,
+                                  item.id,
+                                )
                             : null,
                       ),
                   ],

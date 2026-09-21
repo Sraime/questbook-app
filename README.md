@@ -26,6 +26,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
   - [Lancer contre le backend local](#lancer-contre-le-backend-local)
   - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
+    - [Une fiche modifiée part tout de suite](#une-fiche-modifiée-part-tout-de-suite)
   - [Tables : le choix inverse](#tables--le-choix-inverse)
   - [Consultation seule (hors ligne)](#consultation-seule-hors-ligne)
 - [Tests](#tests)
@@ -208,6 +209,8 @@ Schéma Drift (`lib/data/local/database.dart`), modélisant un système de jeu g
 - `CharacterResources` — ressources consommables (PV, SAN, PM…) avec valeur courante/max et un `tone` d'affichage.
 - `InventoryItems` — objets possédés par un personnage.
 - `SyncMetadata` — curseur de synchronisation et identifiant du compte auquel appartiennent les données locales.
+
+> `Characters` porte, depuis la v8, une colonne `revision` purement locale : elle compte les écritures faites sur l'appareil, et sert à savoir si une fiche a bougé pendant que le serveur répondait. Elle n'est jamais envoyée.
 - `RemoteCache` — la dernière réponse de l'API pour quelques lectures (tables, sessions), conservée telle quelle pour que l'onglet Tables reste lisible sans réseau. Voir [Consultation seule](#consultation-seule-hors-ligne).
 
 Les tables de jeu **ne sont pas modélisées ici** : elles sont partagées entre plusieurs comptes et le serveur en reste la source de vérité. La table Drift `GameTables` de la maquette locale a été supprimée par la migration v2 → v3 ; ce que la v4 réintroduit est une copie en lecture seule, pas un modèle.
@@ -496,20 +499,57 @@ Drift reste la source de vérité de l'UI : tous les écrans lisent les mêmes
 streams locaux, connecté ou non. La synchronisation ne fait que refléter ces
 lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 
-- Chaque écriture locale marque le personnage `needsSync` et avance son
-  `updatedAt` ; une suppression laisse une **pierre tombale** (`deletedAt`) pour
-  que l'effacement se propage au lieu de disparaître silencieusement.
+- Chaque écriture locale marque le personnage `needsSync`, avance son
+  `updatedAt` et **incrémente son `revision`** ; une suppression laisse une
+  **pierre tombale** (`deletedAt`) pour que l'effacement se propage au lieu de
+  disparaître silencieusement.
+- **La fiche part aussitôt**, sans attendre la passe suivante : création,
+  ressource ajustée, objet ajouté ou retiré appellent
+  `SyncController.pushCharacter`, qui envoie cette fiche-là et rien d'autre.
+  Voir [Une fiche modifiée part tout de suite](#une-fiche-modifiée-part-tout-de-suite).
 - Une passe fait d'abord un *push* puis un *pull*, dans cet ordre — sinon un
   personnage créé hors ligne ressemblerait, vu du pull, à quelque chose à
   supprimer.
 - Les conflits se résolvent en **last-write-wins sur le personnage entier**,
   la règle qu'applique aussi l'API, donc les deux côtés désignent toujours le
   même gagnant.
-- Une passe se déclenche à la connexion, au retour au premier plan, et via le
-  bouton ↻ du bandeau de compte.
+- Une passe complète se déclenche à la connexion et au retour au premier plan.
 - Si un **autre compte** se connecte sur l'appareil, les données locales sont
   effacées : les personnages **et** le cache des tables du compte précédent
   ne doivent pas fuiter dans la nouvelle session.
+
+#### Une fiche modifiée part tout de suite
+
+Une fiche n'est pas un brouillon personnel : le MJ la lit **depuis le
+serveur**, pendant la partie. Or pendant une partie personne ne quitte
+l'application, et les deux seuls déclencheurs d'une passe complète sont la
+connexion et le retour au premier plan. Des points de vie perdus à la table
+restaient donc sur le téléphone du joueur, parfois jusqu'au lendemain, sans
+que rien ne le laisse voir — ni au joueur, qui voyait bien sa jauge bouger, ni
+au MJ, qui lisait une valeur périmée sans savoir qu'elle l'était.
+
+L'écriture locale reste première : la jauge bouge sous le doigt quoi que fasse
+le réseau. L'envoi la suit dans la foulée, et se contente de cette fiche —
+pas de *pull*, qui rapatrierait tout le compte pour une pression sur un
+bouton. Un envoi refusé ne coûte rien : la fiche reste marquée, et la
+prochaine passe complète la reprend.
+
+Deux détails ont demandé du soin, et les tests de `sync_service_test.dart` les
+tiennent :
+
+- **Les envois d'une même fiche font la queue.** Deux pressions à un instant
+  d'intervalle partiraient sinon de front, et la plus ancienne reviendrait en
+  conflit avec la version du serveur — que l'appareil adopterait, par-dessus
+  une troisième pression déjà faite.
+- **`revision` existe pour cela.** Une fois le serveur d'accord, il faut
+  savoir si le joueur a retouché la fiche entre-temps, sans quoi on baisse le
+  drapeau sur une modification jamais envoyée. `updatedAt` ne peut pas
+  répondre : **Drift range une date à la seconde**, et deux pressions sur une
+  jauge tombent dans la même. Le symptôme était exactement celui qu'on
+  cherchait à corriger — l'écran à 11 PV, le serveur à 12 — et il n'apparaît
+  qu'à la vitesse d'un vrai doigt. Le compteur, lui, ne se confond pas. Il ne
+  quitte jamais l'appareil : le serveur n'en a que faire, c'est `updatedAt`
+  qui arbitre entre deux téléphones.
 
 Les personnages créés avant cette fonctionnalité sont poussés tels quels à la
 première connexion (migration Drift v1 → v2, voir `lib/data/local/database.dart`).

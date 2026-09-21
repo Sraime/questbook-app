@@ -42,6 +42,15 @@ class Characters extends Table {
   /// uploaded on the first sign-in.
   BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
 
+  /// Counts local writes, and nothing else. Never sent anywhere.
+  ///
+  /// It answers one question, asked once the server has acknowledged a push:
+  /// *has the player edited this sheet since I read it?* [updatedAt] cannot
+  /// answer it — Drift stores a date to the second, and two taps on a gauge
+  /// land in the same one. Clearing the flag on that basis would strand the
+  /// second tap on the device until some later edit happened to push it.
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -185,7 +194,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -224,6 +233,11 @@ class AppDatabase extends _$AppDatabase {
           // de la colonne, et l'ajouter une seconde fois échouerait.
           if (from == 6) {
             await m.addColumn(sessionBoards, sessionBoards.mapId);
+          }
+          if (from < 8) {
+            // Toutes les fiches repartent de zéro : le compteur ne vaut que
+            // comparé à lui-même, et rien n'est en vol pendant une migration.
+            await m.addColumn(characters, characters.revision);
           }
         },
       );

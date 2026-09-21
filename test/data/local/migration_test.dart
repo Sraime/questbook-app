@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,10 +45,17 @@ void main() {
     );
   }
 
+  /// Every version up to 7 predates the local revision counter, so each
+  /// fixture below has to take it back off.
+  void dropRevision(raw.Database db) {
+    db.execute('ALTER TABLE characters DROP COLUMN revision');
+  }
+
   /// Rewinds the file to what schema version 1 looked like and drops a legacy
   /// character into it.
   void downgradeToV1({required DateTime createdAt}) {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('ALTER TABLE characters DROP COLUMN updated_at');
     db.execute('ALTER TABLE characters DROP COLUMN deleted_at');
     db.execute('ALTER TABLE characters DROP COLUMN needs_sync');
@@ -148,13 +155,14 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 7);
+    expect(version.data.values.first, 8);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
   /// tables mockup.
   void downgradeToV2() {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('DROP TABLE remote_cache');
     db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
@@ -167,6 +175,7 @@ void main() {
   /// they came back as a read-only cache.
   void downgradeToV3() {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('DROP TABLE remote_cache');
     db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
@@ -232,7 +241,7 @@ void main() {
     expect(await db.select(db.remoteCache).get(), hasLength(1));
   });
 
-  test('upgrades straight from v1 to v7, mockup dropped and cache opened',
+  test('upgrades straight from v1 to v8, mockup dropped and cache opened',
       () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
@@ -247,7 +256,7 @@ void main() {
         )
         .get();
 
-    expect(version.data.values.first, 7);
+    expect(version.data.values.first, 8);
     expect(mockup, isEmpty);
     expect(await db.select(db.remoteCache).get(), isEmpty);
     expect(await db.select(db.downloadedScenarios).get(), isEmpty);
@@ -256,6 +265,7 @@ void main() {
 
   void downgradeToV4() {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('DROP TABLE session_boards');
     db.execute('DROP TABLE downloaded_scenarios');
     db.execute('PRAGMA user_version = 4');
@@ -273,6 +283,7 @@ void main() {
 
   void downgradeToV5() {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('DROP TABLE session_boards');
     db.execute('PRAGMA user_version = 5');
     db.close();
@@ -299,8 +310,16 @@ void main() {
 
   void downgradeToV6() {
     final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
     db.execute('ALTER TABLE session_boards DROP COLUMN map_id');
     db.execute('PRAGMA user_version = 6');
+    db.close();
+  }
+
+  void downgradeToV7() {
+    final db = raw.sqlite3.open(dbPath);
+    dropRevision(db);
+    db.execute('PRAGMA user_version = 7');
     db.close();
   }
 
@@ -322,8 +341,36 @@ void main() {
 
     expect(rows, hasLength(1));
     expect(rows.single.notes, 'Le phare clignote');
-    // Nulle, donc le catalogue choisira : une session d'avant la sélection de
+    // Nulle, donc le catalogue choisira : une session d'avant la sÃ©lection de
     // carte ne doit pas s'ouvrir sur un plateau vide.
     expect(rows.single.mapId, isNull);
+  });
+
+  test('donne un compteur de rÃ©vision aux fiches dâ€™une installation en v7',
+      () async {
+    downgradeToV7();
+
+    final before = raw.sqlite3.open(dbPath);
+    before.execute(
+      "INSERT INTO game_systems (id, name, occupation_suggestions) "
+      "VALUES ('call_of_cthulhu_classique', 'Classique', '[]')",
+    );
+    before.execute(
+      'INSERT INTO characters (id, system_id, name, level, created_at, '
+      'updated_at, needs_sync) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['perso-1', 'call_of_cthulhu_classique', 'Ernest', 1, 0, 0, 1],
+    );
+    before.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    final character = (await db.select(db.characters).get()).single;
+
+    expect(character.name, 'Ernest');
+    // Le compteur ne vaut que comparÃ© Ã  lui-mÃªme : repartir de zÃ©ro pour
+    // tout le monde ne perd rien, et la fiche reste en attente d'envoi.
+    expect(character.revision, 0);
+    expect(character.needsSync, isTrue);
   });
 }

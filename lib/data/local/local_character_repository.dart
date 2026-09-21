@@ -58,6 +58,7 @@ class LocalCharacterRepository implements CharacterRepository {
               createdAt: now,
               updatedAt: now,
               needsSync: true,
+              revision: 0,
             ),
           );
 
@@ -175,11 +176,16 @@ class LocalCharacterRepository implements CharacterRepository {
   /// Marks the aggregate as locally modified. Every mutation goes through it,
   /// including changes to stats, resources and inventory, because the API
   /// treats a character and its children as a single versioned document.
+  ///
+  /// The revision is bumped in SQL rather than read-then-written: two taps on
+  /// a gauge a few milliseconds apart must count as two, and a round trip
+  /// through Dart between the read and the write would let them count as one.
   Future<void> _touch(String characterId) async {
     await (_db.update(_db.characters)..where((c) => c.id.equals(characterId)))
-        .write(CharactersCompanion(
-      updatedAt: Value(DateTime.now()),
-      needsSync: const Value(true),
+        .write(CharactersCompanion.custom(
+      updatedAt: Variable(DateTime.now()),
+      needsSync: const Constant(true),
+      revision: _db.characters.revision + const Constant(1),
     ));
   }
 

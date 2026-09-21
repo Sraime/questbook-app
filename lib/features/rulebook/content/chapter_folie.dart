@@ -82,7 +82,7 @@ const chapterFolie = RulebookChapter(
           ],
         ),
         RulebookCallout(
-          'Pendant la crise, le gardien joue le personnage. Le joueur '
+          'Pendant la crise, le gardien joue l’investigateur. Le joueur '
           'reprend la main une fois le décompte fini, avec le trouble '
           'qui reste.',
           tone: RulebookCalloutTone.warning,

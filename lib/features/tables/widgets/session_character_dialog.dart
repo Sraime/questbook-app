@@ -21,7 +21,7 @@ Future<void> showSessionCharacterDialog(
 }) {
   return showQBDialog(
     context: context,
-    title: 'Ton personnage',
+    title: 'Ton investigateur',
     builder: (_) => _CharacterPicker(
       tableId: tableId,
       sessionId: sessionId,
@@ -70,8 +70,8 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
         // next synchronisation, so one that has never been uploaded comes back
         // as a 404 here.
         _error = error.isMissing
-            ? 'Ce personnage n’est pas encore sur le serveur. '
-                'Synchronise tes personnages puis réessaie.'
+            ? 'Cet investigateur n’est pas encore sur le serveur. '
+                'Synchronise tes investigateurs puis réessaie.'
             : error.message;
       });
     }
@@ -97,8 +97,8 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
         ...switch (characters) {
           AsyncData(value: final list) when list.isEmpty => [
               Text(
-                'Tu n’as pas encore de personnage. Crée-en un depuis l’onglet '
-                'Perso, puis reviens ici.',
+                'Tu n’as pas encore d’investigateur. Crée-en un depuis '
+                'l’onglet Investigateurs, puis reviens ici.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textBody,
@@ -116,7 +116,7 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
             ],
           AsyncError() => [
               Text(
-                'Impossible de lire tes personnages.',
+                'Impossible de lire tes investigateurs.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textBody,
@@ -138,7 +138,7 @@ class _CharacterPickerState extends ConsumerState<_CharacterPicker> {
         if (widget.currentCharacterId != null) ...[
           const SizedBox(height: QBSpace.s4),
           QBButton(
-            label: 'Venir sans personnage',
+            label: 'Venir sans investigateur',
             variant: QBButtonVariant.ghost,
             size: QBButtonSize.sm,
             expand: true,

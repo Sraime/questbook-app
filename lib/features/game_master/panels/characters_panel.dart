@@ -53,7 +53,7 @@ class CharactersPanel extends ConsumerWidget {
       ),
       children: [
         Text(
-          'Personnages joueurs',
+          'Investigateurs',
           style: QBType.game().copyWith(
             fontWeight: QBType.weightBold,
             fontSize: 16,
@@ -73,8 +73,8 @@ class CharactersPanel extends ConsumerWidget {
         const SizedBox(height: QBSpace.s2),
         if (attending.isEmpty)
           Text(
-            'Aucun joueur n’a encore rattaché de personnage à cette session. '
-            'Les fiches apparaîtront ici dès qu’ils l’auront fait.',
+            'Aucun joueur n’a encore rattaché d’investigateur à cette '
+            'session. Les fiches apparaîtront ici dès qu’ils l’auront fait.',
             style: QBType.body().copyWith(
               fontSize: QBType.sm,
               color: QBColors.textMuted,
@@ -85,8 +85,8 @@ class CharactersPanel extends ConsumerWidget {
             const SizedBox(height: QBSpace.s3),
             _AttendeeCard(sessionId: session.id, attendance: attendance),
           ],
-        // Deux listes de personnages se suivent : sans filet, la seconde se
-        // lit comme la suite de la première.
+        // Les investigateurs et les PNJ se suivent : sans filet, la seconde
+        // liste se lit comme la suite de la première.
         const SizedBox(height: QBSpace.s5),
         Container(height: 1, color: QBColors.borderHairline),
         const SizedBox(height: QBSpace.s5),
@@ -454,7 +454,7 @@ class _Unavailable extends StatelessWidget {
         Text(
           api != null && api.isMissing
               ? 'Cette fiche n’est plus consultable. Le joueur a peut-être '
-                  'changé de personnage.'
+                  'changé d’investigateur.'
               : api?.message ?? 'Impossible de charger la fiche.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,

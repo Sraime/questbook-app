@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: QBSpace.s2),
                     Text(
-                      'Connecte-toi pour retrouver tes personnages sur tous '
+                      'Connecte-toi pour retrouver tes investigateurs sur tous '
                       'tes appareils.',
                       textAlign: TextAlign.center,
                       style: QBType.body().copyWith(
@@ -121,7 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                     const SizedBox(height: QBSpace.s3),
                     Text(
-                      'Une fois connecté, tes personnages et tes tables '
+                      'Une fois connecté, tes investigateurs et tes tables '
                       'restent consultables sans réseau.',
                       textAlign: TextAlign.center,
                       style: QBType.body().copyWith(

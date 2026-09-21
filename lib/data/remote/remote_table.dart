@@ -234,7 +234,7 @@ class RemoteAttendance {
 
 /// Tout ce qui est à la table sans être un joueur : créature, indicateur,
 /// esprit. Un nom, une description libre, et rien d'autre — ce n'est pas une
-/// fiche de personnage.
+/// fiche d'investigateur.
 ///
 /// Attaché à une session et lisible du seul MJ : le serveur ne le renvoie
 /// jamais dans le détail d'une session, il faut aller le chercher.

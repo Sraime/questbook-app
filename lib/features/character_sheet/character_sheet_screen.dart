@@ -50,7 +50,7 @@ class _CharacterSheetScreenState extends ConsumerState<CharacterSheetScreen> {
         child: characterAsync.when(
           data: (character) {
             if (character == null) {
-              return const Center(child: Text('Personnage introuvable'));
+              return const Center(child: Text('Investigateur introuvable'));
             }
             return ListView(
               padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),

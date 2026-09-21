@@ -4,7 +4,7 @@ import 'dart:convert';
 /// mode MJ n'a pas encore d'illustrations, seulement le vocabulaire minimal
 /// dont un MJ a besoin pour dire « ça, c'est toi, et ça, c'est la chose ».
 enum BoardTokenKind {
-  /// Cercle plein — un personnage joueur, un PNJ, une créature.
+  /// Cercle plein — un investigateur, un PNJ, une créature.
   character('character'),
 
   /// Triangle plein — un décor, un meuble, un obstacle.

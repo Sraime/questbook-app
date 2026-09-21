@@ -21,7 +21,9 @@ Future<void> showNpcDialog(
 }) {
   return showQBDialog(
     context: context,
-    title: existing == null ? 'Nouveau personnage' : 'Modifier',
+    // « Nouveau personnage » ne veut plus rien dire maintenant que celui du
+    // joueur est un investigateur : la fenêtre dit ce qu'elle crée.
+    title: existing == null ? 'Nouveau PNJ' : 'Modifier',
     // Plus large que les autres fenêtres : la description est de la prose, et
     // l'écrire dans une colonne de deux mots empêche de la relire. `QBDialog`
     // ramène cette largeur à celle de l'écran quand il est plus étroit.

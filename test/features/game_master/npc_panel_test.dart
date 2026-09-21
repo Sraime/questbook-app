@@ -128,6 +128,23 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('les personnages des joueurs sont des investigateurs',
+      (tester) async {
+    await pumpPanel(tester);
+
+    expect(find.text('Investigateurs'), findsOneWidget);
+    expect(
+      find.text('Personnages joueurs'),
+      findsNothing,
+      reason: 'l’app ne parle plus que de l’univers de Cthulhu',
+    );
+    expect(
+      find.text('Personnages non-joueurs'),
+      findsOneWidget,
+      reason: 'un PNJ reste un PNJ : seuls ceux des joueurs sont renommés',
+    );
+  });
+
   testWidgets('sur un écran étroit, titre et bouton tiennent sur une ligne',
       (tester) async {
     await pumpPanel(tester, compact: true);

@@ -430,6 +430,45 @@ purement local n'avait accès à rien de tout cela.
 **Ne pas confondre avec le réseau.** Une fois connecté, perdre le réseau ne
 déconnecte pas : l'app bascule en **consultation seule**, décrite plus bas.
 
+### Deux portes, dont une réservée à iOS
+
+L'écran de connexion propose **Google partout**, et **Apple sur iOS
+seulement**. Ce n'est pas un confort offert au joueur : la guideline 4.8
+d'Apple impose une option de connexion respectueuse de la vie privée dès lors
+que le seul login d'une app est un service tiers, et Google Sign-In ne la
+satisfait pas — il ne permet pas de masquer son adresse. Sans ce second
+bouton, l'app se fait rejeter de l'App Store.
+
+Sur Android, le paquet `sign_in_with_apple` passerait par un détour navigateur
+pour répondre à un besoin qui n'existe pas là-bas : le bouton se décide donc
+sur `defaultTargetPlatform`, et deux tests (`test/features/auth/
+apple_button_test.dart`) tiennent cette condition, qui se perdrait sans bruit
+dans un refactor.
+
+**Le bouton est celui du paquet, pas un `QBButton` peint en noir.** Apple
+impose son logo, son libellé et un encombrement au moins égal aux autres
+boutons de connexion ; un bouton maison qui dérive est un motif de rejet. Seuls
+la hauteur et le rayon sont alignés sur le design system.
+
+Le nom est le point qui surprend : **Apple ne le met pas dans le jeton** et ne
+le remet au client qu'une seule fois, à la toute première autorisation. Il
+voyage donc dans le corps de `POST /auth/apple`, et le serveur ne s'en sert
+qu'à la création du compte. Rater cette unique occasion, c'est ne plus jamais
+l'avoir — le joueur devra se renommer depuis Profil.
+
+Côté compte, Apple et Google **ne se rejoignent pas** : le relais privé
+`@privaterelay.appleid.com` rend les deux adresses étrangères l'une à l'autre,
+et la même personne connectée par les deux portes a deux comptes, chacun avec
+ses investigateurs. Voir le README de `questbook-back` pour le détail, et le
+`409` que renvoie une adresse déjà prise par un compte Google.
+
+Un build iOS exige l'entitlement `com.apple.developer.applesignin`
+(`ios/Runner/Runner.entitlements`, référencé par `CODE_SIGN_ENTITLEMENTS` dans
+les trois configurations de la cible Runner) **et** la capability
+« Sign In with Apple » cochée sur l'App ID `com.questbook.questbook`. Sans
+elle, la signature échoue ; le profil de provisioning, lui, n'a rien à faire à
+la main puisque `fastlane` le régénère à chaque build.
+
 ### Supprimer son compte
 
 Tout en bas de `/profil`, dans une carte à part. Le dialogue de confirmation

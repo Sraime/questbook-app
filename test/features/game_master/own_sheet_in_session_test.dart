@@ -46,6 +46,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<AuthUser> signInWithGoogle() async => _me;
 
   @override
+  Future<AuthUser> signInWithApple() async => _me;
+
+  @override
   Future<AuthUser> rename(String displayName) async => _me;
 
   @override

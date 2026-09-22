@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.30.1+46
+version: 1.31.0+47
 
 environment:
   sdk: ^3.12.2
@@ -69,6 +69,12 @@ dependencies:
   # de l'API et pas dans l'app : deux copies d'un texte juridique divergent,
   # et c'est celle qu'on lit qui a tort.
   url_launcher: ^6.3.1
+  # Connexion Apple, exigee par la guideline 4.8 des lors que la seule
+  # connexion d'une app est un service tiers : Google Sign-In ne permet pas de
+  # masquer son adresse, il n'y suffit donc pas. Le bouton ne s'affiche que sur
+  # iOS — sur Android le paquet passe par un detour navigateur, pour un besoin
+  # qui n'existe que sur l'App Store.
+  sign_in_with_apple: ^8.2.0
 
 dev_dependencies:
   flutter_test:

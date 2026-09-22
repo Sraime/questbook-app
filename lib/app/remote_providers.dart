@@ -111,12 +111,22 @@ class AuthController extends AsyncNotifier<AuthUser?> {
   }
 
   /// Returns the error message to display, or null on success. Cancelling the
-  /// Google dialog is silent.
-  Future<String?> signIn() async {
+  /// provider's dialog is silent.
+  Future<String?> signIn() =>
+      _signIn((repository) => repository.signInWithGoogle());
+
+  /// The other door, the one Apple requires on its store. Same handling: the
+  /// two providers differ in the dialog they open, in nothing else.
+  Future<String?> signInWithApple() =>
+      _signIn((repository) => repository.signInWithApple());
+
+  Future<String?> _signIn(
+    Future<AuthUser> Function(AuthRepository repository) attempt,
+  ) async {
     state = const AsyncValue.loading();
 
     try {
-      final user = await ref.read(authRepositoryProvider).signInWithGoogle();
+      final user = await attempt(ref.read(authRepositoryProvider));
       state = AsyncValue.data(user);
       // Uploading whatever was created offline is the whole point of signing
       // in, but starting that pass from here would close a dependency cycle:

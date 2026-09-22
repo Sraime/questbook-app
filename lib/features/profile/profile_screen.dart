@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
+import '../../data/remote/api_exception.dart';
 import '../../data/remote/auth_tokens.dart';
+import '../../data/remote/block_api.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_icon_button.dart';
@@ -60,6 +62,8 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: QBSpace.s5),
             _SyncCard(sync: sync),
             if (user != null) ...[
+              const SizedBox(height: QBSpace.s5),
+              const _BlockedCard(),
               const SizedBox(height: QBSpace.s5),
               const _DeleteAccountCard(),
             ],
@@ -119,6 +123,111 @@ class _AccountCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Les comptes bloqués, et le seul endroit d'où l'on peut revenir dessus.
+///
+/// Un blocage se pose depuis une table, mais la table, on l'a quittée dans
+/// le même geste : la défaire ne peut plus se faire là où on l'a faite. La
+/// carte reste absente tant qu'on n'a bloqué personne — annoncer un rayon
+/// vide n'apprend rien, et suggérer le geste encore moins.
+class _BlockedCard extends ConsumerWidget {
+  const _BlockedCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blocked = ref.watch(blockedUsersProvider);
+    final people = blocked.value ?? const [];
+
+    if (people.isEmpty) return const SizedBox.shrink();
+
+    return QBCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Joueurs bloqués',
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightSemibold,
+              fontSize: 15,
+              color: QBColors.ink900,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s2),
+          Text(
+            'Ils ne peuvent plus t’inviter. Les débloquer ne te remet pas à '
+            'leur table : il faudra une nouvelle invitation.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s3),
+          for (final person in people)
+            _BlockedRow(
+              person: person,
+              rule: person != people.last,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BlockedRow extends ConsumerWidget {
+  const _BlockedRow({required this.person, required this.rule});
+
+  final BlockedUser person;
+  final bool rule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: rule ? QBColors.borderHairline : Colors.transparent,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              person.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: QBType.body().copyWith(
+                fontSize: QBType.sm,
+                color: QBColors.textBody,
+              ),
+            ),
+          ),
+          const SizedBox(width: QBSpace.s3),
+          QBIconButton(
+            icon: const Icon(LucideIcons.userCheck, size: 16),
+            label: 'Débloquer ${person.displayName}',
+            size: 34,
+            onPressed: ref.watch(canWriteProvider)
+                ? () => _unblock(context, ref)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _unblock(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(blockApiProvider).unblock(person.userId);
+      ref.invalidate(blockedUsersProvider);
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 

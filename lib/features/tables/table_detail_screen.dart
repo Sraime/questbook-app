@@ -16,6 +16,7 @@ import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../moderation/block_dialog.dart';
 import '../moderation/report_dialog.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
@@ -717,7 +718,7 @@ class _MemberRow extends ConsumerWidget {
                     onSelected: () => _remove(context, ref),
                   ),
                 ],
-                if (canReport)
+                if (canReport) ...[
                   QBMenuEntry(
                     icon: LucideIcons.flag,
                     label: 'Signaler ce joueur',
@@ -729,11 +730,37 @@ class _MemberRow extends ConsumerWidget {
                       label: member.user.label,
                     ),
                   ),
+                  QBMenuEntry(
+                    icon: LucideIcons.userX,
+                    label: 'Bloquer ce joueur',
+                    danger: true,
+                    onSelected: () => _block(context, ref),
+                  ),
+                ],
               ],
             ),
         ],
       ),
     );
+  }
+
+  /// Bloquer défait les tables communes, et celle-ci en est une. Si j'y
+  /// étais joueur, je viens d'en sortir : rester sur son écran laisserait
+  /// lire une table à laquelle je n'appartiens plus.
+  Future<void> _block(BuildContext context, WidgetRef ref) async {
+    final router = GoRouter.of(context);
+    final outcome = await showBlockDialog(
+      context,
+      userId: member.userId,
+      label: member.user.label,
+    );
+
+    if (outcome == null || !context.mounted) return;
+
+    // Le toast d'abord : le messager survit au changement de route, pas le
+    // contexte de cet écran.
+    showBlockOutcomeToast(context, outcome, label: member.user.label);
+    if (!table.isGameMaster) router.go('/tables');
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref) async {

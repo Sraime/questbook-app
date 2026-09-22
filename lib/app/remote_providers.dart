@@ -12,6 +12,7 @@ import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
 import '../data/remote/auth_tokens.dart';
+import '../data/remote/block_api.dart';
 import '../data/remote/character_api.dart';
 import '../data/remote/notification_api.dart';
 import '../data/remote/report_api.dart';
@@ -80,6 +81,18 @@ final notificationApiProvider = Provider<NotificationApi>(
 final reportApiProvider = Provider<ReportApi>(
   (ref) => ReportApi(ref.watch(apiClientProvider)),
 );
+
+final blockApiProvider = Provider<BlockApi>(
+  (ref) => BlockApi(ref.watch(apiClientProvider)),
+);
+
+/// Les comptes bloqués, tels que le profil les liste. Le blocage les
+/// invalide plutôt que de les modifier sur place : la liste tient sur un
+/// écran, et une relecture coûte moins qu'un état à garder en phase.
+final blockedUsersProvider = FutureProvider<List<BlockedUser>>((ref) async {
+  if (ref.watch(authControllerProvider).value == null) return const [];
+  return ref.watch(blockApiProvider).list();
+});
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(

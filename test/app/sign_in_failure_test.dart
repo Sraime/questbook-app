@@ -19,6 +19,9 @@ class _FailingAuthRepository implements AuthRepository {
   Future<AuthUser> signInWithGoogle() async => throw failure;
 
   @override
+  Future<AuthUser> signInWithApple() async => throw failure;
+
+  @override
   Future<AuthUser?> restoreSession() async => null;
 
   @override
@@ -35,7 +38,7 @@ class _FailingAuthRepository implements AuthRepository {
 }
 
 void main() {
-  Future<String?> signInWith(Object failure) async {
+  Future<String?> signInWith(Object failure, {bool apple = false}) async {
     final container = ProviderContainer(overrides: [
       authRepositoryProvider
           .overrideWithValue(_FailingAuthRepository(failure)),
@@ -43,7 +46,8 @@ void main() {
     addTearDown(container.dispose);
 
     await container.read(authControllerProvider.future);
-    return container.read(authControllerProvider.notifier).signIn();
+    final controller = container.read(authControllerProvider.notifier);
+    return apple ? controller.signInWithApple() : controller.signIn();
   }
 
   test('an unexpected platform failure is reported instead of thrown',
@@ -70,6 +74,23 @@ void main() {
     );
 
     expect(message, isNull);
+  });
+
+  test('the Apple door hangs from the same net', () async {
+    // Les deux fournisseurs partagent `_signIn` : ce test tient que la
+    // seconde porte ne puisse pas repartir sans filet le jour ou l'une des
+    // deux est retouchee.
+    final unexpected = await signInWith(
+      PlatformException(code: 'keychain error', message: 'OSStatus -34018'),
+      apple: true,
+    );
+    expect(unexpected, contains('keychain error'));
+
+    final cancelled = await signInWith(
+      const AuthFailure('Connexion annulée.', isCancellation: true),
+      apple: true,
+    );
+    expect(cancelled, isNull);
   });
 
   test('the session is left signed out after a failure', () async {

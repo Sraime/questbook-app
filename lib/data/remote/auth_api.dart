@@ -17,6 +17,30 @@ class AuthApi {
     );
   }
 
+  /// Idem depuis un jeton d'identité Apple.
+  ///
+  /// Le nom voyage à part parce qu'Apple ne le met pas dans le jeton : il est
+  /// remis au client une seule fois, à la première autorisation, et jamais
+  /// ensuite. Le serveur ne s'en sert qu'à la création du compte.
+  Future<AuthSession> signInWithApple(
+    String identityToken, {
+    String? displayName,
+  }) {
+    return _client.send(
+      authenticated: false,
+      (dio) => dio.post<dynamic>(
+        '/auth/apple',
+        data: {
+          'identityToken': identityToken,
+          // Absente plutot que nulle : le serveur ne veut pas d'un nom vide,
+          // et un compte peut tres bien n'en avoir jamais partage.
+          'displayName': ?displayName,
+        },
+      ),
+      parse: _sessionFrom,
+    );
+  }
+
   Future<AuthUser> me() {
     return _client.send(
       (dio) => dio.get<dynamic>('/auth/me'),

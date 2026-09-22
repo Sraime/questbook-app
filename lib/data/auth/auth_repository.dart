@@ -112,6 +112,15 @@ class AuthRepository {
     return user;
   }
 
+  /// Accepte les conditions d'utilisation. Le profil en cache suit, sans
+  /// quoi un démarrage hors ligne rebarrerait l'écran sur un consentement
+  /// déjà donné.
+  Future<AuthUser> acceptTerms() async {
+    final user = await _api.acceptTerms();
+    await _store.writeUser(user);
+    return user;
+  }
+
   /// Efface le compte côté serveur, puis referme la session ici.
   ///
   /// L'appel réseau passe d'abord : si le serveur refuse, l'appareil reste

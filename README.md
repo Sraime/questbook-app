@@ -54,7 +54,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
-- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
+- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
 - **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
@@ -942,6 +942,107 @@ colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
 C'est le repli, pas une illustration — le jour où les scénarios auront des
 couvertures, elles se déclarent là.
 
+### Signaler un contenu
+
+Une app dont les utilisateurs écrivent le contenu doit, pour Apple, offrir de
+quoi signaler ce qui choque. Questbook en écrit à quatre endroits : un pseudo,
+le titre d'une table, le titre et la description d'une séance, la fiche d'un
+investigateur. Ce sont les quatre choses qui se signalent, chacune depuis
+l'endroit où on la lit — un menu à trois points, jamais un bouton :
+
+| Ce qu'on signale | D'où |
+| --- | --- |
+| Un joueur | Sa ligne dans la liste des membres d'une table |
+| Une table | L'angle de son titre, sur son écran de détail |
+| Une séance | L'angle du titre de sa carte |
+| Un investigateur | L'entête de sa fiche, ouverte depuis la liste des présents |
+
+**Le menu n'apparaît jamais sur ce qu'on a écrit soi-même** : le MJ ne voit
+rien sur sa table ni sur ses séances, personne ne voit rien sur sa propre
+ligne. Le serveur le refuserait de toute façon, et offrir un geste voué au
+refus est pire que ne pas l'offrir. Tant que l'app ignore qui la lit — le
+compte n'est pas encore restauré — elle s'abstient plutôt que de supposer.
+
+La fenêtre demande **ce qu'on reproche**, en prose : sans ces mots, le
+support reçoit un identifiant et rien à en faire. Le bouton est rouge, comme
+tout ce qui ne se défait pas.
+
+**L'app n'envoie que la cible et le motif.** Ni l'auteur du contenu ni la
+copie de ce qu'il disait ne partent d'ici : le serveur relit la cible
+lui-même et en prend l'instantané, faute de quoi un signalement se forgerait
+depuis un client modifié. Voir le README du backend.
+
+`QBMenu` (`design_system/components/qb_menu.dart`) est né de là : les trois
+points servent maintenant à trois endroits, et la mise en forme du menu était
+recopiée à chaque fois.
+
+### Bloquer un joueur
+
+Signaler réveille le support ; bloquer vide la chaise d'en face. C'est le
+second qui change quelque chose pour celui qui vient de subir, et les deux
+tiennent dans le même menu — la ligne d'un joueur, et elle seule. Une table
+ou une séance ne se bloquent pas : on bloque quelqu'un.
+
+Le geste **défait le présent**, et la fenêtre l'annonce avant de le faire :
+les invitations en attente disparaissent, et les tables communes se règlent
+selon le rôle qu'on y tient — on quitte celles où l'on n'est que joueur, on
+en retire l'autre quand on les mène. L'apprendre après coup, en voyant une
+table manquer à l'accueil, se lirait comme une panne.
+
+**Il est définitif**, et la fenêtre le dit aussi. Ni l'app ni l'API n'offrent
+de quoi revenir dessus : le serveur n'a qu'une route `POST /blocks`, et lister
+ou défaire un blocage répond 404. Ce que le geste promet, c'est de ne plus
+croiser quelqu'un, et une promesse qu'on retire d'un bouton n'en est pas une.
+Se retrouver ensemble demande une nouvelle invitation depuis un compte qui
+n'a jamais bloqué.
+
+Combien de tables, l'app l'ignore : elle n'en connaît qu'une, celle d'où part
+le geste. C'est le serveur qui compte ce qu'il a défait, et le toast le
+répète. Puis, **si le blocage m'a fait sortir de la table affichée**, l'écran
+la quitte : rester dessus laisserait lire une table à laquelle je
+n'appartiens plus.
+
+### Conditions d'utilisation
+
+Les stores refusent une app sociale sans conditions acceptées, et les
+accepter n'a de sens que pour un compte : c'est au compte que le serveur
+attache la date, dans `termsAcceptedAt`. Elle voyage avec le profil, dans la
+réponse de `/auth/me` comme dans celle du rafraîchissement, et `TokenStore`
+la garde avec le reste — un lancement hors ligne ne redemande donc rien.
+
+`AuthGate` (`lib/app/auth_gate.dart`) barre l'app tant qu'elle est nulle.
+C'est **à chaque lancement, pas seulement à la création du compte** : les
+comptes qui existaient avant la publication des conditions les croisent à
+leur prochain démarrage, personne n'ayant signé pour eux. Le seul autre
+chemin depuis cet écran est de se déconnecter ; sans lui, refuser
+reviendrait à devoir désinstaller.
+
+Le texte qui fait foi n'est **pas embarqué** : `lib/config/legal_links.dart`
+ouvre les pages servies par Caddy, `/conditions-utilisation` et
+`/confidentialite`. Deux copies d'une clause divergent, et c'est toujours
+celle qu'on lit qui a tort — corriger un texte juridique ne doit pas demander
+une livraison sur les stores. La carte **Ce que tu as accepté** du profil y
+renvoie, pour les relire après coup.
+
+Leur adresse est **figée sur le domaine public** et ne suit pas
+`QUESTBOOK_API_URL`, contrairement au reste de l'app. Elle l'a suivi, et les
+liens étaient morts en `dev` : les pages sont servies par Caddy, qui ne
+tourne pas sur un poste de développement — l'API Node répondait `Route not
+found`. Les faire dépendre de l'étape n'aurait de toute façon pas de sens,
+ces deux textes engageant NextUs de la même manière pour tout le monde. Un
+test le tient, aux côtés de celui qui vérifie le `https` des builds
+distribués.
+
+`url_launcher` a besoin d'un `<queries>` déclarant le schéma `https` dans
+`AndroidManifest.xml` : sans lui, Android 11 et au-delà répondent qu'aucune
+application ne sait ouvrir le lien, et le lien paraît mort.
+
+`AuthGate` sort de `main.dart` pour être testable. Il lit aussi
+`remoteEnabledProvider` plutôt que `AppConfig.isRemoteEnabled` en direct : le
+drapeau est figé à la compilation et les binaires de test n'ont pas de client
+OAuth, si bien que le portier rendait son enfant sans rien regarder et que
+rien de ce qu'il fait n'était atteignable.
+
 ### Notifications push (Firebase Cloud Messaging)
 
 `lib/data/push/push_messaging.dart` enregistre le jeton FCM de l'appareil à la
@@ -1350,6 +1451,17 @@ nouveaux testeurs sont enregistrés chez Apple.
 
 Les App ID Firebase et le Project ID ne sont *pas* secrets — ils sont en dur
 dans le workflow (`env:` en tête de fichier).
+
+**L'`https` du VPS ne tient qu'à la ligne `QUESTBOOK_API_URL` de ce même
+`env:`, et un test l'épingle** (`test/config/distributed_builds_speak_https_test.dart`).
+Rien d'autre ne l'impose : le défaut du code est `http://10.0.2.2:3000`,
+l'adresse de l'émulateur, et le système ne rattraperait pas l'erreur — les
+sockets de `dart:io` ne consultent ni `usesCleartextTraffic` sous Android, ni
+ATS sous iOS, ce qui est justement ce qui permet au mode dev d'atteindre
+l'hôte en clair sans rien déclarer. Une ligne effacée par mégarde partirait
+donc aux testeurs en échouant à chaque appel, sans que rien ne le signale. Le
+test lit les deux workflows et vérifie au passage que le plateau en direct
+suit le schéma : `https` donne `wss`, une API de développement reste en clair.
 
 > ⚠️ `firebase login:ci` / l'option `--token` de `firebase-tools` sont
 > marquées comme dépréciées par Google au profit de l'authentification par

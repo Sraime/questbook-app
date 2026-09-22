@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/remote_providers.dart';
+import '../../config/legal_links.dart';
 import '../../data/remote/auth_tokens.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
@@ -61,6 +62,8 @@ class ProfileScreen extends ConsumerWidget {
             _SyncCard(sync: sync),
             if (user != null) ...[
               const SizedBox(height: QBSpace.s5),
+              const _LegalCard(),
+              const SizedBox(height: QBSpace.s5),
               const _DeleteAccountCard(),
             ],
           ],
@@ -117,6 +120,119 @@ class _AccountCard extends StatelessWidget {
             onPressed: () => showRenameDialog(context, currentName: user.label),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Les deux textes qu'on a acceptés, à relire quand on veut.
+///
+/// Ils s'ouvrent dans le navigateur plutôt que dans l'app : ils vivent sur le
+/// serveur, et une copie embarquée vieillirait au rythme des livraisons sur
+/// les stores. Les stores les veulent joignables depuis le profil, mais ce
+/// n'est pas la raison principale — un texte qu'on accepte doit pouvoir se
+/// relire après coup.
+class _LegalCard extends StatefulWidget {
+  const _LegalCard();
+
+  @override
+  State<_LegalCard> createState() => _LegalCardState();
+}
+
+class _LegalCardState extends State<_LegalCard> {
+  String? _error;
+
+  Future<void> _open(Uri page) async {
+    if (await LegalLinks.open(page)) return;
+    if (!mounted) return;
+    setState(() => _error = 'Ouvre cette page dans ton navigateur : $page');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return QBCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Ce que tu as accepté',
+            style: QBType.game().copyWith(
+              fontWeight: QBType.weightSemibold,
+              fontSize: 15,
+              color: QBColors.ink900,
+            ),
+          ),
+          const SizedBox(height: QBSpace.s3),
+          _LegalRow(
+            label: 'Conditions d’utilisation',
+            onPressed: () => _open(LegalLinks.terms),
+            rule: true,
+          ),
+          _LegalRow(
+            label: 'Politique de confidentialité',
+            onPressed: () => _open(LegalLinks.privacy),
+            rule: false,
+          ),
+          if (_error case final message?) ...[
+            const SizedBox(height: QBSpace.s2),
+            Text(
+              message,
+              style: QBType.body().copyWith(
+                fontSize: QBType.xs,
+                color: QBColors.semanticDanger,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LegalRow extends StatelessWidget {
+  const _LegalRow({
+    required this.label,
+    required this.onPressed,
+    required this.rule,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final bool rule;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: QBSpace.s3),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: rule ? QBColors.borderHairline : Colors.transparent,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: QBType.body().copyWith(
+                  fontSize: QBType.sm,
+                  color: QBColors.textBody,
+                ),
+              ),
+            ),
+            const Icon(
+              LucideIcons.externalLink,
+              size: 15,
+              color: QBColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }

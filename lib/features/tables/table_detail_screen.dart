@@ -6,14 +6,18 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/remote_providers.dart';
 import '../../data/remote/api_exception.dart';
 import '../../data/remote/remote_table.dart';
+import '../../data/remote/report_api.dart';
 import '../../design_system/components/qb_badge.dart';
 import '../../design_system/components/qb_button.dart';
 import '../../design_system/components/qb_card.dart';
 import '../../design_system/components/qb_icon_button.dart';
+import '../../design_system/components/qb_menu.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../moderation/block_dialog.dart';
+import '../moderation/report_dialog.dart';
 import 'providers/table_providers.dart';
 import 'table_formatting.dart';
 import 'widgets/attendee_character_sheet.dart';
@@ -66,13 +70,39 @@ class _Body extends ConsumerWidget {
           // et ne bouge jamais. Une flèche de plus en haut de chaque écran
           // faisait viser une cible de 36 points pour ce que la barre offre
           // déjà, en grand et au même endroit.
-          Text(
-            table.title,
-            style: QBType.game().copyWith(
-              fontWeight: QBType.weightBold,
-              fontSize: 20,
-              color: QBColors.ink900,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  table.title,
+                  style: QBType.game().copyWith(
+                    fontWeight: QBType.weightBold,
+                    fontSize: 20,
+                    color: QBColors.ink900,
+                  ),
+                ),
+              ),
+              // Le MJ écrit ce titre : il n'a rien à se signaler à lui-même,
+              // et le serveur le lui refuserait.
+              if (!table.isGameMaster)
+                QBMenu(
+                  tooltip: 'Options de la table',
+                  entries: [
+                    QBMenuEntry(
+                      icon: LucideIcons.flag,
+                      label: 'Signaler cette table',
+                      danger: true,
+                      onSelected: () => showReportDialog(
+                        context,
+                        contentType: ReportableContent.table,
+                        contentId: table.id,
+                        label: table.title,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
           const SizedBox(height: QBSpace.s2),
           // Aligné à la main : dans une ListView, un badge seul s'étirerait
@@ -244,13 +274,41 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            session.title,
-            style: QBType.game().copyWith(
-              fontWeight: QBType.weightSemibold,
-              fontSize: 15,
-              color: QBColors.ink900,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  session.title,
+                  style: QBType.game().copyWith(
+                    fontWeight: QBType.weightSemibold,
+                    fontSize: 15,
+                    color: QBColors.ink900,
+                  ),
+                ),
+              ),
+              // Le seul geste de l'angle, et c'est pour cela qu'il y tient :
+              // signaler doit rester à portée sans se disputer la place avec
+              // les boutons pleine largeur du bas.
+              if (!widget.table.isGameMaster)
+                QBMenu(
+                  tooltip: 'Options de la séance',
+                  iconSize: 16,
+                  entries: [
+                    QBMenuEntry(
+                      icon: LucideIcons.flag,
+                      label: 'Signaler cette séance',
+                      danger: true,
+                      onSelected: () => showReportDialog(
+                        context,
+                        contentType: ReportableContent.session,
+                        contentId: session.id,
+                        label: session.title,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
           const SizedBox(height: QBSpace.s2),
           _IconLine(
@@ -576,8 +634,15 @@ class _MemberRow extends ConsumerWidget {
     // The game master is the one member who cannot be removed: the table would
     // be left with nobody able to schedule anything.
     final isGm = member.role.isGameMaster;
-    final canRemove =
-        table.isGameMaster && !isGm && ref.watch(canWriteProvider);
+    final canWrite = ref.watch(canWriteProvider);
+    final canRemove = table.isGameMaster && !isGm && canWrite;
+
+    // Signaler n'est pas réservé au MJ, et vise aussi le MJ : c'est même le
+    // seul recours d'un joueur contre celui qui mène sa table. Tant qu'on
+    // ignore qui lit l'écran, on s'abstient plutôt que d'offrir à quelqu'un
+    // de se signaler lui-même.
+    final me = ref.watch(authControllerProvider).value?.id;
+    final canReport = me != null && me != member.userId && canWrite;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
@@ -633,18 +698,69 @@ class _MemberRow extends ConsumerWidget {
               ],
             ),
           ),
-          if (canRemove)
-            // Un seul point d'entrée plutôt que deux boutons jumeaux :
-            // confier la table et retirer quelqu'un se ressemblaient trop
-            // pour être côte à côte, et se pressaient l'un pour l'autre.
-            _MemberMenu(
-              label: member.user.label,
-              onTransfer: () => _transfer(context, ref),
-              onRemove: () => _remove(context, ref),
+          // Un seul point d'entrée plutôt que des boutons jumeaux : confier
+          // la table et retirer quelqu'un se ressemblaient trop pour être
+          // côte à côte, et se pressaient l'un pour l'autre.
+          if (canRemove || canReport)
+            QBMenu(
+              tooltip: 'Options de ${member.user.label}',
+              entries: [
+                if (canRemove) ...[
+                  QBMenuEntry(
+                    icon: LucideIcons.crown,
+                    label: 'Désigner comme MJ',
+                    onSelected: () => _transfer(context, ref),
+                  ),
+                  QBMenuEntry(
+                    icon: LucideIcons.userMinus,
+                    label: 'Retirer de la table',
+                    danger: true,
+                    onSelected: () => _remove(context, ref),
+                  ),
+                ],
+                if (canReport) ...[
+                  QBMenuEntry(
+                    icon: LucideIcons.flag,
+                    label: 'Signaler ce joueur',
+                    danger: true,
+                    onSelected: () => showReportDialog(
+                      context,
+                      contentType: ReportableContent.user,
+                      contentId: member.userId,
+                      label: member.user.label,
+                    ),
+                  ),
+                  QBMenuEntry(
+                    icon: LucideIcons.userX,
+                    label: 'Bloquer ce joueur',
+                    danger: true,
+                    onSelected: () => _block(context, ref),
+                  ),
+                ],
+              ],
             ),
         ],
       ),
     );
+  }
+
+  /// Bloquer défait les tables communes, et celle-ci en est une. Si j'y
+  /// étais joueur, je viens d'en sortir : rester sur son écran laisserait
+  /// lire une table à laquelle je n'appartiens plus.
+  Future<void> _block(BuildContext context, WidgetRef ref) async {
+    final router = GoRouter.of(context);
+    final outcome = await showBlockDialog(
+      context,
+      userId: member.userId,
+      label: member.user.label,
+    );
+
+    if (outcome == null || !context.mounted) return;
+
+    // Le toast d'abord : le messager survit au changement de route, pas le
+    // contexte de cet écran.
+    showBlockOutcomeToast(context, outcome, label: member.user.label);
+    if (!table.isGameMaster) router.go('/tables');
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref) async {
@@ -693,88 +809,6 @@ class _MemberRow extends ConsumerWidget {
     } on ApiException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-}
-
-/// Ce qu'un MJ peut faire d'un de ses joueurs, replié derrière trois points.
-class _MemberMenu extends StatelessWidget {
-  const _MemberMenu({
-    required this.label,
-    required this.onTransfer,
-    required this.onRemove,
-  });
-
-  final String label;
-  final VoidCallback onTransfer;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<VoidCallback>(
-      tooltip: 'Options de $label',
-      icon: const Icon(
-        LucideIcons.ellipsisVertical,
-        size: 18,
-        color: QBColors.ink500,
-      ),
-      padding: EdgeInsets.zero,
-      color: QBColors.paper50,
-      // Les libellés par défaut plafonnent à 280 points, et « Désigner comme
-      // MJ » y tient de justesse selon la police chargée.
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 320),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(QBRadius.md),
-        side: const BorderSide(color: QBColors.borderStrong, width: 2),
-      ),
-      onSelected: (action) => action(),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: onTransfer,
-          child: _MenuLine(
-            icon: LucideIcons.crown,
-            label: 'Désigner comme MJ',
-          ),
-        ),
-        PopupMenuItem(
-          value: onRemove,
-          child: _MenuLine(
-            icon: LucideIcons.userMinus,
-            label: 'Retirer de la table',
-            danger: true,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MenuLine extends StatelessWidget {
-  const _MenuLine({
-    required this.icon,
-    required this.label,
-    this.danger = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = danger ? QBColors.semanticDanger : QBColors.ink800;
-
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: QBSpace.s2),
-        Flexible(
-          child: Text(
-            label,
-            style: QBType.body().copyWith(fontSize: QBType.sm, color: color),
-          ),
-        ),
-      ],
-    );
   }
 }
 

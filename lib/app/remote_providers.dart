@@ -12,8 +12,10 @@ import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
 import '../data/remote/auth_api.dart';
 import '../data/remote/auth_tokens.dart';
+import '../data/remote/block_api.dart';
 import '../data/remote/character_api.dart';
 import '../data/remote/notification_api.dart';
+import '../data/remote/report_api.dart';
 import '../data/remote/session_api.dart';
 import '../data/remote/scenario_api.dart';
 import '../data/remote/shop_api.dart';
@@ -76,6 +78,14 @@ final notificationApiProvider = Provider<NotificationApi>(
   (ref) => NotificationApi(ref.watch(apiClientProvider)),
 );
 
+final reportApiProvider = Provider<ReportApi>(
+  (ref) => ReportApi(ref.watch(apiClientProvider)),
+);
+
+final blockApiProvider = Provider<BlockApi>(
+  (ref) => BlockApi(ref.watch(apiClientProvider)),
+);
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
     ref.watch(authApiProvider),
@@ -83,6 +93,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     ref.watch(tokenStoreProvider),
   );
 });
+
+/// Whether this build has an account to sign in to.
+///
+/// Reading [AppConfig.isRemoteEnabled] through a provider gives tests a way in.
+/// The flag is fixed at compile time, and test binaries carry no OAuth client
+/// id: without this seam, everything the sign-in gate does would be
+/// unreachable — it returns its child before looking at anything else.
+final remoteEnabledProvider = Provider<bool>((ref) => AppConfig.isRemoteEnabled);
 
 /// The signed-in account, or null when the app runs offline-only.
 class AuthController extends AsyncNotifier<AuthUser?> {
@@ -124,6 +142,15 @@ class AuthController extends AsyncNotifier<AuthUser?> {
   /// affiche : c'est un geste explicite, son échec doit se voir.
   Future<void> rename(String displayName) async {
     final user = await ref.read(authRepositoryProvider).rename(displayName);
+    state = AsyncValue.data(user);
+  }
+
+  /// Accepte les conditions d'utilisation, ce qui lève l'écran qui barrait
+  /// l'app. Lève une [ApiException] que cet écran affiche : sans réseau, le
+  /// consentement n'est enregistré nulle part, et prétendre le contraire
+  /// laisserait entrer sans que le serveur en sache rien.
+  Future<void> acceptTerms() async {
+    final user = await ref.read(authRepositoryProvider).acceptTerms();
     state = AsyncValue.data(user);
   }
 

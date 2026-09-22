@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../config/app_config.dart';
 import '../../firebase_options.dart';
@@ -103,6 +104,51 @@ class AuthRepository {
     }
   }
 
+  /// L'autre porte, celle qu'Apple impose sur son store.
+  ///
+  /// Le nom est demandé dans les scopes et remis **une seule fois**, à la
+  /// première autorisation : Apple ne le redonne jamais, et il n'est pas dans
+  /// le jeton. C'est donc ici qu'il faut le transmettre, sous peine de ne plus
+  /// jamais l'avoir.
+  Future<AuthUser> signInWithApple() async {
+    final AuthorizationCredentialAppleID credential;
+    try {
+      credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+    } on SignInWithAppleException catch (error) {
+      throw _translateApple(error);
+    }
+
+    final identityToken = credential.identityToken;
+    if (identityToken == null) {
+      throw const AuthFailure(
+        'Apple n’a pas renvoyé de jeton d’identité. Réessaie, ou connecte-toi '
+        'avec Google.',
+      );
+    }
+
+    final name = [credential.givenName, credential.familyName]
+        .whereType<String>()
+        .join(' ')
+        .trim();
+
+    try {
+      final session = await _api.signInWithApple(
+        identityToken,
+        displayName: name.isEmpty ? null : name,
+      );
+      await _client.setTokens(session.tokens);
+      await _store.writeUser(session.user);
+      return session.user;
+    } on ApiException catch (error) {
+      throw AuthFailure(error.message);
+    }
+  }
+
   /// Le profil en cache suit aussitôt : c'est lui qu'un démarrage hors ligne
   /// relit, et il montrerait sinon l'ancien pseudo jusqu'à la prochaine
   /// connexion réussie.
@@ -153,6 +199,47 @@ class AuthRepository {
     if (_initialized) {
       await GoogleSignIn.instance.signOut();
     }
+  }
+
+  AuthFailure _translateApple(SignInWithAppleException error) {
+    assert(() {
+      debugPrint('SignInWithAppleException: $error');
+      return true;
+    }());
+
+    if (error case SignInWithAppleAuthorizationException(:final code)) {
+      return switch (code) {
+        AuthorizationErrorCode.canceled => const AuthFailure(
+            'Connexion annulée.',
+            isCancellation: true,
+          ),
+        // « notInteractive » signale une demande faite sans interface
+        // disponible, ce qui du point de vue du joueur ressemble a un
+        // renoncement : rien ne s'est affiche.
+        AuthorizationErrorCode.notInteractive ||
+        AuthorizationErrorCode.notHandled =>
+          const AuthFailure('Connexion interrompue, réessaie.'),
+        AuthorizationErrorCode.invalidResponse => const AuthFailure(
+            'Réponse inattendue d’Apple. Réessaie.',
+          ),
+        _ => const AuthFailure(
+            'Échec de la connexion Apple. Réessaie, ou connecte-toi avec '
+            'Google.',
+          ),
+      };
+    }
+
+    // Un appareil ou une plateforme qui ne sait pas la servir : le bouton ne
+    // devrait pas y etre, mais le dire vaut mieux qu'un echec muet.
+    if (error is SignInWithAppleNotSupportedException) {
+      return const AuthFailure(
+        'La connexion Apple n’est pas disponible sur cet appareil.',
+      );
+    }
+
+    return const AuthFailure(
+      'Échec de la connexion Apple. Réessaie, ou connecte-toi avec Google.',
+    );
   }
 
   AuthFailure _translate(GoogleSignInException error) {

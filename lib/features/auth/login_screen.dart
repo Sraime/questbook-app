@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../app/remote_providers.dart';
 import '../../design_system/components/qb_button.dart';
@@ -26,7 +28,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   bool _busy = false;
 
-  Future<void> _signIn() async {
+  Future<void> _signIn() => _attempt(
+        () => ref.read(authControllerProvider.notifier).signIn(),
+      );
+
+  Future<void> _signInWithApple() => _attempt(
+        () => ref.read(authControllerProvider.notifier).signInWithApple(),
+      );
+
+  Future<void> _attempt(Future<String?> Function() signIn) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -34,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     String? message;
     try {
-      message = await ref.read(authControllerProvider.notifier).signIn();
+      message = await signIn();
     } catch (error) {
       // The controller turns failures into messages already; this is the net
       // that keeps an unforeseen one from freezing the button for good.
@@ -97,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else
+                    else ...[
                       QBButton(
                         label: 'Se connecter avec Google',
                         expand: true,
@@ -108,6 +118,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         onPressed: _signIn,
                       ),
+                      // Sur iOS seulement : Apple l'exige sur son store, et
+                      // sur Android le paquet passerait par un detour
+                      // navigateur pour un besoin qui n'y existe pas.
+                      //
+                      // C'est le bouton fourni par le paquet, et non un
+                      // QBButton habille en noir : Apple impose son logo, son
+                      // libelle et un encombrement au moins egal aux autres
+                      // boutons de connexion, et un bouton maison qui derive
+                      // est un motif de rejet.
+                      if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+                        const SizedBox(height: QBSpace.s3),
+                        SignInWithAppleButton(
+                          text: 'Se connecter avec Apple',
+                          height: 48,
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(QBRadius.md)),
+                          onPressed: _signInWithApple,
+                        ),
+                      ],
+                    ],
                     if (_error case final message?) ...[
                       const SizedBox(height: QBSpace.s3),
                       Text(

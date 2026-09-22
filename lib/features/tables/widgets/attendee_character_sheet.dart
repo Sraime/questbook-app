@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../app/remote_providers.dart';
 import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_character.dart';
+import '../../../data/remote/report_api.dart';
 import '../../../design_system/components/qb_badge.dart';
 import '../../../design_system/components/qb_card.dart';
+import '../../../design_system/components/qb_menu.dart';
 import '../../../design_system/components/qb_stat_dial.dart';
 import '../../../design_system/components/qb_stat_grid.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../moderation/report_dialog.dart';
 import '../providers/table_providers.dart';
 
 /// The sheet of another player at the same session, in read-only form. It is
@@ -64,8 +69,19 @@ class _AttendeeSheet extends ConsumerWidget {
         ),
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
         child: switch (character) {
-          AsyncData(value: final sheet) =>
-            _Sheet(sheet: sheet, playerLabel: playerLabel, controller: controller),
+          AsyncData(value: final sheet) => _Sheet(
+              sheet: sheet,
+              playerLabel: playerLabel,
+              controller: controller,
+              // Cette même feuille s'ouvre parfois sur sa propre fiche, en
+              // touchant sa ligne dans la liste des présents. Le serveur
+              // refuserait le signalement, autant ne pas l'offrir — et tant
+              // qu'on ignore qui lit, on s'abstient.
+              canReport: switch (ref.watch(authControllerProvider).value?.id) {
+                null => false,
+                final me => me != userId && ref.watch(canWriteProvider),
+              },
+            ),
           AsyncError(error: final error) => _Unavailable(error: error),
           _ => const Center(child: CircularProgressIndicator()),
         },
@@ -79,11 +95,13 @@ class _Sheet extends StatelessWidget {
     required this.sheet,
     required this.playerLabel,
     required this.controller,
+    required this.canReport,
   });
 
   final RemoteCharacter sheet;
   final String playerLabel;
   final ScrollController controller;
+  final bool canReport;
 
   @override
   Widget build(BuildContext context) {
@@ -107,22 +125,52 @@ class _Sheet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: QBSpace.s4),
-        Text(
-          sheet.name,
-          style: QBType.game().copyWith(
-            fontWeight: QBType.weightBold,
-            fontSize: 20,
-            color: QBColors.ink900,
-          ),
-        ),
-        Text(
-          sheet.occupation == null || sheet.occupation!.isEmpty
-              ? 'Joué par $playerLabel'
-              : '${sheet.occupation} · joué par $playerLabel',
-          style: QBType.body().copyWith(
-            fontSize: QBType.sm,
-            color: QBColors.textMuted,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    sheet.name,
+                    style: QBType.game().copyWith(
+                      fontWeight: QBType.weightBold,
+                      fontSize: 20,
+                      color: QBColors.ink900,
+                    ),
+                  ),
+                  Text(
+                    sheet.occupation == null || sheet.occupation!.isEmpty
+                        ? 'Joué par $playerLabel'
+                        : '${sheet.occupation} · joué par $playerLabel',
+                    style: QBType.body().copyWith(
+                      fontSize: QBType.sm,
+                      color: QBColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (canReport)
+              QBMenu(
+                tooltip: 'Options de ${sheet.name}',
+                entries: [
+                  QBMenuEntry(
+                    icon: LucideIcons.flag,
+                    label: 'Signaler cet investigateur',
+                    danger: true,
+                    onSelected: () => showReportDialog(
+                      context,
+                      contentType: ReportableContent.investigator,
+                      contentId: sheet.id,
+                      label: sheet.name,
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
         if (sheet.resources.isNotEmpty) ...[
           const SizedBox(height: QBSpace.s3),

@@ -14,6 +14,7 @@ import '../data/remote/auth_api.dart';
 import '../data/remote/auth_tokens.dart';
 import '../data/remote/character_api.dart';
 import '../data/remote/notification_api.dart';
+import '../data/remote/report_api.dart';
 import '../data/remote/session_api.dart';
 import '../data/remote/scenario_api.dart';
 import '../data/remote/shop_api.dart';
@@ -74,6 +75,10 @@ final shopApiProvider = Provider<ShopApi>(
 
 final notificationApiProvider = Provider<NotificationApi>(
   (ref) => NotificationApi(ref.watch(apiClientProvider)),
+);
+
+final reportApiProvider = Provider<ReportApi>(
+  (ref) => ReportApi(ref.watch(apiClientProvider)),
 );
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

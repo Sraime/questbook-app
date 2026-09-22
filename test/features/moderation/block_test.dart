@@ -47,6 +47,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> deleteAccount() async {}
 
   @override
+  Future<AuthUser> acceptTerms() async => throw UnimplementedError();
+
+  @override
   Future<void> signOut() async {}
 }
 
@@ -58,40 +61,22 @@ class _FakeBlockApi implements BlockApi {
     this.tablesLeft = 0,
     this.playersRemoved = 0,
     this.failure,
-    List<BlockedUser> blocked = const [],
-  }) : _blocked = [...blocked];
+  });
 
   final int tablesLeft;
   final int playersRemoved;
   final ApiException? failure;
-  final List<BlockedUser> _blocked;
 
   final List<String> blockCalls = [];
-  final List<String> unblockCalls = [];
-
-  @override
-  Future<List<BlockedUser>> list() async => _blocked;
 
   @override
   Future<BlockOutcome> block(String userId) async {
     if (failure case final error?) throw error;
     blockCalls.add(userId);
     return BlockOutcome(
-      user: BlockedUser(
-        userId: userId,
-        displayName: 'Marie',
-        pictureUrl: null,
-        blockedAt: DateTime.now(),
-      ),
       tablesLeft: tablesLeft,
       playersRemoved: playersRemoved,
     );
-  }
-
-  @override
-  Future<void> unblock(String userId) async {
-    unblockCalls.add(userId);
-    _blocked.removeWhere((person) => person.userId == userId);
   }
 }
 
@@ -295,11 +280,8 @@ void main() {
     expect(find.text('mes tables'), findsNothing);
   });
 
-  Future<_FakeBlockApi> pumpProfile(
-    WidgetTester tester, {
-    required List<BlockedUser> blocked,
-  }) async {
-    final api = _FakeBlockApi(blocked: blocked);
+  Future<_FakeBlockApi> pumpProfile(WidgetTester tester) async {
+    final api = _FakeBlockApi();
 
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(412, 915);
@@ -328,35 +310,25 @@ void main() {
     return api;
   }
 
-  testWidgets('le profil est le seul endroit d’où l’on revient dessus',
-      (tester) async {
-    final api = await pumpProfile(
-      tester,
-      blocked: [
-        BlockedUser(
-          userId: 'gm-1',
-          displayName: 'Marie',
-          pictureUrl: null,
-          blockedAt: now,
-        ),
-      ],
-    );
+  testWidgets('la fenêtre annonce que rien ne le défera', (tester) async {
+    await pumpTable(tester);
 
-    expect(find.text('Joueurs bloqués'), findsOneWidget);
-    expect(find.text('Marie'), findsOneWidget);
-
-    await tester.tap(find.byIcon(LucideIcons.userCheck));
+    await openMenuOf(tester, 'Marie');
+    await tester.tap(find.text('Bloquer ce joueur'));
     await tester.pumpAndSettle();
 
-    expect(api.unblockCalls, ['gm-1']);
-    // La carte s'en va avec sa dernière ligne : un rayon vide n'apprend rien.
-    expect(find.text('Joueurs bloqués'), findsNothing);
+    expect(
+      find.text('C’est définitif : il n’y a pas de bouton pour débloquer.'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('et n’annonce rien tant qu’on n’a bloqué personne',
-      (tester) async {
-    await pumpProfile(tester, blocked: const []);
+  testWidgets('et le profil n’en offre aucun', (tester) async {
+    await pumpProfile(tester);
 
+    // Le geste ne se reprend nulle part, ici moins qu'ailleurs : c'est le
+    // seul écran où l'on serait allé le chercher.
     expect(find.text('Joueurs bloqués'), findsNothing);
+    expect(find.byIcon(LucideIcons.userCheck), findsNothing);
   });
 }

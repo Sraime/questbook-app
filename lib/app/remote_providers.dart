@@ -86,14 +86,6 @@ final blockApiProvider = Provider<BlockApi>(
   (ref) => BlockApi(ref.watch(apiClientProvider)),
 );
 
-/// Les comptes bloqués, tels que le profil les liste. Le blocage les
-/// invalide plutôt que de les modifier sur place : la liste tient sur un
-/// écran, et une relecture coûte moins qu'un état à garder en phase.
-final blockedUsersProvider = FutureProvider<List<BlockedUser>>((ref) async {
-  if (ref.watch(authControllerProvider).value == null) return const [];
-  return ref.watch(blockApiProvider).list();
-});
-
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
     ref.watch(authApiProvider),
@@ -101,6 +93,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     ref.watch(tokenStoreProvider),
   );
 });
+
+/// Whether this build has an account to sign in to.
+///
+/// Reading [AppConfig.isRemoteEnabled] through a provider gives tests a way in.
+/// The flag is fixed at compile time, and test binaries carry no OAuth client
+/// id: without this seam, everything the sign-in gate does would be
+/// unreachable — it returns its child before looking at anything else.
+final remoteEnabledProvider = Provider<bool>((ref) => AppConfig.isRemoteEnabled);
 
 /// The signed-in account, or null when the app runs offline-only.
 class AuthController extends AsyncNotifier<AuthUser?> {
@@ -142,6 +142,15 @@ class AuthController extends AsyncNotifier<AuthUser?> {
   /// affiche : c'est un geste explicite, son échec doit se voir.
   Future<void> rename(String displayName) async {
     final user = await ref.read(authRepositoryProvider).rename(displayName);
+    state = AsyncValue.data(user);
+  }
+
+  /// Accepte les conditions d'utilisation, ce qui lève l'écran qui barrait
+  /// l'app. Lève une [ApiException] que cet écran affiche : sans réseau, le
+  /// consentement n'est enregistré nulle part, et prétendre le contraire
+  /// laisserait entrer sans que le serveur en sache rien.
+  Future<void> acceptTerms() async {
+    final user = await ref.read(authRepositoryProvider).acceptTerms();
     state = AsyncValue.data(user);
   }
 

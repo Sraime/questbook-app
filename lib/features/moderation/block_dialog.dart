@@ -17,7 +17,7 @@ import '../tables/providers/table_providers.dart';
 /// reste sur un écran dont il vient de sortir.
 ///
 /// Le blocage n'est pas un signalement qu'on adoucit : il défait le présent,
-/// et débloquer ne le rendra pas. La fenêtre le dit avant, faute de quoi on
+/// et rien ne le défera. La fenêtre le dit avant, faute de quoi on
 /// l'apprendrait en voyant une table disparaître.
 Future<BlockOutcome?> showBlockDialog(
   BuildContext context, {
@@ -62,7 +62,6 @@ class _BlockFormState extends ConsumerState<_BlockForm> {
       // qu'on vient de retirer resterait affiché dans sa liste.
       refreshTables(ref);
       ref.invalidate(tableDetailProvider);
-      ref.invalidate(blockedUsersProvider);
       navigator.pop(outcome);
     } on ApiException catch (error) {
       setState(() {
@@ -89,10 +88,21 @@ class _BlockFormState extends ConsumerState<_BlockForm> {
         const SizedBox(height: QBSpace.s3),
         Text(
           'Vos tables communes se défont : tu quittes celles où tu n’es que '
-          'joueur, et ${widget.label} est retiré de celles que tu mènes. '
-          'Débloquer ne les rendra pas — il faudra une nouvelle invitation.',
+          'joueur, et ${widget.label} est retiré de celles que tu mènes.',
           style: QBType.body().copyWith(
             fontSize: QBType.sm,
+            color: QBColors.textBody,
+          ),
+        ),
+        const SizedBox(height: QBSpace.s3),
+        // Le seul geste de l'app qu'on ne peut pas reprendre. Le dire en
+        // gras, et une ligne à part, parce que c'est ce qu'on regrette de
+        // n'avoir pas lu.
+        Text(
+          'C’est définitif : il n’y a pas de bouton pour débloquer.',
+          style: QBType.body().copyWith(
+            fontSize: QBType.sm,
+            fontWeight: QBType.weightSemibold,
             color: QBColors.textBody,
           ),
         ),

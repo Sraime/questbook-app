@@ -36,6 +36,16 @@ class AuthApi {
     );
   }
 
+  /// Enregistre l'acceptation des conditions d'utilisation. Sans corps : il
+  /// n'y a rien à nuancer dans un consentement, et la version acceptée se
+  /// déduit de la date.
+  Future<AuthUser> acceptTerms() {
+    return _client.send(
+      (dio) => dio.post<dynamic>('/auth/terms'),
+      parse: (data) => AuthUser.fromJson((data as Map).cast<String, dynamic>()),
+    );
+  }
+
   /// Efface le compte et tout ce que le serveur y rattache. Sans retour :
   /// il n'y a plus rien à renvoyer.
   Future<void> deleteAccount() {

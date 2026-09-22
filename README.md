@@ -1021,9 +1021,17 @@ Le texte qui fait foi n'est **pas embarqué** : `lib/config/legal_links.dart`
 ouvre les pages servies par Caddy, `/conditions-utilisation` et
 `/confidentialite`. Deux copies d'une clause divergent, et c'est toujours
 celle qu'on lit qui a tort — corriger un texte juridique ne doit pas demander
-une livraison sur les stores. L'adresse suit `QUESTBOOK_API_URL`, si bien
-qu'un poste de développement ouvre ses propres pages. La carte **Ce que tu as
-accepté** du profil y renvoie, pour les relire après coup.
+une livraison sur les stores. La carte **Ce que tu as accepté** du profil y
+renvoie, pour les relire après coup.
+
+Leur adresse est **figée sur le domaine public** et ne suit pas
+`QUESTBOOK_API_URL`, contrairement au reste de l'app. Elle l'a suivi, et les
+liens étaient morts en `dev` : les pages sont servies par Caddy, qui ne
+tourne pas sur un poste de développement — l'API Node répondait `Route not
+found`. Les faire dépendre de l'étape n'aurait de toute façon pas de sens,
+ces deux textes engageant NextUs de la même manière pour tout le monde. Un
+test le tient, aux côtés de celui qui vérifie le `https` des builds
+distribués.
 
 `url_launcher` a besoin d'un `<queries>` déclarant le schéma `https` dans
 `AndroidManifest.xml` : sans lui, Android 11 et au-delà répondent qu'aucune

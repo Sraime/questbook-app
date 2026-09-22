@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:questbook/config/legal_links.dart';
 import 'package:questbook/data/remote/board_live_client.dart';
 
 /// L'app ne parle en `https` au VPS que parce qu'une ligne le dit dans chaque
@@ -53,5 +54,19 @@ void main() {
       final client = BoardLiveClient(origin: 'http://10.0.2.2:3000');
       expect(client.wsOrigin, 'ws://10.0.2.2:3000');
     });
+  });
+
+  group('les pages légales ne suivent pas l’API', () {
+    // Elles l'ont suivie, et les liens étaient morts sur un poste de
+    // développement : les pages sont servies par Caddy, qui ne tourne pas en
+    // local — l'API Node répondait `Route not found`. Les faire dépendre de
+    // l'étape n'a de toute façon pas de sens, ces textes engageant NextUs de
+    // la même manière pour tout le monde.
+    for (final page in [LegalLinks.terms, LegalLinks.privacy]) {
+      test('$page', () {
+        expect(page.scheme, 'https');
+        expect(page.host, 'questbook.nextuscorp.com');
+      });
+    }
   });
 }

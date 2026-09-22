@@ -976,6 +976,31 @@ depuis un client modifié. Voir le README du backend.
 points servent maintenant à trois endroits, et la mise en forme du menu était
 recopiée à chaque fois.
 
+### Bloquer un joueur
+
+Signaler réveille le support ; bloquer vide la chaise d'en face. C'est le
+second qui change quelque chose pour celui qui vient de subir, et les deux
+tiennent dans le même menu — la ligne d'un joueur, et elle seule. Une table
+ou une séance ne se bloquent pas : on bloque quelqu'un.
+
+Le geste **défait le présent**, et la fenêtre l'annonce avant de le faire :
+les invitations en attente disparaissent, les tables communes se règlent
+selon le rôle qu'on y tient — on quitte celles où l'on n'est que joueur, on
+en retire l'autre quand on les mène — et débloquer ne les rendra pas.
+L'apprendre après coup, en voyant une table manquer à l'accueil, se lirait
+comme une panne.
+
+Combien de tables, l'app l'ignore : elle n'en connaît qu'une, celle d'où part
+le geste. C'est le serveur qui compte ce qu'il a défait, et le toast le
+répète. Puis, **si le blocage m'a fait sortir de la table affichée**, l'écran
+la quitte : rester dessus laisserait lire une table à laquelle je
+n'appartiens plus.
+
+La carte **Joueurs bloqués** du profil est le seul endroit d'où l'on revient
+dessus, parce que la table d'où l'on aurait pu le faire, on l'a quittée dans
+le même mouvement. Elle reste absente tant qu'on n'a bloqué personne :
+annoncer un rayon vide n'apprend rien, et suggérer le geste encore moins.
+
 ### Notifications push (Firebase Cloud Messaging)
 
 `lib/data/push/push_messaging.dart` enregistre le jeton FCM de l'appareil à la

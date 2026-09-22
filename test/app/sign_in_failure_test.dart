@@ -28,6 +28,9 @@ class _FailingAuthRepository implements AuthRepository {
   Future<void> deleteAccount() async => throw failure;
 
   @override
+  Future<AuthUser> acceptTerms() async => throw UnimplementedError();
+
+  @override
   Future<void> signOut() async {}
 }
 

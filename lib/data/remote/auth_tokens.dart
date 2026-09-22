@@ -14,6 +14,7 @@ class AuthUser {
     required this.email,
     this.displayName,
     this.pictureUrl,
+    this.termsAcceptedAt,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
@@ -21,12 +22,25 @@ class AuthUser {
         email: json['email'] as String,
         displayName: json['displayName'] as String?,
         pictureUrl: json['pictureUrl'] as String?,
+        termsAcceptedAt: switch (json['termsAcceptedAt']) {
+          final String at => DateTime.parse(at),
+          _ => null,
+        },
       );
 
   final String id;
   final String email;
   final String? displayName;
   final String? pictureUrl;
+
+  /// Quand ce compte a accepté les conditions d'utilisation, nul tant qu'il
+  /// ne l'a pas fait. Arrive avec le profil à chaque connexion et à chaque
+  /// rafraîchissement, ce qui évite un appel de plus au démarrage.
+  final DateTime? termsAcceptedAt;
+
+  /// L'app barre son premier écran là-dessus. Un compte hors ligne n'existe
+  /// pas ici : sans compte, il n'y a rien à faire accepter.
+  bool get hasAcceptedTerms => termsAcceptedAt != null;
 
   /// What the UI shows: the Google display name, falling back to the part of
   /// the email before the `@`.

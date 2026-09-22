@@ -54,5 +54,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Les pages légales s'ouvrent dans le navigateur. Depuis Android 11,
+             une app ne voit pas les autres sans le déclarer ici, et
+             `canLaunchUrl` répondrait non sur un téléphone qui a pourtant un
+             navigateur — l'écran de consentement n'aurait alors plus de lien
+             vers le texte qu'il demande d'accepter. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

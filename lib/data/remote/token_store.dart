@@ -66,6 +66,10 @@ class TokenStore {
         'email': user.email,
         'displayName': user.displayName,
         'pictureUrl': user.pictureUrl,
+        // Sans cette date, un démarrage hors ligne rebarrerait l'écran sur
+        // un consentement déjà donné — et rien n'y serait acceptable, faute
+        // de serveur à qui le dire.
+        'termsAcceptedAt': user.termsAcceptedAt?.toIso8601String(),
       }),
     );
   }

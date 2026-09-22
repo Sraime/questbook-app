@@ -984,11 +984,17 @@ tiennent dans le même menu — la ligne d'un joueur, et elle seule. Une table
 ou une séance ne se bloquent pas : on bloque quelqu'un.
 
 Le geste **défait le présent**, et la fenêtre l'annonce avant de le faire :
-les invitations en attente disparaissent, les tables communes se règlent
+les invitations en attente disparaissent, et les tables communes se règlent
 selon le rôle qu'on y tient — on quitte celles où l'on n'est que joueur, on
-en retire l'autre quand on les mène — et débloquer ne les rendra pas.
-L'apprendre après coup, en voyant une table manquer à l'accueil, se lirait
-comme une panne.
+en retire l'autre quand on les mène. L'apprendre après coup, en voyant une
+table manquer à l'accueil, se lirait comme une panne.
+
+**Il est définitif**, et la fenêtre le dit aussi. Ni l'app ni l'API n'offrent
+de quoi revenir dessus : le serveur n'a qu'une route `POST /blocks`, et lister
+ou défaire un blocage répond 404. Ce que le geste promet, c'est de ne plus
+croiser quelqu'un, et une promesse qu'on retire d'un bouton n'en est pas une.
+Se retrouver ensemble demande une nouvelle invitation depuis un compte qui
+n'a jamais bloqué.
 
 Combien de tables, l'app l'ignore : elle n'en connaît qu'une, celle d'où part
 le geste. C'est le serveur qui compte ce qu'il a défait, et le toast le
@@ -996,10 +1002,38 @@ répète. Puis, **si le blocage m'a fait sortir de la table affichée**, l'écra
 la quitte : rester dessus laisserait lire une table à laquelle je
 n'appartiens plus.
 
-La carte **Joueurs bloqués** du profil est le seul endroit d'où l'on revient
-dessus, parce que la table d'où l'on aurait pu le faire, on l'a quittée dans
-le même mouvement. Elle reste absente tant qu'on n'a bloqué personne :
-annoncer un rayon vide n'apprend rien, et suggérer le geste encore moins.
+### Conditions d'utilisation
+
+Les stores refusent une app sociale sans conditions acceptées, et les
+accepter n'a de sens que pour un compte : c'est au compte que le serveur
+attache la date, dans `termsAcceptedAt`. Elle voyage avec le profil, dans la
+réponse de `/auth/me` comme dans celle du rafraîchissement, et `TokenStore`
+la garde avec le reste — un lancement hors ligne ne redemande donc rien.
+
+`AuthGate` (`lib/app/auth_gate.dart`) barre l'app tant qu'elle est nulle.
+C'est **à chaque lancement, pas seulement à la création du compte** : les
+comptes qui existaient avant la publication des conditions les croisent à
+leur prochain démarrage, personne n'ayant signé pour eux. Le seul autre
+chemin depuis cet écran est de se déconnecter ; sans lui, refuser
+reviendrait à devoir désinstaller.
+
+Le texte qui fait foi n'est **pas embarqué** : `lib/config/legal_links.dart`
+ouvre les pages servies par Caddy, `/conditions-utilisation` et
+`/confidentialite`. Deux copies d'une clause divergent, et c'est toujours
+celle qu'on lit qui a tort — corriger un texte juridique ne doit pas demander
+une livraison sur les stores. L'adresse suit `QUESTBOOK_API_URL`, si bien
+qu'un poste de développement ouvre ses propres pages. La carte **Ce que tu as
+accepté** du profil y renvoie, pour les relire après coup.
+
+`url_launcher` a besoin d'un `<queries>` déclarant le schéma `https` dans
+`AndroidManifest.xml` : sans lui, Android 11 et au-delà répondent qu'aucune
+application ne sait ouvrir le lien, et le lien paraît mort.
+
+`AuthGate` sort de `main.dart` pour être testable. Il lit aussi
+`remoteEnabledProvider` plutôt que `AppConfig.isRemoteEnabled` en direct : le
+drapeau est figé à la compilation et les binaires de test n'ont pas de client
+OAuth, si bien que le portier rendait son enfant sans rien regarder et que
+rien de ce qu'il fait n'était atteignable.
 
 ### Notifications push (Firebase Cloud Messaging)
 

@@ -111,7 +111,8 @@ void main() {
         user: RemoteUser(id: id, displayName: name, pictureUrl: null),
       );
 
-  RemoteGameTable tableSeenAs(TableRole role) => RemoteGameTable(
+  RemoteGameTable tableSeenAs(TableRole role, {bool withoutRobin = false}) =>
+      RemoteGameTable(
         id: 'table-1',
         title: 'Les ombres d’Arkham',
         ownerId: 'gm-1',
@@ -120,7 +121,7 @@ void main() {
         updatedAt: now,
         members: [
           member('gm-1', 'Marie', TableRole.gameMaster),
-          member('p-1', 'Robin', TableRole.player),
+          if (!withoutRobin) member('p-1', 'Robin', TableRole.player),
         ],
         pendingInvitations: const [],
         nextSessionAt: null,
@@ -133,11 +134,11 @@ void main() {
         routes: [
           GoRoute(
             path: '/tables',
-            builder: (_, __) => const Scaffold(body: Text('mes tables')),
+            builder: (_, _) => const Scaffold(body: Text('mes tables')),
           ),
           GoRoute(
             path: '/tables/table-1',
-            builder: (_, __) => Scaffold(body: screen),
+            builder: (_, _) => Scaffold(body: screen),
           ),
         ],
       );
@@ -156,6 +157,11 @@ void main() {
     );
     final me = role == TableRole.gameMaster ? _marie : _robin;
 
+    // Comme le serveur : la deuxième lecture ne renvoie plus le joueur que le
+    // blocage a sorti de la table. Ce que l'écran en montre dépend donc de
+    // savoir qu'il faut relire.
+    var reads = 0;
+
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(412, 915);
     addTearDown(tester.view.reset);
@@ -166,8 +172,10 @@ void main() {
         blockApiProvider.overrideWithValue(api),
         canWriteProvider.overrideWithValue(true),
         tableDetailProvider.overrideWith(
-          (ref, tableId) async =>
-              TableDetail(table: tableSeenAs(role), sessions: const []),
+          (ref, tableId) async => TableDetail(
+            table: tableSeenAs(role, withoutRobin: reads++ > 0),
+            sessions: const [],
+          ),
         ),
       ],
     );
@@ -243,6 +251,9 @@ void main() {
     // l'autre qui sort, et le MJ reste où il était.
     expect(find.text('mes tables'), findsNothing);
     expect(find.text('Les ombres d’Arkham'), findsOneWidget);
+    // Mais la liste des joueurs se relit : garder à l'écran celui qu'on
+    // vient de retirer laisserait croire que le geste n'a rien fait.
+    expect(find.text('Robin'), findsNothing);
   });
 
   testWidgets('personne ne se bloque soi-même', (tester) async {

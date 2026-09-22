@@ -56,9 +56,12 @@ class _BlockFormState extends ConsumerState<_BlockForm> {
 
     try {
       final outcome = await ref.read(blockApiProvider).block(widget.userId);
-      // Les tables ont bougé des deux côtés du blocage, et la liste des
-      // bloqués vient de gagner une ligne.
+      // Toutes les tables, et pas seulement celle d'où part le geste : le
+      // blocage a pu en défaire plusieurs, et l'app ne sait pas lesquelles.
+      // Celle qu'on a sous les yeux en fait partie — sans cela, le joueur
+      // qu'on vient de retirer resterait affiché dans sa liste.
       refreshTables(ref);
+      ref.invalidate(tableDetailProvider);
       ref.invalidate(blockedUsersProvider);
       navigator.pop(outcome);
     } on ApiException catch (error) {
@@ -98,7 +101,7 @@ class _BlockFormState extends ConsumerState<_BlockForm> {
         // croiser quelqu'un. Le sanctionner est un autre geste, et le dire
         // ici évite qu'on bloque en croyant avoir alerté quelqu'un.
         Text(
-          'Bloquer ne prévient personne, ni ${widget.label} ni nous. Si le '
+          'Bloquer ne prévient personne, et ne nous alerte pas. Si le '
           'contenu pose problème, signale-le aussi.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,

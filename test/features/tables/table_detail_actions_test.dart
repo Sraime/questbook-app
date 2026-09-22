@@ -4,10 +4,38 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:questbook/app/remote_providers.dart';
+import 'package:questbook/data/auth/auth_repository.dart';
+import 'package:questbook/data/remote/auth_tokens.dart';
 import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
 import 'package:questbook/features/tables/providers/table_providers.dart';
 import 'package:questbook/features/tables/table_detail_screen.dart';
+
+const _marie = AuthUser(
+  id: 'gm-1',
+  email: 'marie@example.com',
+  displayName: 'Marie',
+  pictureUrl: null,
+);
+
+/// L'écran a besoin de savoir qui le lit : c'est ce qui décide des gestes
+/// qu'on peut porter sur soi-même, et de ceux qu'on ne peut pas.
+class _FakeAuthRepository implements AuthRepository {
+  @override
+  Future<AuthUser?> restoreSession() async => _marie;
+
+  @override
+  Future<AuthUser> signInWithGoogle() async => _marie;
+
+  @override
+  Future<AuthUser> rename(String displayName) async => _marie;
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> signOut() async {}
+}
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
@@ -47,15 +75,24 @@ void main() {
     tester.view.physicalSize = const Size(412, 915);
     addTearDown(tester.view.reset);
 
+    final container = ProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(_FakeAuthRepository()),
+        canWriteProvider.overrideWithValue(true),
+        tableDetailProvider.overrideWith(
+          (ref, tableId) async =>
+              TableDetail(table: table, sessions: const []),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(authControllerProvider.future);
+    container.read(authControllerProvider.notifier).state =
+        const AsyncValue.data(_marie);
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          canWriteProvider.overrideWithValue(true),
-          tableDetailProvider.overrideWith(
-            (ref, tableId) async =>
-                TableDetail(table: table, sessions: const []),
-          ),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const MaterialApp(
           home: Scaffold(body: TableDetailScreen(tableId: 'table-1')),
         ),
@@ -114,6 +151,7 @@ void main() {
 
     expect(find.text('Désigner comme MJ'), findsOneWidget);
     expect(find.text('Retirer de la table'), findsOneWidget);
+    expect(find.text('Signaler ce joueur'), findsOneWidget);
   });
 
   testWidgets('dissoudre la table n’est plus un pavé rouge', (tester) async {

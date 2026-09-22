@@ -54,7 +54,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
-- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. La carte ne porte donc rien dans l'angle de son titre — ni boutons, ni picto — trois cibles de 32 points côte à côte se visaient mal. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
+- **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
 - **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
@@ -941,6 +941,40 @@ Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
 colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
 C'est le repli, pas une illustration — le jour où les scénarios auront des
 couvertures, elles se déclarent là.
+
+### Signaler un contenu
+
+Une app dont les utilisateurs écrivent le contenu doit, pour Apple, offrir de
+quoi signaler ce qui choque. Questbook en écrit à quatre endroits : un pseudo,
+le titre d'une table, le titre et la description d'une séance, la fiche d'un
+investigateur. Ce sont les quatre choses qui se signalent, chacune depuis
+l'endroit où on la lit — un menu à trois points, jamais un bouton :
+
+| Ce qu'on signale | D'où |
+| --- | --- |
+| Un joueur | Sa ligne dans la liste des membres d'une table |
+| Une table | L'angle de son titre, sur son écran de détail |
+| Une séance | L'angle du titre de sa carte |
+| Un investigateur | L'entête de sa fiche, ouverte depuis la liste des présents |
+
+**Le menu n'apparaît jamais sur ce qu'on a écrit soi-même** : le MJ ne voit
+rien sur sa table ni sur ses séances, personne ne voit rien sur sa propre
+ligne. Le serveur le refuserait de toute façon, et offrir un geste voué au
+refus est pire que ne pas l'offrir. Tant que l'app ignore qui la lit — le
+compte n'est pas encore restauré — elle s'abstient plutôt que de supposer.
+
+La fenêtre demande **ce qu'on reproche**, en prose : sans ces mots, le
+support reçoit un identifiant et rien à en faire. Le bouton est rouge, comme
+tout ce qui ne se défait pas.
+
+**L'app n'envoie que la cible et le motif.** Ni l'auteur du contenu ni la
+copie de ce qu'il disait ne partent d'ici : le serveur relit la cible
+lui-même et en prend l'instantané, faute de quoi un signalement se forgerait
+depuis un client modifié. Voir le README du backend.
+
+`QBMenu` (`design_system/components/qb_menu.dart`) est né de là : les trois
+points servent maintenant à trois endroits, et la mise en forme du menu était
+recopiée à chaque fois.
 
 ### Notifications push (Firebase Cloud Messaging)
 

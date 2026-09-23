@@ -136,24 +136,28 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Install the App Store certificate and profile
+      - name: Set up Ruby and fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: ios
+
+      - name: Install the App Store certificate
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-          APPSTORE_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_PROVISION_PROFILE_BASE64 }}
         run: |
-          if [ -z "$BUILD_CERTIFICATE_BASE64" ] || [ -z "$APPSTORE_PROVISION_PROFILE_BASE64" ]; then
-            echo "::error::Secrets iOS store manquants (IOS_BUILD_CERTIFICATE_BASE64, IOS_P12_PASSWORD, IOS_APPSTORE_PROVISION_PROFILE_BASE64)."
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "::error::Secrets iOS store manquants (IOS_BUILD_CERTIFICATE_BASE64, IOS_P12_PASSWORD)."
             exit 1
           fi
 
           CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
-          PP_PATH="$RUNNER_TEMP/appstore_pp.mobileprovision"
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
 
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
-          echo -n "$APPSTORE_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -162,6 +166,30 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      # Un profil fige les capabilities du jour de sa creation : celui qui
+      # dormait en secret ignorait Sign in with Apple, et la publication de la
+      # 1.31.0+47 a echoue a la signature. La distribution testeurs regenere
+      # le sien a chaque build et n'a rien vu passer, on fait pareil ici.
+      - name: Refresh the App Store profile
+        working-directory: ios
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          PROFILE_OUTPUT_DIR: ${{ runner.temp }}
+        run: |
+          if [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_ISSUER_ID" ] || [ -z "$APP_STORE_CONNECT_API_KEY" ]; then
+            echo "::error::Cle App Store Connect manquante (APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_API_KEY). Voir le README."
+            exit 1
+          fi
+
+          bundle exec fastlane ios refresh_appstore_profile
+
+      - name: Configure signing for the archive
+        run: |
+          PP_PATH="$RUNNER_TEMP/questbook_appstore.mobileprovision"
           PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
           security cms -D -i "$PP_PATH" > "$PROFILE_PLIST"
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PROFILE_PLIST")
@@ -175,7 +203,6 @@ jobs:
           TEAM_ID="$TEAM_ID" PROFILE_NAME="$PROFILE_NAME" EXPORT_OPTIONS="$EXPORT_OPTIONS" \
             python3 -c "import os,plistlib; plistlib.dump({'method':'app-store','teamID':os.environ['TEAM_ID'],'signingStyle':'manual','compileBitcode':False,'uploadSymbols':True,'provisioningProfiles':{'com.questbook.questbook':os.environ['PROFILE_NAME']}}, open(os.environ['EXPORT_OPTIONS'],'wb'))"
 
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
           echo "EXPORT_OPTIONS=$EXPORT_OPTIONS" >> "$GITHUB_ENV"
 
           {
@@ -225,4 +252,4 @@ jobs:
           if [ -n "$KEYCHAIN_PATH" ]; then
             security delete-keychain "$KEYCHAIN_PATH" || true
           fi
-          rm -f "$RUNNER_TEMP/build_certificate.p12" "$RUNNER_TEMP/appstore_pp.mobileprovision"
+          rm -f "$RUNNER_TEMP/build_certificate.p12" "$RUNNER_TEMP/questbook_appstore.mobileprovision"

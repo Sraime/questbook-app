@@ -205,6 +205,12 @@ jobs:
           path: ${{ steps.ipa.outputs.path }}
           if-no-files-found: error
 
+      # Pas de `uses-non-exempt-encryption` ici : `ios/Runner/Info.plist`
+      # declare deja `ITSAppUsesNonExemptEncryption`, si bien que la reponse
+      # arrive avec le build. L'action tenterait alors de la reposer par
+      # l'API, qu'App Store Connect refuse — « You cannot update when the
+      # value is already set. » — et le job virait au rouge apres un envoi
+      # parfaitement reussi.
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v4
         with:
@@ -212,7 +218,6 @@ jobs:
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
-          uses-non-exempt-encryption: false
 
       - name: Clean up keychain and signing files
         if: always()

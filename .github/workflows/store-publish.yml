@@ -104,6 +104,13 @@ jobs:
             exit 1
           fi
 
+      # Pas de `changesNotSentForReview` : tant qu'une app n'a jamais passe de
+      # review, Google impose l'envoi automatique et refuse le parametre —
+      # « Changes are sent for review automatically. » L'edition n'est alors
+      # pas validee, et l'AAB deja monte reste dans le vide.
+      # C'est `status: draft` qui garde la main de toute facon : une version
+      # brouillon ne part ni en review ni chez les testeurs internes tant que
+      # personne ne l'a promue dans la console.
       - name: Upload to Play Console internal track
         uses: r0adkll/upload-google-play@v1
         with:
@@ -112,7 +119,6 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: draft
-          changesNotSentForReview: true
 
       - name: Clean up signing secrets from runner
         if: always()

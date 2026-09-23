@@ -1551,6 +1551,14 @@ ne construit **pas** le même binaire que Firebase : Play exige un `.aab`,
 TestFlight un IPA signé **App Store** (le profil Ad Hoc des testeurs est
 refusé). Le certificat Apple Distribution, lui, est le même.
 
+**Aucun profil de provisioning ne dort en secret**, ni ici ni dans la
+distribution testeurs : les deux workflows le régénèrent par fastlane à chaque
+build. Un profil fige les capabilities du jour de sa création, si bien qu'un
+profil stocké devient faux dès qu'on en active une nouvelle chez Apple — et on
+ne l'apprend qu'à la signature, au moment de publier. C'est ce qui est arrivé
+à la `1.31.0+47` avec Sign in with Apple, la distribution testeurs passant
+sans broncher pendant que la publication échouait.
+
 #### Secrets supplémentaires
 
 En plus des 8 secrets de la distribution testeurs :
@@ -1558,7 +1566,6 @@ En plus des 8 secrets de la distribution testeurs :
 | Secret | Contenu |
 | --- | --- |
 | `PLAY_SERVICE_ACCOUNT_JSON` | JSON du compte de service Play Console (une seule ligne ou le fichier entier) |
-| `IOS_APPSTORE_PROVISION_PROFILE_BASE64` | Profil **App Store** (pas Ad Hoc) en base64 |
 | `APP_STORE_CONNECT_ISSUER_ID` | UUID issuer de la clé API App Store Connect |
 | `APP_STORE_CONNECT_KEY_ID` | Identifiant de la clé (10 caractères) |
 | `APP_STORE_CONNECT_API_KEY` | Contenu du fichier `.p8` (AuthKey_XXXX.p8) |

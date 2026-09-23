@@ -1584,13 +1584,23 @@ voulu : un upload vers un store qui n'existe pas encore n'aiderait personne.
    `ANDROID_KEYSTORE_BASE64`, la même que pour les testeurs. L'API refuse de
    servir de premier dépôt sur une app qui n'a jamais rien reçu, et c'est
    pour cela que l'artefact existe. Les suivants passent par la CI.
-3. Google Cloud → compte de service avec le rôle *Service Account User*,
-   puis Play Console → *Utilisateurs et droits* → inviter ce compte
-   (permissions *Versions* sur l'app).
-4. Télécharger la clé JSON, la coller dans `PLAY_SERVICE_ACCOUNT_JSON`.
-5. Remplir la fiche (politique de confidentialité, captures, questionnaire
+3. **Activer l'API Google Play Android Developer** sur le projet Google Cloud
+   `questbook-48540` — un projet n'expose aucune API par défaut. Sans elle,
+   l'envoi répond *« has not been used in project … before or it is
+   disabled »*.
+4. Google Cloud → *Comptes de service* → en créer un, **sans lui donner de
+   rôle IAM** : ces rôles portent sur le projet Cloud, pas sur Play, et aucun
+   n'est utile ici. Télécharger sa clé JSON, la coller dans
+   `PLAY_SERVICE_ACCOUNT_JSON`.
+5. Play Console → *Utilisateurs et autorisations* → **inviter l'adresse du
+   compte de service**, avec les droits de publication sur les circuits de
+   test. C'est cette invitation, et elle seule, qui donne les droits : sans
+   elle l'API répond *« The caller does not have permission »*. La page
+   *Accès à l'API*, que la documentation de Google mentionne encore, a disparu
+   des consoles récentes — l'invitation la remplace entièrement.
+6. Remplir la fiche (politique de confidentialité, captures, questionnaire
    contenu). La CI dépose un **brouillon** sur la piste interne
-   (`changesNotSentForReview`) : rien n'est envoyé en review tout seul.
+   (`status: draft`) : rien n'est envoyé en review tout seul.
 
 > **La clé upload ne vit que dans les secrets GitHub.** `.secrets/` n'est sur
 > aucune machine de travail, et un secret ne se relit pas. Reconstruire un

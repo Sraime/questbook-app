@@ -52,7 +52,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création d'un investigateur (`/perso/create`)** : choix du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche d'un investigateur (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet — contexte, déroulé markdown, **PNJ et indices de l'aventure** — se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
 - **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse e-mail, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
 - **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
@@ -783,7 +783,7 @@ pourtant dans l'appel. Le MJ voyait un seul nom coché, validait, et l'indice
 restait ouvert à deux personnes.
 
 **La liste ne porte que des titres, et le texte s'ouvre dans une fenêtre**
-(`widgets/clue_reader_dialog.dart`), la même des deux côtés de l'écran. Seul
+(`widgets/reader_dialog.dart`), la même des deux côtés de l'écran. Seul
 le bas change : **tous les gestes du MJ sont là** — Partager, Modifier,
 Supprimer — et le joueur n'en a aucun. Ils sont au même endroit parce qu'on
 les prend au même moment : on relit l'indice, et on décide alors de le
@@ -802,6 +802,28 @@ et **un autre appel** : `GET /sessions/:id/clues/mine`, qui ne rend que les
 indices ouverts, sans destinataires ni compteur. La liste entière dirait ce
 qu'il n'a pas reçu, et deux types distincts (`RemoteClue`, `RemoteSharedClue`)
 évitent qu'un champ de trop finisse par voyager vide plutôt qu'absent.
+
+#### Ce que le scénario apporte à la séance
+
+Une séance qui joue un scénario mélange **deux piles** dans ces deux volets :
+ce que l'aventure livre, et ce que le MJ a écrit. Le serveur les renvoie dans
+le même appel, celles du scénario d'abord, avec un `origin` que
+`RemoteNpc.isEditable` et `RemoteClue.isFromScenario` traduisent en gestes.
+
+Ce qui vient de l'aventure appartient à son auteur : un PNJ s'ouvre **en
+lecture** au lieu du formulaire, et un indice ne garde que **Partager** — sans
+Modifier ni Supprimer, puisque c'est précisément pour être transmis que le
+scénario l'a écrit. Chaque carte porte la mention « du scénario » : sans elle,
+l'absence des boutons se lirait comme une panne plutôt que comme une règle.
+
+Le volet **Scénario** du mode MJ, lui, ne répète ni les uns ni les autres : ils
+ont leurs volets, où le MJ peut s'en servir au lieu de seulement les relire.
+
+Deux noms à connaître, parce qu'ils changent : les **annexes** d'un scénario
+sont devenues ses **indices**. `RemoteScenarioDetail.fromJson` relit encore la
+clé `annexes` — un scénario téléchargé avant cette version dort sous cet
+intitulé dans la base locale, et il se lit hors ligne : le refuser coûterait sa
+soirée à quelqu'un.
 
 **Rien n'est poussé en direct.** Un indice transmis pendant que le joueur
 regarde ailleurs apparaît **à l'ouverture du volet** : autour d'une table, le

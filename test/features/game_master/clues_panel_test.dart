@@ -127,6 +127,16 @@ const _lettre = RemoteClue(
   sharedWith: [],
 );
 
+/// Livré par l'aventure : le MJ le transmet, mais il appartient à son auteur.
+const _carnet = RemoteClue(
+  id: 'clue-2',
+  title: 'Carnet de la crique',
+  kind: 'markdown',
+  contentMarkdown: '> 12 mars — La lumière n’est plus à moi.',
+  sharedWith: [],
+  origin: 'scenario',
+);
+
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
@@ -398,6 +408,35 @@ void main() {
 
     expect(api.patched, isNull);
     expect(find.byType(QBDialog), findsNothing);
+  });
+
+  /// Le scénario l'a écrit pour qu'on le transmette : c'est le seul geste qui
+  /// reste, et le seul qui ait du sens.
+  testWidgets('un indice du scénario se partage, et ne se touche pas',
+      (tester) async {
+    await pumpPanel(tester, clues: const [_carnet]);
+
+    expect(find.text('du scénario'), findsOneWidget);
+
+    await tester.tap(find.text('Carnet de la crique'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(QBButton, 'Partager'), findsOneWidget);
+    expect(find.widgetWithText(QBButton, 'Modifier'), findsNothing);
+    expect(find.text('Supprimer cet indice'), findsNothing);
+  });
+
+  testWidgets('celui que le MJ a écrit garde ses trois gestes', (tester) async {
+    await pumpPanel(tester, clues: const [_lettre]);
+
+    expect(find.text('du scénario'), findsNothing);
+
+    await tester.tap(find.text('La lettre de Corbitt'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(QBButton, 'Partager'), findsOneWidget);
+    expect(find.widgetWithText(QBButton, 'Modifier'), findsOneWidget);
+    expect(find.text('Supprimer cet indice'), findsOneWidget);
   });
 
   testWidgets('sans réseau, le volet le dit', (tester) async {

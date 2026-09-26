@@ -19,6 +19,7 @@ import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/session_seat.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/npc_dialog.dart';
+import '../widgets/reader_dialog.dart';
 
 /// Qui sera là ce soir : les fiches des joueurs attendus, puis — pour le MJ
 /// seul — tout le reste de la distribution : créatures, indicateurs, esprits.
@@ -210,12 +211,23 @@ class _NpcCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Un PNJ livré par l'aventure s'ouvre en lecture : le MJ le joue, il ne
+    // le réécrit pas. Et sa description y tient en entier, là où la carte n'en
+    // montre que les premières lignes.
+    final fromScenario = !npc.isEditable;
+
     return Semantics(
       container: true,
       button: true,
-      label: 'Modifier ${npc.name}',
+      label: fromScenario ? 'Lire ${npc.name}' : 'Modifier ${npc.name}',
       child: GestureDetector(
-        onTap: () => showNpcDialog(context, sessionId: sessionId, existing: npc),
+        onTap: () => fromScenario
+            ? showReaderDialog(
+                context,
+                title: npc.name,
+                contentMarkdown: npc.description,
+              )
+            : showNpcDialog(context, sessionId: sessionId, existing: npc),
         behavior: HitTestBehavior.opaque,
         child: QBCard(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -238,6 +250,8 @@ class _NpcCard extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         npc.description,
+                        maxLines: fromScenario ? 3 : null,
+                        overflow: fromScenario ? TextOverflow.ellipsis : null,
                         style: QBType.body().copyWith(
                           fontSize: QBType.xs,
                           color: QBColors.ink700,
@@ -248,12 +262,24 @@ class _NpcCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: QBSpace.s2),
-              QBIconButton(
-                icon: const Icon(LucideIcons.trash2, size: 16),
-                label: 'Retirer ${npc.name}',
-                size: 36,
-                onPressed: () => _confirmRemoval(context, ref),
-              ),
+              // Sans ces deux mots, l'absence de corbeille ressemblerait à une
+              // panne. Avec eux, elle se lit comme une règle.
+              if (fromScenario)
+                Text(
+                  'du scénario',
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.xs,
+                    color: QBColors.textMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                )
+              else
+                QBIconButton(
+                  icon: const Icon(LucideIcons.trash2, size: 16),
+                  label: 'Retirer ${npc.name}',
+                  size: 36,
+                  onPressed: () => _confirmRemoval(context, ref),
+                ),
             ],
           ),
         ),

@@ -9,7 +9,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../providers/game_master_providers.dart';
-import '../widgets/clue_reader_dialog.dart';
+import '../widgets/reader_dialog.dart';
 
 /// Ce que le MJ a transmis au joueur qui regarde, et rien d'autre.
 ///
@@ -111,7 +111,7 @@ class _SharedClueCard extends StatelessWidget {
       label: 'Lire ${clue.title}',
       excludeSemantics: true,
       child: GestureDetector(
-        onTap: () => showClueReaderDialog(
+        onTap: () => showReaderDialog(
           context,
           title: clue.title,
           contentMarkdown: clue.contentMarkdown,

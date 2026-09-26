@@ -89,32 +89,75 @@ class _Document extends StatelessWidget {
         _Section(title: 'Contexte', markdown: scenario.context),
         const SizedBox(height: QBSpace.s5),
         _Section(title: 'Déroulé', markdown: scenario.rundownMarkdown),
-        if (scenario.annexes.isNotEmpty) ...[
+        // Les PNJ avant les indices, comme dans la séance : le MJ prépare des
+        // visages, puis ce qu'il en fera sortir.
+        if (scenario.npcs.isNotEmpty) ...[
           const SizedBox(height: QBSpace.s5),
+          const _SectionTitle('Personnages'),
+          const SizedBox(height: QBSpace.s3),
+          for (final npc in scenario.npcs) ...[
+            _EntryTitle(npc.name),
+            const SizedBox(height: 6),
+            QBMarkdown(npc.description),
+            const SizedBox(height: QBSpace.s4),
+          ],
+        ],
+        if (scenario.clues.isNotEmpty) ...[
+          const SizedBox(height: QBSpace.s5),
+          const _SectionTitle('Indices'),
+          const SizedBox(height: 6),
           Text(
-            'Annexes',
-            style: QBType.game().copyWith(
-              fontWeight: QBType.weightSemibold,
-              fontSize: 18,
-              color: QBColors.ink900,
+            'Le mode MJ les retrouve pendant la séance, prêts à transmettre.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.sm,
+              color: QBColors.textMuted,
             ),
           ),
           const SizedBox(height: QBSpace.s3),
-          for (final annex in scenario.annexes) ...[
-            Text(
-              annex.title,
-              style: QBType.body().copyWith(
-                fontWeight: QBType.weightSemibold,
-                fontSize: QBType.base,
-                color: QBColors.ink900,
-              ),
-            ),
+          for (final clue in scenario.clues) ...[
+            _EntryTitle(clue.title),
             const SizedBox(height: 6),
-            QBMarkdown(annex.contentMarkdown),
+            QBMarkdown(clue.contentMarkdown),
             const SizedBox(height: QBSpace.s4),
           ],
         ],
       ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: QBType.game().copyWith(
+        fontWeight: QBType.weightSemibold,
+        fontSize: 18,
+        color: QBColors.ink900,
+      ),
+    );
+  }
+}
+
+class _EntryTitle extends StatelessWidget {
+  const _EntryTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: QBType.body().copyWith(
+        fontWeight: QBType.weightSemibold,
+        fontSize: QBType.base,
+        color: QBColors.ink900,
+      ),
     );
   }
 }

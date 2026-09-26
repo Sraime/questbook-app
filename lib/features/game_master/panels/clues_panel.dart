@@ -12,7 +12,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/clue_dialog.dart';
-import '../widgets/clue_reader_dialog.dart';
+import '../widgets/reader_dialog.dart';
 import '../widgets/clue_sharing_dialog.dart';
 
 /// Ce que le MJ prépare pour le faire passer de l'autre côté de l'écran.
@@ -138,7 +138,7 @@ class _ClueCard extends StatelessWidget {
   final List<RemoteTableMember> members;
 
   void _open(BuildContext context) {
-    showClueReaderDialog(
+    showReaderDialog(
       context,
       title: clue.title,
       contentMarkdown: clue.contentMarkdown,
@@ -173,6 +173,10 @@ class _ClueCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (clue.isFromScenario) ...[
+                const _FromScenario(),
+                const SizedBox(width: QBSpace.s2),
+              ],
               const Icon(
                 LucideIcons.chevronRight,
                 size: 18,
@@ -181,6 +185,26 @@ class _ClueCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Ce qui vient de l'aventure et non du MJ, dit en deux mots.
+///
+/// Il le lit, il le transmet, mais il ne peut ni le corriger ni l'effacer :
+/// sans cette marque, l'absence des deux boutons ressemblerait à une panne.
+class _FromScenario extends StatelessWidget {
+  const _FromScenario();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'du scénario',
+      style: QBType.body().copyWith(
+        fontSize: QBType.xs,
+        color: QBColors.textMuted,
+        fontStyle: FontStyle.italic,
       ),
     );
   }
@@ -197,6 +221,10 @@ class _ClueCard extends StatelessWidget {
 /// Partager et modifier **remplacent** cette fenêtre plutôt que de s'empiler
 /// dessus : deux fenêtres l'une sur l'autre sur un téléphone ne laissent plus
 /// voir ni l'une ni l'autre. Supprimer, lui, se règle sur place.
+///
+/// D'un indice livré par l'aventure, il ne reste que Partager — le reste
+/// appartient à son auteur. C'est précisément pour pouvoir le transmettre que
+/// le scénario l'a écrit.
 class _ClueActions extends ConsumerStatefulWidget {
   const _ClueActions({
     required this.sessionId,
@@ -301,21 +329,23 @@ class _ClueActionsState extends ConsumerState<_ClueActions> {
             ),
           ),
         ],
-        const SizedBox(height: QBSpace.s2),
-        Center(
-          child: TextButton(
-            onPressed: _busy ? null : _delete,
-            child: Text(
-              _confirmingDelete
-                  ? 'Confirmer : personne ne le lira plus'
-                  : 'Supprimer cet indice',
-              style: QBType.body().copyWith(
-                fontSize: QBType.xs,
-                color: QBColors.semanticDanger,
+        if (!clue.isFromScenario) ...[
+          const SizedBox(height: QBSpace.s2),
+          Center(
+            child: TextButton(
+              onPressed: _busy ? null : _delete,
+              child: Text(
+                _confirmingDelete
+                    ? 'Confirmer : personne ne le lira plus'
+                    : 'Supprimer cet indice',
+                style: QBType.body().copyWith(
+                  fontSize: QBType.xs,
+                  color: QBColors.semanticDanger,
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }

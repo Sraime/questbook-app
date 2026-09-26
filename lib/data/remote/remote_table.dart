@@ -256,6 +256,66 @@ class RemoteNpc {
   final String description;
 }
 
+/// Un indice tel que le MJ le voit : son contenu, et à qui il l'a ouvert.
+///
+/// L'inverse du PNJ ci-dessus. Préparé de la même façon, mais destiné à passer
+/// de l'autre côté de l'écran — un par un, et seulement à ceux que le MJ
+/// désigne. [sharedWith] vide est l'état de repos, pas un cas limite.
+class RemoteClue {
+  const RemoteClue({
+    required this.id,
+    required this.title,
+    required this.kind,
+    required this.contentMarkdown,
+    required this.sharedWith,
+  });
+
+  factory RemoteClue.fromJson(Map<String, dynamic> json) => RemoteClue(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        kind: json['kind'] as String? ?? 'markdown',
+        contentMarkdown: json['contentMarkdown'] as String? ?? '',
+        sharedWith: (json['sharedWith'] as List? ?? const [])
+            .whereType<String>()
+            .toList(growable: false),
+      );
+
+  final String id;
+  final String title;
+  final String kind;
+  final String contentMarkdown;
+  final List<String> sharedWith;
+
+  /// Le MJ ne compose que du markdown : une image vient d'un scénario, et
+  /// n'est pas la sienne à réécrire.
+  bool get isEditable => kind == 'markdown';
+}
+
+/// Un indice tel qu'un joueur le reçoit. Volontairement pas [RemoteClue] avec
+/// un champ en moins : la liste des destinataires n'existe pas de ce côté, et
+/// un type partagé finirait par la transporter vide plutôt qu'absente.
+class RemoteSharedClue {
+  const RemoteSharedClue({
+    required this.id,
+    required this.title,
+    required this.kind,
+    required this.contentMarkdown,
+  });
+
+  factory RemoteSharedClue.fromJson(Map<String, dynamic> json) =>
+      RemoteSharedClue(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        kind: json['kind'] as String? ?? 'markdown',
+        contentMarkdown: json['contentMarkdown'] as String? ?? '',
+      );
+
+  final String id;
+  final String title;
+  final String kind;
+  final String contentMarkdown;
+}
+
 /// Le plateau d'une session tel que le serveur le détient : la carte et les
 /// pions, comme le MJ les a poussés la dernière fois.
 ///

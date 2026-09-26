@@ -18,6 +18,7 @@ import 'models/board_token.dart';
 import 'models/session_seat.dart';
 import 'panels/board_panel.dart';
 import 'panels/characters_panel.dart';
+import 'panels/clues_panel.dart';
 import 'panels/details_panel.dart';
 import 'panels/notes_panel.dart';
 import 'panels/rules_panel.dart';
@@ -231,6 +232,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
                   panel: panel,
                   seat: seat,
                   compact: layout.isCompact,
+                  members: detail.value?.table.members ?? const [],
                 ),
         ),
       ],
@@ -262,6 +264,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
     required GameMasterPanel panel,
     required SessionSeat seat,
     required bool compact,
+    required List<RemoteTableMember> members,
   }) =>
       switch (panel) {
         GameMasterPanel.details => DetailsPanel(
@@ -291,6 +294,14 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
           ),
         GameMasterPanel.rules => const RulesPanel(),
         GameMasterPanel.scenario => ScenarioPanel(session: session),
+        // Les destinataires possibles sont les membres de la table, et le
+        // volet les reçoit plutôt que de les redemander : l'écran les a déjà
+        // sous la main, et le MJ transmet souvent plusieurs indices d'affilée.
+        GameMasterPanel.clues => CluesPanel(
+            sessionId: widget.sessionId,
+            members: members,
+            compact: compact,
+          ),
         GameMasterPanel.notes => NotesPanel(
             initialValue: _notes,
             onChanged: _onNotesChanged,
@@ -584,6 +595,19 @@ class _PanelTabs extends StatelessWidget {
   final GameMasterPanel active;
   final ValueChanged<GameMasterPanel> onSelect;
 
+  /// Ce qui reste aux volets au repos une fois l'actif servi décide de tout,
+  /// d'où ces deux seuils plutôt qu'une règle unique.
+  ///
+  /// À deux volets — le siège du joueur — chacun a la place de son nom.
+  bool get _namesEveryone => seat.panels.length <= 2;
+
+  /// Au-delà, seul l'actif se paie un libellé, et **jusqu'à six volets
+  /// seulement**. Le septième a coûté la place qui restait : « Personnages »
+  /// s'affichait « Pers… », et un libellé tronqué renseigne moins qu'une
+  /// icône seule, tout en salissant la barre. L'actif garde son fond doré,
+  /// qui suffit à dire où l'on est.
+  bool get _namesActive => seat.panels.length <= 6;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -594,11 +618,8 @@ class _PanelTabs extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Les deux volets d'un joueur méritent chacun leur nom : ce qui
-          // forçait l'icône seule, c'est six volets sur la largeur d'un
-          // téléphone, pas deux.
           for (final panel in seat.panels)
-            if (panel == active || seat.panels.length <= 2)
+            if (_namesEveryone)
               Expanded(
                 child: _PanelTab(
                   panel: panel,
@@ -608,11 +629,30 @@ class _PanelTabs extends StatelessWidget {
                   onTap: panel == active ? null : () => onSelect(panel),
                 ),
               )
+            else if (!_namesActive)
+              Expanded(
+                child: _PanelTab(
+                  panel: panel,
+                  label: seat.labelFor(panel),
+                  selected: panel == active,
+                  onTap: panel == active ? null : () => onSelect(panel),
+                ),
+              )
+            else if (panel == active)
+              Expanded(
+                child: _PanelTab(
+                  panel: panel,
+                  label: seat.labelFor(panel),
+                  selected: true,
+                  named: true,
+                ),
+              )
             else
               _PanelTab(
                 panel: panel,
                 label: seat.labelFor(panel),
-                onTap: () => onSelect(panel),
+                selected: panel == active,
+                onTap: panel == active ? null : () => onSelect(panel),
               ),
         ],
       ),
@@ -638,8 +678,9 @@ class _PanelTab extends StatelessWidget {
   final String label;
   final bool selected;
 
-  /// Nommé même au repos. Vrai pour les deux volets d'un joueur, qui ont la
-  /// place ; faux chez le MJ, où seul l'actif se paie son libellé.
+  /// Libellé affiché à côté de l'icône. Vrai pour les deux volets d'un
+  /// joueur, qui ont la place, et pour l'actif du MJ jusqu'à six volets.
+  /// Au-delà, plus personne n'est nommé : le fond doré dit l'actif.
   final bool named;
 
   final VoidCallback? onTap;
@@ -657,11 +698,11 @@ class _PanelTab extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: selected || named ? null : _restingWidth,
+          width: named ? null : _restingWidth,
           height: 40,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           padding: EdgeInsets.symmetric(
-            horizontal: selected || named ? QBSpace.s3 : 0,
+            horizontal: named ? QBSpace.s3 : 0,
           ),
           decoration: BoxDecoration(
             gradient: selected
@@ -677,7 +718,7 @@ class _PanelTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(panel.icon, size: 17, color: foreground),
-              if (selected || named) ...[
+              if (named) ...[
                 const SizedBox(width: QBSpace.s2),
                 Flexible(
                   child: Text(

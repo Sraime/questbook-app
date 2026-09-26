@@ -199,6 +199,94 @@ class SessionApi {
     );
   }
 
+  // --- Les indices ---
+  //
+  // Composer reste réservé au MJ, comme les PNJ. Seul [myClues] est ouvert à
+  // un joueur, et ne lui rend que ce qu'on lui a ouvert.
+
+  Future<List<RemoteClue>> listClues(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/clues'),
+      parse: (data) {
+        final clues = (data as Map)['clues'];
+        if (clues is! List) return const <RemoteClue>[];
+        return clues
+            .whereType<Map>()
+            .map((entry) => RemoteClue.fromJson(entry.cast<String, dynamic>()))
+            .toList(growable: false);
+      },
+    );
+  }
+
+  Future<List<RemoteSharedClue>> myClues(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/clues/mine'),
+      parse: (data) {
+        final clues = (data as Map)['clues'];
+        if (clues is! List) return const <RemoteSharedClue>[];
+        return clues
+            .whereType<Map>()
+            .map((entry) =>
+                RemoteSharedClue.fromJson(entry.cast<String, dynamic>()))
+            .toList(growable: false);
+      },
+    );
+  }
+
+  Future<RemoteClue> createClue(
+    String sessionId, {
+    required String title,
+    String? contentMarkdown,
+  }) {
+    return _client.send(
+      (dio) => dio.post<dynamic>(
+        '/sessions/$sessionId/clues',
+        data: {'title': title, 'contentMarkdown': ?contentMarkdown},
+      ),
+      parse: _parseClue,
+    );
+  }
+
+  Future<RemoteClue> updateClue(
+    String sessionId,
+    String clueId, {
+    String? title,
+    String? contentMarkdown,
+  }) {
+    return _client.send(
+      (dio) => dio.patch<dynamic>(
+        '/sessions/$sessionId/clues/$clueId',
+        data: {'title': ?title, 'contentMarkdown': ?contentMarkdown},
+      ),
+      parse: _parseClue,
+    );
+  }
+
+  Future<void> deleteClue(String sessionId, String clueId) {
+    return _client.send(
+      (dio) => dio.delete<dynamic>('/sessions/$sessionId/clues/$clueId'),
+      parse: (_) {},
+    );
+  }
+
+  /// Remplace la liste des destinataires, au lieu d'y ajouter : c'est le geste
+  /// de l'écran, où le MJ coche des noms et valide. Reprendre un indice est
+  /// donc le même appel avec un nom de moins, et une liste vide le reprend à
+  /// tout le monde.
+  Future<RemoteClue> shareClue(
+    String sessionId,
+    String clueId, {
+    required List<String> userIds,
+  }) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$sessionId/clues/$clueId/access',
+        data: {'userIds': userIds},
+      ),
+      parse: _parseClue,
+    );
+  }
+
   // --- Le plateau ---
   //
   // L'inverse des PNJ juste au-dessus : tout membre lit, seul le MJ écrit. Un
@@ -233,6 +321,9 @@ class SessionApi {
 
   RemoteNpc _parseNpc(Object? data) =>
       RemoteNpc.fromJson((data as Map).cast<String, dynamic>());
+
+  RemoteClue _parseClue(Object? data) =>
+      RemoteClue.fromJson((data as Map).cast<String, dynamic>());
 
   RemoteSessionBoard _parseBoard(Object? data) =>
       RemoteSessionBoard.fromJson((data as Map).cast<String, dynamic>());

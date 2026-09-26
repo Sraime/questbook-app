@@ -14,7 +14,8 @@ RemoteScenarioDetail _detail(String id, {String title = 'Le Phare'}) {
     averageDurationMinutes: 180,
     context: 'Kerloc\'h.',
     rundownMarkdown: '## Suite',
-    annexes: const [],
+    npcs: const [],
+    clues: const [],
   );
 }
 

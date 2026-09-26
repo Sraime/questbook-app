@@ -33,12 +33,19 @@ void main() {
       'averageDurationMinutes': 90,
       'context': 'Kerloc\'h, 1924.',
       'rundownMarkdown': '## Mise en place\n\nDonner le télégramme.',
-      'annexes': [
+      'npcs': [
         {
-          'id': 'ax-1',
+          'id': 'np-1',
+          'sortOrder': 0,
+          'name': 'Mariette Le Goff',
+          'description': 'Ment sur les dates.',
+        },
+      ],
+      'clues': [
+        {
+          'id': 'cl-1',
           'sortOrder': 0,
           'title': 'Télégramme',
-          'kind': 'handout',
           'contentMarkdown': 'STOP',
         },
       ],
@@ -47,7 +54,36 @@ void main() {
     final again = RemoteScenarioDetail.fromJson(original.toJson());
 
     expect(again.context, original.context);
-    expect(again.annexes.single.title, 'Télégramme');
+    expect(again.clues.single.title, 'Télégramme');
+    expect(again.npcs.single.name, 'Mariette Le Goff');
     expect(again.durationLabel, '1 h 30');
+  });
+
+  /// Un scénario téléchargé avant que les annexes ne deviennent des indices
+  /// dort dans la base locale sous l'ancienne clé, et il se lit hors ligne :
+  /// le refuser coûterait sa soirée à quelqu'un.
+  test('reads a document downloaded back when clues were called annexes', () {
+    final stored = RemoteScenarioDetail.fromJson({
+      'id': 'sc-1',
+      'title': 'Le Phare',
+      'description': 'Brume.',
+      'minRecommendedPlayers': 2,
+      'maxRecommendedPlayers': 4,
+      'averageDurationMinutes': 90,
+      'context': 'Kerloc\'h, 1924.',
+      'rundownMarkdown': '## Mise en place',
+      'annexes': [
+        {
+          'id': 'ax-1',
+          'sortOrder': 0,
+          'title': 'Carnet de la crique',
+          'kind': 'clue',
+          'contentMarkdown': '> 12 mars',
+        },
+      ],
+    });
+
+    expect(stored.clues.single.title, 'Carnet de la crique');
+    expect(stored.npcs, isEmpty);
   });
 }

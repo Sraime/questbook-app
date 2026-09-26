@@ -79,21 +79,10 @@ class _Document extends StatelessWidget {
         _Section(title: 'Contexte', markdown: scenario.context),
         const SizedBox(height: QBSpace.s5),
         _Section(title: 'Déroulé', markdown: scenario.rundownMarkdown),
-        if (scenario.annexes.isNotEmpty) ...[
-          const SizedBox(height: QBSpace.s5),
-          Text(
-            'Annexes',
-            style: QBType.game().copyWith(
-              fontWeight: QBType.weightSemibold,
-              fontSize: 15,
-              color: QBColors.ink900,
-            ),
-          ),
-          for (final annex in scenario.annexes) ...[
-            const SizedBox(height: QBSpace.s4),
-            _Section(title: annex.title, markdown: annex.contentMarkdown),
-          ],
-        ],
+        // Ni les PNJ ni les indices de l'aventure ici : ils ont leurs volets,
+        // où le MJ peut s'en servir au lieu de seulement les relire. Les
+        // répéter sur celui-ci obligerait à chercher deux fois le même carnet
+        // sous deux formes.
       ],
     );
   }

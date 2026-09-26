@@ -243,17 +243,27 @@ class RemoteNpc {
     required this.id,
     required this.name,
     required this.description,
+    this.origin = 'gameMaster',
   });
 
   factory RemoteNpc.fromJson(Map<String, dynamic> json) => RemoteNpc(
         id: json['id'] as String,
         name: json['name'] as String,
         description: json['description'] as String? ?? '',
+        origin: json['origin'] as String? ?? 'gameMaster',
       );
 
   final String id;
   final String name;
   final String description;
+
+  /// `scenario` ou `gameMaster`. Une séance joue les deux à la fois : ce que
+  /// l'aventure livre, et ce que le MJ a écrit.
+  final String origin;
+
+  /// Ce qui vient du scénario appartient à son auteur : le MJ le joue, il ne
+  /// le réécrit pas.
+  bool get isEditable => origin != 'scenario';
 }
 
 /// Un indice tel que le MJ le voit : son contenu, et à qui il l'a ouvert.
@@ -268,6 +278,7 @@ class RemoteClue {
     required this.kind,
     required this.contentMarkdown,
     required this.sharedWith,
+    this.origin = 'gameMaster',
   });
 
   factory RemoteClue.fromJson(Map<String, dynamic> json) => RemoteClue(
@@ -278,6 +289,7 @@ class RemoteClue {
         sharedWith: (json['sharedWith'] as List? ?? const [])
             .whereType<String>()
             .toList(growable: false),
+        origin: json['origin'] as String? ?? 'gameMaster',
       );
 
   final String id;
@@ -286,9 +298,15 @@ class RemoteClue {
   final String contentMarkdown;
   final List<String> sharedWith;
 
-  /// Le MJ ne compose que du markdown : une image vient d'un scénario, et
-  /// n'est pas la sienne à réécrire.
-  bool get isEditable => kind == 'markdown';
+  /// `scenario` ou `gameMaster`. Le partage marche pareil des deux côtés —
+  /// c'est la raison d'être d'un indice livré avec l'aventure.
+  final String origin;
+
+  bool get isFromScenario => origin == 'scenario';
+
+  /// Ce qui vient du scénario appartient à son auteur, et le MJ ne compose
+  /// que du markdown : une image vient elle aussi d'ailleurs.
+  bool get isEditable => !isFromScenario && kind == 'markdown';
 }
 
 /// Un indice tel qu'un joueur le reçoit. Volontairement pas [RemoteClue] avec

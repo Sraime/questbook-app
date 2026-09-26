@@ -82,13 +82,21 @@ class _NpcFormState extends ConsumerState<_NpcForm> {
           description: description,
         );
       } else {
-        await api.updateNpc(
-          widget.sessionId,
-          existing.id,
-          name: name == existing.name ? null : name,
-          description:
-              description == existing.description ? null : description,
-        );
+        // Rien touché, rien à envoyer : un patch sans champ n'est pas une
+        // requête que le serveur peut honorer, et enregistrer sans avoir rien
+        // changé n'est pas une erreur non plus. La fenêtre se referme.
+        final newName = name == existing.name ? null : name;
+        final newDescription =
+            description == existing.description ? null : description;
+
+        if (newName != null || newDescription != null) {
+          await api.updateNpc(
+            widget.sessionId,
+            existing.id,
+            name: newName,
+            description: newDescription,
+          );
+        }
       }
 
       ref.invalidate(sessionNpcsProvider(widget.sessionId));

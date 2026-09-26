@@ -16,6 +16,7 @@ class _FakeSessionApi implements SessionApi {
   String? updatedTitle;
   DateTime? updatedStartsAt;
   String? cancelledId;
+  int updates = 0;
 
   @override
   Future<RemoteGameSession> update(
@@ -27,6 +28,7 @@ class _FakeSessionApi implements SessionApi {
     String? scenarioId,
     bool clearScenario = false,
   }) async {
+    updates++;
     updatedTitle = title;
     updatedStartsAt = startsAt;
     return _session;
@@ -130,6 +132,20 @@ void main() {
       reason: 'corriger une heure ne doit pas sortir de la partie en cours',
     );
     expect(find.byType(DetailsPanel), findsOneWidget);
+  });
+
+  /// Ne rien envoyer du tout, et surtout pas un patch vide : le serveur le
+  /// refuse, à juste titre, et le MJ lisait « Request payload is invalid »
+  /// pour avoir enregistré ce qu'il n'avait pas touché.
+  testWidgets('enregistrer sans avoir rien touché n’appelle pas le serveur',
+      (tester) async {
+    final api = await pumpPanel(tester);
+
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.updates, 0);
+    expect(find.text('Request payload is invalid'), findsNothing);
   });
 
   testWidgets('annuler la session referme le mode MJ', (tester) async {

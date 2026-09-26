@@ -240,6 +240,24 @@ void main() {
     expect(find.text('Rampe au plafond de la cave.'), findsOneWidget);
   });
 
+  /// Ne rien envoyer du tout, et surtout pas un patch vide : le serveur le
+  /// refuse, à juste titre, et le MJ lisait « Request payload is invalid »
+  /// pour avoir enregistré ce qu'il n'avait pas touché.
+  testWidgets('enregistrer sans avoir rien touché referme la fenêtre',
+      (tester) async {
+    final api = await pumpPanel(tester, npcs: const [
+      RemoteNpc(id: 'npc-1', name: 'Créature', description: 'Au plafond.'),
+    ]);
+
+    await tester.tap(find.text('Créature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.patched, isNull);
+    expect(find.widgetWithText(TextField, 'Créature'), findsNothing);
+  });
+
   testWidgets('le retirer demande confirmation', (tester) async {
     final api = await pumpPanel(tester, npcs: const [
       RemoteNpc(id: 'npc-1', name: 'Créature', description: ''),

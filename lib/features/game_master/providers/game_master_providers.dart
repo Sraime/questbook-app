@@ -35,8 +35,12 @@ final sessionCluesProvider =
 ///
 /// Rechargé à l'ouverture du volet plutôt que poussé en direct : autour d'une
 /// table, le MJ dit à voix haute qu'il vient de transmettre quelque chose.
-final myCluesProvider =
-    FutureProvider.family<List<RemoteSharedClue>, String>((ref, sessionId) {
+///
+/// D'où `autoDispose`, qui n'est pas ici un soin de mémoire mais toute la
+/// mécanique : gardée en vie, la liste serait celle de l'arrivée du joueur, et
+/// ce que le MJ transmet pendant la partie n'apparaîtrait jamais.
+final myCluesProvider = FutureProvider.autoDispose
+    .family<List<RemoteSharedClue>, String>((ref, sessionId) {
   return ref.watch(sessionApiProvider).myClues(sessionId);
 });
 

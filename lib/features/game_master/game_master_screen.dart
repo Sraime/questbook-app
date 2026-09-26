@@ -23,6 +23,7 @@ import 'panels/details_panel.dart';
 import 'panels/notes_panel.dart';
 import 'panels/rules_panel.dart';
 import 'panels/scenario_panel.dart';
+import 'panels/shared_clues_panel.dart';
 import 'panels/watched_board_panel.dart';
 import 'providers/game_master_providers.dart';
 
@@ -294,14 +295,19 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
           ),
         GameMasterPanel.rules => const RulesPanel(),
         GameMasterPanel.scenario => ScenarioPanel(session: session),
+        // Comme le plateau, un volet pour deux vues : le MJ compose et
+        // transmet, le joueur ne lit que ce qu'on lui a ouvert.
+        //
         // Les destinataires possibles sont les membres de la table, et le
         // volet les reçoit plutôt que de les redemander : l'écran les a déjà
         // sous la main, et le MJ transmet souvent plusieurs indices d'affilée.
-        GameMasterPanel.clues => CluesPanel(
-            sessionId: widget.sessionId,
-            members: members,
-            compact: compact,
-          ),
+        GameMasterPanel.clues => seat.isGameMaster
+            ? CluesPanel(
+                sessionId: widget.sessionId,
+                members: members,
+                compact: compact,
+              )
+            : SharedCluesPanel(sessionId: widget.sessionId),
         GameMasterPanel.notes => NotesPanel(
             initialValue: _notes,
             onChanged: _onNotesChanged,

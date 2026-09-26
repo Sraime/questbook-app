@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../data/remote/remote_scenario.dart';
 import '../../design_system/components/qb_icon_button.dart';
+import '../../design_system/components/qb_markdown.dart';
 import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
@@ -110,7 +110,7 @@ class _Document extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            ScenarioMarkdown(annex.contentMarkdown),
+            QBMarkdown(annex.contentMarkdown),
             const SizedBox(height: QBSpace.s4),
           ],
         ],
@@ -139,43 +139,8 @@ class _Section extends StatelessWidget {
           ),
         ),
         const SizedBox(height: QBSpace.s2),
-        ScenarioMarkdown(markdown),
+        QBMarkdown(markdown),
       ],
-    );
-  }
-}
-
-class ScenarioMarkdown extends StatelessWidget {
-  const ScenarioMarkdown(this.data, {super.key});
-
-  final String data;
-
-  @override
-  Widget build(BuildContext context) {
-    final body = QBType.body().copyWith(
-      fontSize: QBType.sm,
-      color: QBColors.ink800,
-      height: 1.45,
-    );
-    return MarkdownBody(
-      data: data,
-      selectable: true,
-      styleSheet: MarkdownStyleSheet(
-        p: body,
-        h2: QBType.game().copyWith(
-          fontWeight: QBType.weightSemibold,
-          fontSize: 16,
-          color: QBColors.ink900,
-        ),
-        h3: QBType.game().copyWith(
-          fontWeight: QBType.weightSemibold,
-          fontSize: 14,
-          color: QBColors.ink900,
-        ),
-        listBullet: body,
-        blockquote: body.copyWith(fontStyle: FontStyle.italic),
-        strong: body.copyWith(fontWeight: QBType.weightSemibold),
-      ),
     );
   }
 }

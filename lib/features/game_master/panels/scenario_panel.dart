@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/remote/remote_scenario.dart';
 import '../../../data/remote/remote_table.dart';
+import '../../../design_system/components/qb_markdown.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../../scenarios/providers/scenario_providers.dart';
-import '../../scenarios/scenario_detail_screen.dart';
 
 /// Le scénario rattaché à la session : contexte, déroulé et annexes.
 ///
@@ -119,7 +119,7 @@ class _Section extends StatelessWidget {
           ),
         ),
         const SizedBox(height: QBSpace.s2),
-        ScenarioMarkdown(markdown),
+        QBMarkdown(markdown),
       ],
     );
   }

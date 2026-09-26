@@ -16,14 +16,45 @@ class ScenariosOverview {
   const ScenariosOverview({
     required this.scenarios,
     required this.downloadedIds,
+    this.downloadedVersions = const {},
     this.cachedAt,
   });
 
   final List<RemoteScenarioSummary> scenarios;
   final Set<String> downloadedIds;
+
+  /// La date que portait chaque copie gardée, par identifiant.
+  final Map<String, DateTime?> downloadedVersions;
+
   final DateTime? cachedAt;
 
   bool isDownloaded(String id) => downloadedIds.contains(id);
+
+  /// Vrai quand le serveur a corrigé l'aventure depuis qu'elle a été
+  /// téléchargée.
+  ///
+  /// Trois refus avant le verdict. Ce qui n'est pas téléchargé n'a rien à
+  /// remettre à jour. Une liste qui vient du cache ne peut rien apprendre de
+  /// neuf, et c'est ce qui tient lieu de test de connexion : on ne peut pas
+  /// savoir qu'une version plus récente existe sans avoir joint le serveur.
+  /// Et un serveur qui ne date pas ses aventures ne permet aucune
+  /// comparaison.
+  ///
+  /// Reste le cas d'une copie sans date, téléchargée avant que le mécanisme
+  /// existe : impossible de prouver qu'elle est à jour, donc on propose. Un
+  /// tapotement, et elle portera enfin la sienne.
+  bool isOutdated(RemoteScenarioSummary scenario) {
+    if (!isDownloaded(scenario.id)) return false;
+    if (cachedAt != null) return false;
+
+    final onServer = scenario.updatedAt;
+    if (onServer == null) return false;
+
+    final onDevice = downloadedVersions[scenario.id];
+    if (onDevice == null) return true;
+
+    return onServer.isAfter(onDevice);
+  }
 }
 
 final scenariosOverviewProvider = FutureProvider<ScenariosOverview>((ref) async {
@@ -35,7 +66,8 @@ final scenariosOverviewProvider = FutureProvider<ScenariosOverview>((ref) async 
   final api = ref.watch(scenarioApiProvider);
   final cache = RemoteCacheDao(ref.watch(appDatabaseProvider));
   final downloads = ref.watch(downloadedScenarioDaoProvider);
-  final downloadedIds = await downloads.ids(user.id);
+  final versions = await downloads.versions(user.id);
+  final downloadedIds = versions.keys.toSet();
 
   try {
     final raw = await api.listRaw();
@@ -43,6 +75,7 @@ final scenariosOverviewProvider = FutureProvider<ScenariosOverview>((ref) async 
     return ScenariosOverview(
       scenarios: ScenarioApi.parseList(raw),
       downloadedIds: downloadedIds,
+      downloadedVersions: versions,
     );
   } on ApiException catch (error) {
     if (!error.isRetryable) rethrow;
@@ -52,6 +85,7 @@ final scenariosOverviewProvider = FutureProvider<ScenariosOverview>((ref) async 
     return ScenariosOverview(
       scenarios: ScenarioApi.parseList(cached.data),
       downloadedIds: downloadedIds,
+      downloadedVersions: versions,
       cachedAt: cached.fetchedAt,
     );
   }

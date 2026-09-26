@@ -4,7 +4,11 @@ import 'package:questbook/data/local/database.dart';
 import 'package:questbook/data/local/downloaded_scenario_dao.dart';
 import 'package:questbook/data/remote/remote_scenario.dart';
 
-RemoteScenarioDetail _detail(String id, {String title = 'Le Phare'}) {
+RemoteScenarioDetail _detail(
+  String id, {
+  String title = 'Le Phare',
+  DateTime? updatedAt,
+}) {
   return RemoteScenarioDetail(
     id: id,
     title: title,
@@ -16,6 +20,7 @@ RemoteScenarioDetail _detail(String id, {String title = 'Le Phare'}) {
     rundownMarkdown: '## Suite',
     npcs: const [],
     clues: const [],
+    updatedAt: updatedAt,
   );
 }
 
@@ -55,6 +60,21 @@ void main() {
     final listed = await dao.list('account-1');
 
     expect(listed.map((row) => row.id), unorderedEquals(['sc-1', 'sc-2']));
+  });
+
+  test('remembers the date the server gave each copy', () async {
+    final date = DateTime.utc(2026, 9, 26, 19, 30);
+    await dao.save('account-1', _detail('sc-1', updatedAt: date));
+
+    expect(await dao.versions('account-1'), {'sc-1': date});
+  });
+
+  // Une copie telechargee avant que la date existe. Elle se lit toujours, et
+  // c'est l'ecran qui decide quoi faire de son age inconnu.
+  test('admits it does not know the date of an older copy', () async {
+    await dao.save('account-1', _detail('sc-1'));
+
+    expect(await dao.versions('account-1'), {'sc-1': null});
   });
 
   test('clears everything on sign-out', () async {

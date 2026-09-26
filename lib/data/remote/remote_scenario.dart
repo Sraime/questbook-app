@@ -2,6 +2,16 @@
 /// document is fetched only when the user downloads it for offline reading.
 library;
 
+/// Une date du catalogue, jamais exigée.
+///
+/// Elle manque dans tout ce qui a été écrit avant qu'elle existe — une copie
+/// déjà sur l'appareil, une liste encore en cache — et refuser ces documents
+/// coûterait sa soirée à quelqu'un pour une information de confort.
+DateTime? parseScenarioDate(Object? value) {
+  if (value is! String) return null;
+  return DateTime.tryParse(value)?.toUtc();
+}
+
 class RemoteScenarioSummary {
   const RemoteScenarioSummary({
     required this.id,
@@ -10,6 +20,7 @@ class RemoteScenarioSummary {
     required this.minRecommendedPlayers,
     required this.maxRecommendedPlayers,
     required this.averageDurationMinutes,
+    this.updatedAt,
   });
 
   factory RemoteScenarioSummary.fromJson(Map<String, dynamic> json) =>
@@ -20,6 +31,7 @@ class RemoteScenarioSummary {
         minRecommendedPlayers: json['minRecommendedPlayers'] as int,
         maxRecommendedPlayers: json['maxRecommendedPlayers'] as int,
         averageDurationMinutes: json['averageDurationMinutes'] as int,
+        updatedAt: parseScenarioDate(json['updatedAt']),
       );
 
   final String id;
@@ -28,6 +40,13 @@ class RemoteScenarioSummary {
   final int minRecommendedPlayers;
   final int maxRecommendedPlayers;
   final int averageDurationMinutes;
+
+  /// Quand le serveur a corrigé cette aventure pour la dernière fois.
+  ///
+  /// Nul pour une copie téléchargée avant que la date existe, et pour une
+  /// liste en cache du même âge : personne ne peut alors dire si elle est à
+  /// jour, et c'est l'écran qui en tire les conséquences.
+  final DateTime? updatedAt;
 
   String get playersLabel =>
       '$minRecommendedPlayers–$maxRecommendedPlayers joueurs';
@@ -119,6 +138,7 @@ class RemoteScenarioDetail extends RemoteScenarioSummary {
     required this.rundownMarkdown,
     required this.npcs,
     required this.clues,
+    super.updatedAt,
   });
 
   factory RemoteScenarioDetail.fromJson(Map<String, dynamic> json) =>
@@ -129,6 +149,7 @@ class RemoteScenarioDetail extends RemoteScenarioSummary {
         minRecommendedPlayers: json['minRecommendedPlayers'] as int,
         maxRecommendedPlayers: json['maxRecommendedPlayers'] as int,
         averageDurationMinutes: json['averageDurationMinutes'] as int,
+        updatedAt: parseScenarioDate(json['updatedAt']),
         context: json['context'] as String,
         rundownMarkdown: json['rundownMarkdown'] as String,
         npcs: [
@@ -156,6 +177,9 @@ class RemoteScenarioDetail extends RemoteScenarioSummary {
         'minRecommendedPlayers': minRecommendedPlayers,
         'maxRecommendedPlayers': maxRecommendedPlayers,
         'averageDurationMinutes': averageDurationMinutes,
+        // Sans cette ligne, la copie gardée ne saurait jamais de quand elle
+        // date, et l'écran proposerait éternellement de la remettre à jour.
+        if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
         'context': context,
         'rundownMarkdown': rundownMarkdown,
         'npcs': [for (final npc in npcs) npc.toJson()],

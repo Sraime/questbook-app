@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../app/remote_providers.dart';
 import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_button.dart';
@@ -17,8 +18,7 @@ import '../widgets/clue_sharing_dialog.dart';
 /// Ce que le MJ prépare pour le faire passer de l'autre côté de l'écran.
 ///
 /// L'inverse du volet PNJ : ceux-là, ses joueurs ne les verront jamais ; les
-/// indices, c'est lui qui décide quand et à qui. D'où la seule chose que
-/// chaque carte doit dire sans qu'on la déplie — qui l'a déjà lu.
+/// indices, c'est lui qui décide quand et à qui.
 class CluesPanel extends ConsumerWidget {
   const CluesPanel({
     super.key,
@@ -137,29 +137,16 @@ class _ClueCard extends StatelessWidget {
   final RemoteClue clue;
   final List<RemoteTableMember> members;
 
-  /// Le partage et la correction remplacent la fenêtre de lecture plutôt que
-  /// de s'empiler dessus : deux fenêtres l'une sur l'autre sur un téléphone
-  /// ne laissent plus voir ni l'une ni l'autre.
   void _open(BuildContext context) {
     showClueReaderDialog(
       context,
       title: clue.title,
       contentMarkdown: clue.contentMarkdown,
-      onShare: () {
-        Navigator.of(context).pop();
-        showClueSharingDialog(
-          context,
-          sessionId: sessionId,
-          clue: clue,
-          members: members,
-        );
-      },
-      onEdit: clue.isEditable
-          ? () {
-              Navigator.of(context).pop();
-              showClueDialog(context, sessionId: sessionId, existing: clue);
-            }
-          : null,
+      actions: _ClueActions(
+        sessionId: sessionId,
+        clue: clue,
+        members: members,
+      ),
     );
   }
 
@@ -195,6 +182,141 @@ class _ClueCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Tout ce qu'on peut faire d'un indice, au bas de sa lecture.
+///
+/// Les trois gestes au même endroit, parce qu'on les prend au même moment :
+/// on relit l'indice, et on décide alors de le donner, de le reprendre ou de
+/// s'en débarrasser. La suppression vivait au fond du formulaire de
+/// modification, ce qui demandait d'ouvrir une correction pour ne rien
+/// corriger.
+///
+/// Partager et modifier **remplacent** cette fenêtre plutôt que de s'empiler
+/// dessus : deux fenêtres l'une sur l'autre sur un téléphone ne laissent plus
+/// voir ni l'une ni l'autre. Supprimer, lui, se règle sur place.
+class _ClueActions extends ConsumerStatefulWidget {
+  const _ClueActions({
+    required this.sessionId,
+    required this.clue,
+    required this.members,
+  });
+
+  final String sessionId;
+  final RemoteClue clue;
+  final List<RemoteTableMember> members;
+
+  @override
+  ConsumerState<_ClueActions> createState() => _ClueActionsState();
+}
+
+class _ClueActionsState extends ConsumerState<_ClueActions> {
+  bool _busy = false;
+  bool _confirmingDelete = false;
+  String? _error;
+
+  /// En deux temps, comme partout ailleurs dans l'app : supprimer un indice
+  /// efface aussi ce que des joueurs avaient déjà sous les yeux.
+  Future<void> _delete() async {
+    if (!_confirmingDelete) {
+      setState(() => _confirmingDelete = true);
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    final navigator = Navigator.of(context);
+
+    try {
+      await ref
+          .read(sessionApiProvider)
+          .deleteClue(widget.sessionId, widget.clue.id);
+      ref.invalidate(sessionCluesProvider(widget.sessionId));
+      await navigator.maybePop();
+    } on ApiException catch (error) {
+      setState(() {
+        _busy = false;
+        _confirmingDelete = false;
+        _error = error.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final clue = widget.clue;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            QBButton(
+              label: 'Partager',
+              size: QBButtonSize.sm,
+              onPressed: _busy
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      showClueSharingDialog(
+                        context,
+                        sessionId: widget.sessionId,
+                        clue: clue,
+                        members: widget.members,
+                      );
+                    },
+            ),
+            if (clue.isEditable) ...[
+              const SizedBox(width: QBSpace.s2),
+              QBButton(
+                label: 'Modifier',
+                size: QBButtonSize.sm,
+                variant: QBButtonVariant.ghost,
+                onPressed: _busy
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        showClueDialog(
+                          context,
+                          sessionId: widget.sessionId,
+                          existing: clue,
+                        );
+                      },
+              ),
+            ],
+          ],
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: QBSpace.s3),
+          Text(
+            _error!,
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.semanticDanger,
+            ),
+          ),
+        ],
+        const SizedBox(height: QBSpace.s2),
+        Center(
+          child: TextButton(
+            onPressed: _busy ? null : _delete,
+            child: Text(
+              _confirmingDelete
+                  ? 'Confirmer : personne ne le lira plus'
+                  : 'Supprimer cet indice',
+              style: QBType.body().copyWith(
+                fontSize: QBType.xs,
+                color: QBColors.semanticDanger,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

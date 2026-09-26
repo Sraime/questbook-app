@@ -328,12 +328,14 @@ void main() {
     expect(api.shared?.$2, ['p-1']);
   });
 
-  testWidgets('le supprimer demande confirmation', (tester) async {
+  /// Les trois gestes au même endroit, parce qu'on les prend au même moment.
+  /// Supprimer vivait au fond du formulaire de modification, ce qui demandait
+  /// d'ouvrir une correction pour ne rien corriger.
+  testWidgets('le supprimer se fait depuis sa lecture, en deux temps',
+      (tester) async {
     final api = await pumpPanel(tester, clues: const [_lettre]);
 
     await tester.tap(find.text('La lettre de Corbitt'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(QBButton, 'Modifier'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Supprimer cet indice'));
@@ -344,6 +346,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.deleted, ['clue-1']);
+  });
+
+  testWidgets('le formulaire de modification ne sait qu’enregistrer',
+      (tester) async {
+    await pumpPanel(tester, clues: const [_lettre]);
+
+    await tester.tap(find.text('La lettre de Corbitt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Modifier'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(QBButton, 'Enregistrer'), findsOneWidget);
+    expect(find.text('Supprimer cet indice'), findsNothing);
+    expect(find.text('Partager'), findsNothing);
   });
 
   testWidgets('sans réseau, le volet le dit', (tester) async {

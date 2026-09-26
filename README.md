@@ -784,12 +784,18 @@ restait ouvert à deux personnes.
 
 **La liste ne porte que des titres, et le texte s'ouvre dans une fenêtre**
 (`widgets/clue_reader_dialog.dart`), la même des deux côtés de l'écran. Seul
-le bas change : le MJ y trouve **Partager** et **Modifier**, le joueur rien.
-Ces deux gestes remplacent la fenêtre de lecture au lieu de s'empiler dessus,
-deux fenêtres l'une sur l'autre ne laissant plus voir ni l'une ni l'autre sur
-un téléphone. Et comme `QBDialog` ne fait pas défiler son contenu, le lecteur
-borne le sien à 60 % de la hauteur de l'écran : un indice n'a pas de longueur
-convenue.
+le bas change : **tous les gestes du MJ sont là** — Partager, Modifier,
+Supprimer — et le joueur n'en a aucun. Ils sont au même endroit parce qu'on
+les prend au même moment : on relit l'indice, et on décide alors de le
+donner, de le reprendre ou de s'en débarrasser. Le formulaire, lui, ne sait
+qu'enregistrer ; la suppression y vivait, ce qui demandait d'ouvrir une
+correction pour ne rien corriger.
+
+Partager et Modifier remplacent la fenêtre de lecture au lieu de s'empiler
+dessus, deux fenêtres l'une sur l'autre ne laissant plus voir ni l'une ni
+l'autre sur un téléphone ; Supprimer se règle sur place, en deux temps. Et
+comme `QBDialog` ne fait pas défiler son contenu, le lecteur borne le sien à
+60 % de la hauteur de l'écran : un indice n'a pas de longueur convenue.
 
 Le joueur a le même onglet, avec un autre volet (`panels/shared_clues_panel.dart`)
 et **un autre appel** : `GET /sessions/:id/clues/mine`, qui ne rend que les

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../design_system/components/qb_button.dart';
 import '../../../design_system/components/qb_dialog.dart';
 import '../../../design_system/components/qb_markdown.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -8,14 +7,14 @@ import '../../../design_system/tokens/spacing.dart';
 /// Un indice, ouvert pour etre lu.
 ///
 /// La meme fenetre des deux cotes de l'ecran : le MJ relit ce qu'il s'apprete
-/// a partager, le joueur lit ce qu'il a trouve. Seuls les gestes du bas
-/// changent, et le joueur n'en a aucun.
+/// a partager, le joueur lit ce qu'il a trouve. Seul le bas change — c'est de
+/// la que le MJ prend tous les gestes qui concernent l'indice, et le joueur
+/// n'en a aucun, donc [actions] reste nul chez lui.
 Future<void> showClueReaderDialog(
   BuildContext context, {
   required String title,
   required String contentMarkdown,
-  VoidCallback? onShare,
-  VoidCallback? onEdit,
+  Widget? actions,
 }) {
   return showQBDialog(
     context: context,
@@ -36,27 +35,9 @@ Future<void> showClueReaderDialog(
           ),
           child: SingleChildScrollView(child: QBMarkdown(contentMarkdown)),
         ),
-        if (onShare != null || onEdit != null) ...[
+        if (actions != null) ...[
           const SizedBox(height: QBSpace.s4),
-          Row(
-            children: [
-              if (onShare != null)
-                QBButton(
-                  label: 'Partager',
-                  size: QBButtonSize.sm,
-                  onPressed: onShare,
-                ),
-              if (onShare != null && onEdit != null)
-                const SizedBox(width: QBSpace.s2),
-              if (onEdit != null)
-                QBButton(
-                  label: 'Modifier',
-                  size: QBButtonSize.sm,
-                  variant: QBButtonVariant.ghost,
-                  onPressed: onEdit,
-                ),
-            ],
-          ),
+          actions,
         ],
       ],
     ),

@@ -12,8 +12,12 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../providers/game_master_providers.dart';
 
-/// Le formulaire d'un indice : celui qu'on remplit pour en composer un est
+/// Le formulaire d'un indice : celui qu'on remplit pour en ajouter un est
 /// celui qu'on rouvre pour le corriger.
+///
+/// Il ne sait qu'enregistrer. Les gestes qui portent sur l'indice lui-même —
+/// le partager, le supprimer — se prennent depuis sa lecture : ouvrir une
+/// correction pour ne rien corriger n'avait pas de sens.
 Future<void> showClueDialog(
   BuildContext context, {
   required String sessionId,
@@ -46,7 +50,6 @@ class _ClueFormState extends ConsumerState<_ClueForm> {
       TextEditingController(text: widget.existing?.contentMarkdown ?? '');
 
   bool _busy = false;
-  bool _confirmingDelete = false;
   String? _error;
 
   @override
@@ -99,40 +102,8 @@ class _ClueFormState extends ConsumerState<_ClueForm> {
     }
   }
 
-  /// En deux temps, comme partout ailleurs dans l'app : supprimer un indice
-  /// efface aussi ce que des joueurs avaient déjà sous les yeux.
-  Future<void> _delete() async {
-    if (!_confirmingDelete) {
-      setState(() => _confirmingDelete = true);
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-
-    final navigator = Navigator.of(context);
-
-    try {
-      await ref
-          .read(sessionApiProvider)
-          .deleteClue(widget.sessionId, widget.existing!.id);
-      ref.invalidate(sessionCluesProvider(widget.sessionId));
-      await navigator.maybePop();
-    } on ApiException catch (error) {
-      setState(() {
-        _busy = false;
-        _confirmingDelete = false;
-        _error = error.message;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final existing = widget.existing;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,23 +146,6 @@ class _ClueFormState extends ConsumerState<_ClueForm> {
           expand: true,
           onPressed: _busy ? null : _submit,
         ),
-        if (existing != null) ...[
-          const SizedBox(height: QBSpace.s3),
-          Center(
-            child: TextButton(
-              onPressed: _busy ? null : _delete,
-              child: Text(
-                _confirmingDelete
-                    ? 'Confirmer : personne ne le lira plus'
-                    : 'Supprimer cet indice',
-                style: QBType.body().copyWith(
-                  fontSize: QBType.xs,
-                  color: QBColors.semanticDanger,
-                ),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -12,7 +12,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/clue_dialog.dart';
-import '../widgets/reader_dialog.dart';
+import '../../../design_system/components/qb_reader_dialog.dart';
 import '../widgets/clue_sharing_dialog.dart';
 
 /// Ce que le MJ prépare pour le faire passer de l'autre côté de l'écran.
@@ -138,7 +138,7 @@ class _ClueCard extends StatelessWidget {
   final List<RemoteTableMember> members;
 
   void _open(BuildContext context) {
-    showReaderDialog(
+    showQBReaderDialog(
       context,
       title: clue.title,
       contentMarkdown: clue.contentMarkdown,

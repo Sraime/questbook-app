@@ -19,7 +19,7 @@ import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/session_seat.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/npc_dialog.dart';
-import '../widgets/reader_dialog.dart';
+import '../../../design_system/components/qb_reader_dialog.dart';
 
 /// Qui sera là ce soir : les fiches des joueurs attendus, puis — pour le MJ
 /// seul — tout le reste de la distribution : créatures, indicateurs, esprits.
@@ -222,7 +222,7 @@ class _NpcCard extends ConsumerWidget {
       label: fromScenario ? 'Lire ${npc.name}' : 'Modifier ${npc.name}',
       child: GestureDetector(
         onTap: () => fromScenario
-            ? showReaderDialog(
+            ? showQBReaderDialog(
                 context,
                 title: npc.name,
                 contentMarkdown: npc.description,

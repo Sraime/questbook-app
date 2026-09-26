@@ -783,7 +783,9 @@ pourtant dans l'appel. Le MJ voyait un seul nom coché, validait, et l'indice
 restait ouvert à deux personnes.
 
 **La liste ne porte que des titres, et le texte s'ouvre dans une fenêtre**
-(`widgets/reader_dialog.dart`), la même des deux côtés de l'écran. Seul
+(`design_system/components/qb_reader_dialog.dart`), la même des deux côtés de
+l'écran — et désormais aussi pour un PNJ et pour l'écran d'un scénario, ce qui
+l'a fait sortir du mode MJ où elle était née. Seul
 le bas change : **tous les gestes du MJ sont là** — Partager, Modifier,
 Supprimer — et le joueur n'en a aucun. Ils sont au même endroit parce qu'on
 les prend au même moment : on relit l'indice, et on décide alors de le
@@ -818,6 +820,27 @@ l'absence des boutons se lirait comme une panne plutôt que comme une règle.
 
 Le volet **Scénario** du mode MJ, lui, ne répète ni les uns ni les autres : ils
 ont leurs volets, où le MJ peut s'en servir au lieu de seulement les relire.
+
+L'écran d'un scénario (`features/scenarios/scenario_detail_screen.dart`)
+montre les deux de la même façon : des **cartes qu'on touche**, et non de la
+prose déroulée. Une aventure en compte une douzaine, et les lire toutes pour
+retrouver le pharmacien de Salins revenait à relire le scénario. Le texte
+s'ouvre dans la même fenêtre de lecture qu'en séance.
+
+Le même écran porte un **sommaire**, construit sur les titres `##` du déroulé
+(`scenario_outline.dart`, testé à part parce que c'est du texte qui entre et
+du texte qui sort). Une aventure ajoutée au catalogue a donc son sommaire sans
+que personne n'y pense. Deux conséquences dans le code :
+
+- le document défile en `SingleChildScrollView` et non en `ListView` : sauter
+  à une section demande que cette section soit **dans l'arbre**, ce qu'une
+  liste qui ne construit que le visible ne garantit pas ;
+- la ligne de titre reste dans le markdown de sa section — `QBMarkdown` seul
+  décide à quoi ressemble un titre, et le découpage ne doit rien y changer.
+
+Un bouton flottant en bas à droite ramène au sommaire, et n'apparaît qu'une
+fois celui-ci hors de vue : le proposer à qui le regarde déjà mangerait un
+coin d'écran pour rien.
 
 Deux noms à connaître, parce qu'ils changent : les **annexes** d'un scénario
 sont devenues ses **indices**. `RemoteScenarioDetail.fromJson` relit encore la

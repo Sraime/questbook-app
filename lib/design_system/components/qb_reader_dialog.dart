@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../../../design_system/components/qb_dialog.dart';
-import '../../../design_system/components/qb_markdown.dart';
-import '../../../design_system/tokens/spacing.dart';
+import 'qb_dialog.dart';
+import 'qb_markdown.dart';
+import '../tokens/spacing.dart';
 
 /// Quelque chose de prepare, ouvert pour etre lu.
 ///
 /// La meme fenetre partout ou de la prose s'ouvre en grand : le MJ relit
-/// l'indice qu'il s'apprete a partager, le joueur lit ce qu'il a recu, et le
-/// PNJ que l'aventure livre s'ouvre pareil. Seul le bas change — c'est de la
-/// que le MJ prend les gestes qui concernent ce qu'il lit, et il n'y en a
-/// aucun sur ce qui ne lui appartient pas, donc [actions] reste nul.
-Future<void> showReaderDialog(
+/// l'indice qu'il s'apprete a partager, le joueur lit ce qu'il a recu, le PNJ
+/// que l'aventure livre s'ouvre pareil, et l'ecran d'un scenario y montre ce
+/// qu'il contient. Seul le bas change — c'est de la que le MJ prend les gestes
+/// qui concernent ce qu'il lit, et il n'y en a aucun sur ce qui ne lui
+/// appartient pas, donc [actions] reste nul.
+Future<void> showQBReaderDialog(
   BuildContext context, {
   required String title,
   required String contentMarkdown,

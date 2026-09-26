@@ -3,6 +3,41 @@ import 'package:questbook/data/remote/remote_scenario.dart';
 import 'package:questbook/data/remote/scenario_api.dart';
 
 void main() {
+  test('carries the catalogue date, and keeps it through the local copy', () {
+    final detail = RemoteScenarioDetail.fromJson({
+      'id': 'sc-1',
+      'title': 'Le Phare',
+      'description': 'Brume.',
+      'minRecommendedPlayers': 2,
+      'maxRecommendedPlayers': 5,
+      'averageDurationMinutes': 180,
+      'context': 'Kerloc\'h.',
+      'rundownMarkdown': '## Suite',
+      'updatedAt': '2026-09-26T19:30:00.000Z',
+    });
+
+    expect(detail.updatedAt, DateTime.utc(2026, 9, 26, 19, 30));
+    // Le document est reecrit tel quel dans la base locale : sans la date, la
+    // copie ne saurait jamais de quand elle est.
+    expect(detail.toJson()['updatedAt'], '2026-09-26T19:30:00.000Z');
+  });
+
+  test('reads a document written before the dates existed', () {
+    final detail = RemoteScenarioDetail.fromJson({
+      'id': 'sc-1',
+      'title': 'Le Phare',
+      'description': 'Brume.',
+      'minRecommendedPlayers': 2,
+      'maxRecommendedPlayers': 5,
+      'averageDurationMinutes': 180,
+      'context': 'Kerloc\'h.',
+      'rundownMarkdown': '## Suite',
+    });
+
+    expect(detail.updatedAt, isNull);
+    expect(detail.toJson().containsKey('updatedAt'), isFalse);
+  });
+
   test('parses a catalogue list without the heavy fields', () {
     final scenarios = ScenarioApi.parseList({
       'scenarios': [

@@ -114,6 +114,7 @@ class _Body extends StatelessWidget {
           _ScenarioCard(
             scenario: scenario,
             downloaded: overview.isDownloaded(scenario.id),
+            outdated: overview.isOutdated(scenario),
           ),
           const SizedBox(height: QBSpace.s3),
         ],
@@ -123,10 +124,17 @@ class _Body extends StatelessWidget {
 }
 
 class _ScenarioCard extends ConsumerStatefulWidget {
-  const _ScenarioCard({required this.scenario, required this.downloaded});
+  const _ScenarioCard({
+    required this.scenario,
+    required this.downloaded,
+    this.outdated = false,
+  });
 
   final RemoteScenarioSummary scenario;
   final bool downloaded;
+
+  /// Le serveur a corrigé l'aventure depuis le téléchargement.
+  final bool outdated;
 
   @override
   ConsumerState<_ScenarioCard> createState() => _ScenarioCardState();
@@ -183,14 +191,40 @@ class _ScenarioCardState extends ConsumerState<_ScenarioCard> {
               color: QBColors.textMuted,
             ),
           ),
+          if (widget.outdated) ...[
+            const SizedBox(height: QBSpace.s3),
+            Text(
+              'Une version plus récente existe.',
+              style: QBType.body().copyWith(
+                fontSize: QBType.xs,
+                color: QBColors.ink800,
+                fontWeight: QBType.weightSemibold,
+              ),
+            ),
+          ],
           const SizedBox(height: QBSpace.s3),
           if (downloaded)
-            QBButton(
-              label: 'Ouvrir',
-              size: QBButtonSize.sm,
-              variant: QBButtonVariant.secondary,
-              iconLeft: const Icon(LucideIcons.book, size: 14),
-              onPressed: () => context.go('/scenarios/${scenario.id}'),
+            // La lecture d'abord : c'est ce qu'on vient faire ici, et la mise
+            // a jour n'est qu'une occasion qui passe.
+            Row(
+              children: [
+                QBButton(
+                  label: 'Ouvrir',
+                  size: QBButtonSize.sm,
+                  variant: QBButtonVariant.secondary,
+                  iconLeft: const Icon(LucideIcons.book, size: 14),
+                  onPressed: () => context.go('/scenarios/${scenario.id}'),
+                ),
+                if (widget.outdated) ...[
+                  const SizedBox(width: QBSpace.s2),
+                  QBButton(
+                    label: _busy ? 'Mise à jour…' : 'Mettre à jour',
+                    size: QBButtonSize.sm,
+                    iconLeft: const Icon(LucideIcons.refreshCw, size: 14),
+                    onPressed: _busy ? null : _download,
+                  ),
+                ],
+              ],
             )
           else
             QBButton(

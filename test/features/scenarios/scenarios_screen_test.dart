@@ -62,5 +62,42 @@ void main() {
 
     expect(find.widgetWithText(QBButton, 'Ouvrir'), findsOneWidget);
     expect(find.widgetWithText(QBButton, 'Télécharger'), findsNothing);
+    expect(find.widgetWithText(QBButton, 'Mettre à jour'), findsNothing);
+  });
+
+  testWidgets('offers the update next to Ouvrir when the catalogue moved',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          isSignedInProvider.overrideWithValue(true),
+          scenariosOverviewProvider.overrideWith((ref) async {
+            return ScenariosOverview(
+              scenarios: [
+                RemoteScenarioSummary(
+                  id: 'sc-1',
+                  title: phare.title,
+                  description: phare.description,
+                  minRecommendedPlayers: 2,
+                  maxRecommendedPlayers: 5,
+                  averageDurationMinutes: 180,
+                  updatedAt: DateTime.utc(2026, 9, 26),
+                ),
+              ],
+              downloadedIds: const {'sc-1'},
+              downloadedVersions: {'sc-1': DateTime.utc(2026, 9, 20)},
+            );
+          }),
+        ],
+        child: const MaterialApp(home: ScenariosScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Lire reste le geste principal : la mise a jour vient a cote, pas a la
+    // place.
+    expect(find.widgetWithText(QBButton, 'Ouvrir'), findsOneWidget);
+    expect(find.widgetWithText(QBButton, 'Mettre à jour'), findsOneWidget);
+    expect(find.text('Une version plus récente existe.'), findsOneWidget);
   });
 }

@@ -848,6 +848,29 @@ clé `annexes` — un scénario téléchargé avant cette version dort sous cet
 intitulé dans la base locale, et il se lit hors ligne : le refuser coûterait sa
 soirée à quelqu'un.
 
+#### Rattraper une correction du catalogue
+
+Un scénario téléchargé reste tel qu'il a été reçu : le serveur ne pousse rien,
+et une séance en cours ne doit pas voir son déroulé changer sous les yeux du
+meneur. C'est donc à l'app de s'apercevoir qu'une correction est passée.
+Quand la liste vient du réseau et que la copie gardée est plus ancienne,
+**« Mettre à jour » apparaît à côté d'« Ouvrir »** sur la carte du scénario.
+Le geste est celui du téléchargement, qui écrase déjà la ligne existante.
+
+La comparaison se fait entre l'`updatedAt` rangé dans la copie locale et celui
+que la liste vient de rendre : **deux dates émises par le serveur**. Celle du
+téléchargement, qui existait déjà en base (`downloadedAt`), ne servirait pas —
+elle vient de l'horloge de l'appareil, qui peut dériver de plusieurs minutes et
+ferait alors croire à une copie plus récente que l'original.
+
+`ScenariosOverview.isOutdated` refuse trois fois avant de proposer, et chaque
+refus a sa raison : ce qui n'est pas téléchargé n'a rien à mettre à jour ; une
+liste qui vient du cache ne peut rien avoir appris, ce qui tient lieu de test
+de connexion sans regarder `connectivityProvider` ; et un serveur qui ne date
+pas ses aventures ne permet aucune comparaison. Reste le cas d'une copie sans
+date, antérieure au mécanisme : rien ne prouve qu'elle soit à jour, donc l'app
+propose **une fois**, après quoi la copie porte la sienne.
+
 **Rien n'est poussé en direct.** Un indice transmis pendant que le joueur
 regarde ailleurs apparaît **à l'ouverture du volet** : autour d'une table, le
 MJ dit à voix haute qu'il vient de transmettre quelque chose. C'est

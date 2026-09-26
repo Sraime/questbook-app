@@ -99,7 +99,7 @@ class _TablesBody extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'Aucune table pour l’instant. Crée la tienne et invite tes '
-              'joueurs par leur adresse Google.',
+              'joueurs par leur adresse e-mail.',
               style: QBType.body().copyWith(
                 fontSize: QBType.base,
                 color: QBColors.textMuted,

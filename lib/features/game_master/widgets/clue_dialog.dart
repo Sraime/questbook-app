@@ -84,12 +84,22 @@ class _ClueFormState extends ConsumerState<_ClueForm> {
           contentMarkdown: content,
         );
       } else {
-        await api.updateClue(
-          widget.sessionId,
-          existing.id,
-          title: title == existing.title ? null : title,
-          contentMarkdown: content == existing.contentMarkdown ? null : content,
-        );
+        // Seul ce qui a bougé part au serveur — et quand rien n'a bougé, il
+        // ne reste rien à envoyer. Un patch vide n'est pas une requête que le
+        // serveur peut honorer, et il a raison de la refuser : c'est ici
+        // qu'on doit voir que le geste était vide, pas là-bas.
+        final newTitle = title == existing.title ? null : title;
+        final newContent =
+            content == existing.contentMarkdown ? null : content;
+
+        if (newTitle != null || newContent != null) {
+          await api.updateClue(
+            widget.sessionId,
+            existing.id,
+            title: newTitle,
+            contentMarkdown: newContent,
+          );
+        }
       }
 
       ref.invalidate(sessionCluesProvider(widget.sessionId));

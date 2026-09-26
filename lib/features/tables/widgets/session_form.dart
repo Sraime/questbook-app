@@ -150,16 +150,38 @@ class _SessionFormState extends ConsumerState<SessionForm> {
       } else {
         // Only what actually changed goes out: a needless `startsAt` would
         // look to the server like the date moved, and wake everyone up.
-        await api.update(
-          existing.id,
-          title: title == existing.title ? null : title,
-          description:
-              description == (existing.description ?? '') ? null : description,
-          startsAt: _startsAt.isAtSameMomentAs(existing.startsAt) ? null : _startsAt,
-          location: location == existing.location ? null : location,
-          scenarioId: _scenarioId == existing.scenarioId ? null : _scenarioId,
-          clearScenario: existing.scenarioId != null && _scenarioId == null,
-        );
+        final newTitle = title == existing.title ? null : title;
+        final newDescription =
+            description == (existing.description ?? '') ? null : description;
+        final newStartsAt =
+            _startsAt.isAtSameMomentAs(existing.startsAt) ? null : _startsAt;
+        final newLocation = location == existing.location ? null : location;
+        final newScenarioId =
+            _scenarioId == existing.scenarioId ? null : _scenarioId;
+        final clearScenario = existing.scenarioId != null && _scenarioId == null;
+
+        // Which leaves nothing at all to send when nothing was touched. An
+        // empty patch is not a request the server can honour, and it is right
+        // to refuse it — but saving without having changed anything is not an
+        // error either. The form simply closes.
+        final changed = newTitle != null ||
+            newDescription != null ||
+            newStartsAt != null ||
+            newLocation != null ||
+            newScenarioId != null ||
+            clearScenario;
+
+        if (changed) {
+          await api.update(
+            existing.id,
+            title: newTitle,
+            description: newDescription,
+            startsAt: newStartsAt,
+            location: newLocation,
+            scenarioId: newScenarioId,
+            clearScenario: clearScenario,
+          );
+        }
       }
 
       refreshTables(ref, tableId: widget.tableId);

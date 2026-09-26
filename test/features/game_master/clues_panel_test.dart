@@ -362,6 +362,44 @@ void main() {
     expect(find.text('Partager'), findsNothing);
   });
 
+  testWidgets('corriger un indice n’envoie que le champ touché',
+      (tester) async {
+    final api = await pumpPanel(tester, clues: const [_lettre]);
+
+    await tester.tap(find.text('La lettre de Corbitt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Modifier'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'La lettre de Corbitt'),
+      'La lettre de Corbitt, relue',
+    );
+    await tester.tap(find.widgetWithText(QBButton, 'Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.patched, ('clue-1', 'La lettre de Corbitt, relue', null));
+    expect(find.text('La lettre de Corbitt, relue'), findsOneWidget);
+  });
+
+  /// Ne rien envoyer du tout, et surtout pas un patch vide : le serveur le
+  /// refuse, à juste titre, et le MJ lisait « Request payload is invalid »
+  /// pour avoir enregistré ce qu'il n'avait pas touché.
+  testWidgets('enregistrer sans avoir rien touché referme la fenêtre',
+      (tester) async {
+    final api = await pumpPanel(tester, clues: const [_lettre]);
+
+    await tester.tap(find.text('La lettre de Corbitt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Modifier'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.patched, isNull);
+    expect(find.byType(QBDialog), findsNothing);
+  });
+
   testWidgets('sans réseau, le volet le dit', (tester) async {
     await pumpPanel(
       tester,

@@ -91,7 +91,7 @@ class _RenameFormState extends ConsumerState<_RenameForm> {
       children: [
         Text(
           'C’est sous ce nom que les autres joueurs te voient à leurs tables. '
-          'Il ne suit plus ton compte Google.',
+          'Il ne suit plus le nom de ton compte.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,
             color: QBColors.textMuted,

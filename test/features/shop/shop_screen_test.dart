@@ -94,7 +94,8 @@ const _downloaded = RemoteScenarioDetail(
   averageDurationMinutes: 210,
   context: 'Gare de Lyon, novembre 1926.',
   rundownMarkdown: '## Mise en place',
-  annexes: [],
+  npcs: [],
+  clues: [],
 );
 
 RemoteShopItemDetail _ownedCopy(RemoteShopItemDetail item) =>

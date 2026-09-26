@@ -7,6 +7,7 @@ import 'package:questbook/data/remote/api_exception.dart';
 import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/data/remote/session_api.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
+import 'package:questbook/design_system/components/qb_dialog.dart';
 import 'package:questbook/features/game_master/panels/characters_panel.dart';
 
 /// Les seuls appels que la section attend. Le reste du client n'a pas à
@@ -238,6 +239,47 @@ void main() {
 
     expect(api.patched, ('npc-1', null, 'Rampe au plafond de la cave.'));
     expect(find.text('Rampe au plafond de la cave.'), findsOneWidget);
+  });
+
+  /// Ne rien envoyer du tout, et surtout pas un patch vide : le serveur le
+  /// refuse, à juste titre, et le MJ lisait « Request payload is invalid »
+  /// pour avoir enregistré ce qu'il n'avait pas touché.
+  testWidgets('enregistrer sans avoir rien touché referme la fenêtre',
+      (tester) async {
+    final api = await pumpPanel(tester, npcs: const [
+      RemoteNpc(id: 'npc-1', name: 'Créature', description: 'Au plafond.'),
+    ]);
+
+    await tester.tap(find.text('Créature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.patched, isNull);
+    expect(find.widgetWithText(TextField, 'Créature'), findsNothing);
+  });
+
+  /// Un PNJ livré par l'aventure appartient à son auteur : le MJ le joue, il
+  /// ne le réécrit pas, et sa description s'ouvre en lecture.
+  testWidgets('un PNJ du scénario se lit, et ne se modifie pas',
+      (tester) async {
+    await pumpPanel(tester, npcs: const [
+      RemoteNpc(
+        id: 'npc-1',
+        name: 'Mariette Le Goff',
+        description: 'Ment sur les dates, et se trompe quand on insiste.',
+        origin: 'scenario',
+      ),
+    ]);
+
+    expect(find.text('du scénario'), findsOneWidget);
+    expect(find.bySemanticsLabel('Retirer Mariette Le Goff'), findsNothing);
+
+    await tester.tap(find.text('Mariette Le Goff'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QBDialog), findsOneWidget);
+    expect(find.widgetWithText(QBButton, 'Enregistrer'), findsNothing);
   });
 
   testWidgets('le retirer demande confirmation', (tester) async {

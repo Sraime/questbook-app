@@ -247,9 +247,12 @@ void main() {
     expect(SessionSeat.gameMaster.panels, GameMasterPanel.values);
     expect(SessionSeat.gameMaster.landing, GameMasterPanel.details);
 
+    // Indices figure des deux cotes, avec deux vues : le MJ compose, le
+    // joueur ne lit que ce qu'on lui a ouvert.
     expect(SessionSeat.player.panels, [
       GameMasterPanel.board,
       GameMasterPanel.characters,
+      GameMasterPanel.clues,
     ]);
     expect(SessionSeat.player.landing, GameMasterPanel.board);
   });

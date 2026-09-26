@@ -1,0 +1,47 @@
+import 'package:flutter/material.dart';
+
+import 'qb_dialog.dart';
+import 'qb_markdown.dart';
+import '../tokens/spacing.dart';
+
+/// Quelque chose de prepare, ouvert pour etre lu.
+///
+/// La meme fenetre partout ou de la prose s'ouvre en grand : le MJ relit
+/// l'indice qu'il s'apprete a partager, le joueur lit ce qu'il a recu, le PNJ
+/// que l'aventure livre s'ouvre pareil, et l'ecran d'un scenario y montre ce
+/// qu'il contient. Seul le bas change — c'est de la que le MJ prend les gestes
+/// qui concernent ce qu'il lit, et il n'y en a aucun sur ce qui ne lui
+/// appartient pas, donc [actions] reste nul.
+Future<void> showQBReaderDialog(
+  BuildContext context, {
+  required String title,
+  required String contentMarkdown,
+  Widget? actions,
+}) {
+  return showQBDialog(
+    context: context,
+    title: title,
+    // Comme le formulaire, et pour la meme raison : c'est de la prose, et une
+    // colonne de deux mots empeche de la lire.
+    width: 560,
+    builder: (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // `QBDialog` ne fait pas defiler son contenu, et un indice n'a pas de
+        // longueur convenue : sans cette borne, une page arrachee un peu
+        // bavarde deborde de l'ecran.
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+          ),
+          child: SingleChildScrollView(child: QBMarkdown(contentMarkdown)),
+        ),
+        if (actions != null) ...[
+          const SizedBox(height: QBSpace.s4),
+          actions,
+        ],
+      ],
+    ),
+  );
+}

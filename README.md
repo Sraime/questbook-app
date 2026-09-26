@@ -21,7 +21,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - [Installation](#installation)
 - [Génération de code](#génération-de-code)
 - [Exécution](#exécution)
-- [Compte Google et synchronisation](#compte-google-et-synchronisation)
+- [Compte et synchronisation](#compte-et-synchronisation)
   - [Supprimer son compte](#supprimer-son-compte)
   - [Configuration de build (`--dart-define`)](#configuration-de-build---dart-define)
   - [Lancer contre le backend local](#lancer-contre-le-backend-local)
@@ -52,15 +52,15 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Création d'un investigateur (`/perso/create`)** : choix du mode de création, nom/occupation/description, tirage des caractéristiques (3d6 × 5, façon CdC v7), répartition des points de compétence personnels et — si l'occupation choisie en définit — de son propre budget de points de compétence d'occupation.
 - **Fiche d'un investigateur (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
-- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet (contexte, déroulé markdown, annexes) se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse Google, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
+- **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet — contexte, déroulé markdown, **PNJ et indices de l'aventure** — se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse e-mail, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
 - **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
-- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
+- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde, aux investigateurs de la table et aux indices qu'on lui a transmis. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, six volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il prépare pour le partager, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
@@ -414,10 +414,11 @@ flutter create .
 flutter run -d chrome     # ou -d windows / -d linux / -d macos
 ```
 
-## Compte Google et synchronisation
+## Compte et synchronisation
 
-L'app peut sauvegarder les personnages sur un compte Google, via l'API Questbook
-qui vit dans un dépôt séparé : [`questbook-back`](https://github.com/Sraime/questbook-back)
+L'app peut sauvegarder les personnages sur un compte Questbook — ouvert par
+Google ou par Apple — via l'API qui vit dans un dépôt séparé :
+[`questbook-back`](https://github.com/Sraime/questbook-back)
 (Fastify + Prisma + PostgreSQL). Son README couvre l'installation, les variables
 d'environnement et le déploiement.
 
@@ -669,15 +670,28 @@ points, ce qu'il faut pour étaler le rail, la carte et le tiroir de front :
 
 | Disposition | Quand | Ce que ça donne |
 | --- | --- | --- |
-| `rail` | Tablette en paysage | Rail de six volets à gauche, tiroir d'assets ouvert à droite de la carte |
+| `rail` | Tablette en paysage | Rail de sept volets à gauche, tiroir d'assets ouvert à droite de la carte |
 | `tabs` | Téléphone, tablette en portrait, fenêtre réduite | Onglets sous l'entête, tiroir en surimpression |
 
-En disposition compacte, les six volets tiennent dans une barre d'onglets
-**en icônes seules** : six libellés dans la largeur d'un téléphone seraient
-illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
-les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
-de la table et le bouton de sortie. Un volet de plus rogne cette place :
-ajouter un septième demanderait autre chose qu'une rangée fixe.
+En disposition compacte, les volets tiennent dans une barre d'onglets **en
+icônes seules** : sept libellés dans la largeur d'un téléphone seraient
+illisibles. Faute de rail, l'entête accueille le nom de la table et le bouton
+de sortie.
+
+Ce qui reste aux onglets au repos décide du reste, et `_PanelTabs` a donc
+deux seuils plutôt qu'une règle unique :
+
+| Volets | Ce qui est nommé |
+| --- | --- |
+| Deux | Tous, au repos comme à l'actif |
+| Trois à six | Seul l'actif, qui prend la place que les autres ne réclament pas |
+| Sept et plus | Aucun : tous se partagent la largeur, le fond doré dit l'actif |
+
+Le troisième cas est né du septième volet. Jusque-là, l'actif se payait un
+libellé ; **Détails** s'est alors affiché « Dét… » sur fond doré, et un
+libellé tronqué renseigne moins qu'une icône seule tout en salissant la
+barre. `test/features/game_master/panel_tabs_test.dart` monte l'écran sur
+360 points de large et échoue si un nom de volet apparaît amputé.
 
 #### Le même écran, vu d'une chaise de joueur
 
@@ -692,10 +706,11 @@ montrerait une seconde ce qui ne le regarde pas.
 
 | | MJ | Joueur |
 | --- | --- | --- |
-| Volets | Les six | **Plateau** et **Investigateurs** |
+| Volets | Les sept | **Plateau**, **Investigateurs** et **Indices** |
 | Volet d'accueil | Détails | Plateau |
 | Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
 | Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules, la sienne modifiable |
+| Indices | `CluesPanel` : ajouter, corriger, partager | `SharedCluesPanel` : lire ce qu'on lui a ouvert |
 
 Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
 dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
@@ -704,9 +719,9 @@ pour tout le monde. Les PNJ portent eux-mêmes la phrase « tes joueurs ne les
 voient pas » : le volet s'arrête donc aux investigateurs, et le filet qui les
 sépare avec.
 
-Deux volets au lieu de six changent la barre d'onglets : ils ont la place
-d'être **nommés au repos**, là où six imposaient l'icône seule. Un joueur qui
-n'a pas l'habitude de l'écran en a besoin.
+Trois volets au lieu de sept changent la barre d'onglets : celui qu'on
+regarde a la place d'être **nommé**, là où sept imposent l'icône seule. Un
+joueur qui n'a pas l'habitude de l'écran en a besoin.
 
 Le plateau du joueur est **en lecture, pas désactivé** : aucun tiroir, aucune
 cible de dépôt, aucune poignée, aucun geste câblé. Il n'y a rien à griser, et
@@ -751,6 +766,121 @@ Le délai de détection n'est pas nul : un réseau qui disparaît sans prévenir
 laisse la socket ouverte jusqu'au `pingInterval`, soit vingt secondes. Un
 Wi-Fi coupé franchement, lui, ferme la socket tout de suite et le bandeau
 apparaît dans la seconde.
+
+#### Les indices, et qui les lit
+
+Le MJ ajoute ses indices en markdown dans le volet **Indices**
+(`panels/clues_panel.dart`), les relit rendus plutôt qu'en source — c'est ce
+que le joueur lira —, les corrige, les supprime, et coche pour chacun les
+joueurs de la table autorisés à le lire. À qui un indice est ouvert se lit
+là, cases cochées, et nulle part ailleurs : un compteur sur la carte ne
+nommait personne et occupait la ligne.
+
+**Ces cases décident seules de ce qui part.** La liste envoyée est celle des
+noms montrés, et non celle que le serveur renvoyait : un destinataire qui
+n'est plus joueur de la table n'apparaît sur aucune case, et repartait
+pourtant dans l'appel. Le MJ voyait un seul nom coché, validait, et l'indice
+restait ouvert à deux personnes.
+
+**La liste ne porte que des titres, et le texte s'ouvre dans une fenêtre**
+(`design_system/components/qb_reader_dialog.dart`), la même des deux côtés de
+l'écran — et désormais aussi pour un PNJ et pour l'écran d'un scénario, ce qui
+l'a fait sortir du mode MJ où elle était née. Seul
+le bas change : **tous les gestes du MJ sont là** — Partager, Modifier,
+Supprimer — et le joueur n'en a aucun. Ils sont au même endroit parce qu'on
+les prend au même moment : on relit l'indice, et on décide alors de le
+donner, de le reprendre ou de s'en débarrasser. Le formulaire, lui, ne sait
+qu'enregistrer ; la suppression y vivait, ce qui demandait d'ouvrir une
+correction pour ne rien corriger.
+
+Partager et Modifier remplacent la fenêtre de lecture au lieu de s'empiler
+dessus, deux fenêtres l'une sur l'autre ne laissant plus voir ni l'une ni
+l'autre sur un téléphone ; Supprimer se règle sur place, en deux temps. Et
+comme `QBDialog` ne fait pas défiler son contenu, le lecteur borne le sien à
+60 % de la hauteur de l'écran : un indice n'a pas de longueur convenue.
+
+Le joueur a le même onglet, avec un autre volet (`panels/shared_clues_panel.dart`)
+et **un autre appel** : `GET /sessions/:id/clues/mine`, qui ne rend que les
+indices ouverts, sans destinataires ni compteur. La liste entière dirait ce
+qu'il n'a pas reçu, et deux types distincts (`RemoteClue`, `RemoteSharedClue`)
+évitent qu'un champ de trop finisse par voyager vide plutôt qu'absent.
+
+#### Ce que le scénario apporte à la séance
+
+Une séance qui joue un scénario mélange **deux piles** dans ces deux volets :
+ce que l'aventure livre, et ce que le MJ a écrit. Le serveur les renvoie dans
+le même appel, celles du scénario d'abord, avec un `origin` que
+`RemoteNpc.isEditable` et `RemoteClue.isFromScenario` traduisent en gestes.
+
+Ce qui vient de l'aventure appartient à son auteur : un PNJ s'ouvre **en
+lecture** au lieu du formulaire, et un indice ne garde que **Partager** — sans
+Modifier ni Supprimer, puisque c'est précisément pour être transmis que le
+scénario l'a écrit. Chaque carte porte la mention « du scénario » : sans elle,
+l'absence des boutons se lirait comme une panne plutôt que comme une règle.
+
+Le volet **Scénario** du mode MJ, lui, ne répète ni les uns ni les autres : ils
+ont leurs volets, où le MJ peut s'en servir au lieu de seulement les relire.
+
+L'écran d'un scénario (`features/scenarios/scenario_detail_screen.dart`)
+montre les deux de la même façon : des **cartes qu'on touche**, et non de la
+prose déroulée. Une aventure en compte une douzaine, et les lire toutes pour
+retrouver le pharmacien de Salins revenait à relire le scénario. Le texte
+s'ouvre dans la même fenêtre de lecture qu'en séance.
+
+Le même écran porte un **sommaire**, construit sur les titres `##` du déroulé
+(`scenario_outline.dart`, testé à part parce que c'est du texte qui entre et
+du texte qui sort). Une aventure ajoutée au catalogue a donc son sommaire sans
+que personne n'y pense. Deux conséquences dans le code :
+
+- le document défile en `SingleChildScrollView` et non en `ListView` : sauter
+  à une section demande que cette section soit **dans l'arbre**, ce qu'une
+  liste qui ne construit que le visible ne garantit pas ;
+- la ligne de titre reste dans le markdown de sa section — `QBMarkdown` seul
+  décide à quoi ressemble un titre, et le découpage ne doit rien y changer.
+
+Un bouton flottant en bas à droite ramène au sommaire, et n'apparaît qu'une
+fois celui-ci hors de vue : le proposer à qui le regarde déjà mangerait un
+coin d'écran pour rien.
+
+Deux noms à connaître, parce qu'ils changent : les **annexes** d'un scénario
+sont devenues ses **indices**. `RemoteScenarioDetail.fromJson` relit encore la
+clé `annexes` — un scénario téléchargé avant cette version dort sous cet
+intitulé dans la base locale, et il se lit hors ligne : le refuser coûterait sa
+soirée à quelqu'un.
+
+#### Rattraper une correction du catalogue
+
+Un scénario téléchargé reste tel qu'il a été reçu : le serveur ne pousse rien,
+et une séance en cours ne doit pas voir son déroulé changer sous les yeux du
+meneur. C'est donc à l'app de s'apercevoir qu'une correction est passée.
+Quand la liste vient du réseau et que la copie gardée est plus ancienne,
+**« Mettre à jour » apparaît à côté d'« Ouvrir »** sur la carte du scénario.
+Le geste est celui du téléchargement, qui écrase déjà la ligne existante.
+
+La comparaison se fait entre l'`updatedAt` rangé dans la copie locale et celui
+que la liste vient de rendre : **deux dates émises par le serveur**. Celle du
+téléchargement, qui existait déjà en base (`downloadedAt`), ne servirait pas —
+elle vient de l'horloge de l'appareil, qui peut dériver de plusieurs minutes et
+ferait alors croire à une copie plus récente que l'original.
+
+`ScenariosOverview.isOutdated` refuse trois fois avant de proposer, et chaque
+refus a sa raison : ce qui n'est pas téléchargé n'a rien à mettre à jour ; une
+liste qui vient du cache ne peut rien avoir appris, ce qui tient lieu de test
+de connexion sans regarder `connectivityProvider` ; et un serveur qui ne date
+pas ses aventures ne permet aucune comparaison. Reste le cas d'une copie sans
+date, antérieure au mécanisme : rien ne prouve qu'elle soit à jour, donc l'app
+propose **une fois**, après quoi la copie porte la sienne.
+
+**Rien n'est poussé en direct.** Un indice transmis pendant que le joueur
+regarde ailleurs apparaît **à l'ouverture du volet** : autour d'une table, le
+MJ dit à voix haute qu'il vient de transmettre quelque chose. C'est
+`myCluesProvider`, en `autoDispose`, qui le permet — pas par souci de
+mémoire, mais parce qu'une liste gardée en vie resterait celle de l'arrivée
+du joueur.
+
+Le rendu markdown est celui des scénarios : `QBMarkdown`
+(`design_system/components/qb_markdown.dart`), sorti de l'écran des scénarios
+le jour où il a eu son troisième consommateur.
 
 ### Les deux bornes d'une séance
 

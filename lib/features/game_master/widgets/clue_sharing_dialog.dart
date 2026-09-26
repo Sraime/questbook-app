@@ -25,7 +25,7 @@ Future<void> showClueSharingDialog(
 }) {
   return showQBDialog(
     context: context,
-    title: 'Transmettre',
+    title: 'Partager',
     builder: (_) => _SharingForm(
       sessionId: sessionId,
       clue: clue,
@@ -50,7 +50,21 @@ class _SharingForm extends ConsumerStatefulWidget {
 }
 
 class _SharingFormState extends ConsumerState<_SharingForm> {
-  late final Set<String> _chosen = widget.clue.sharedWith.toSet();
+  /// Les joueurs de la table, le MJ exclu : il ne se transmet rien à
+  /// lui-même, et sa case n'aurait aucun sens.
+  late final List<RemoteTableMember> _players = widget.members
+      .where((member) => !member.role.isGameMaster)
+      .toList(growable: false);
+
+  /// Restreint à ce que la fenêtre montre.
+  ///
+  /// Sans ce filtre, un destinataire qui n'est plus joueur — le MJ d'une
+  /// table dont les rôles ont changé, par exemple — repart dans la liste
+  /// envoyée sans qu'aucune case ne le dise : le MJ voit un seul nom coché,
+  /// valide, et l'indice reste ouvert à deux personnes.
+  late final Set<String> _chosen = widget.clue.sharedWith
+      .where((id) => _players.any((player) => player.userId == id))
+      .toSet();
 
   bool _busy = false;
   String? _error;
@@ -81,9 +95,7 @@ class _SharingFormState extends ConsumerState<_SharingForm> {
 
   @override
   Widget build(BuildContext context) {
-    final players = widget.members
-        .where((member) => !member.role.isGameMaster)
-        .toList(growable: false);
+    final players = _players;
 
     if (players.isEmpty) {
       return Text(
@@ -135,8 +147,8 @@ class _SharingFormState extends ConsumerState<_SharingForm> {
         const SizedBox(height: QBSpace.s4),
         QBButton(
           // Le libellé dit l'état d'arrivée, parce que décocher est un geste
-          // aussi courant que cocher : « Transmettre » mentirait à qui vient
-          // de tout décocher.
+          // aussi courant que cocher : « Partager » mentirait à qui vient de
+          // tout décocher.
           label: _busy
               ? 'Enregistrement…'
               : _chosen.isEmpty

@@ -8,6 +8,7 @@ import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/data/remote/session_api.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
 import 'package:questbook/design_system/components/qb_card.dart';
+import 'package:questbook/design_system/components/qb_dialog.dart';
 import 'package:questbook/features/game_master/panels/shared_clues_panel.dart';
 
 /// Le seul appel que le volet du joueur connaisse. Qu'il n'en connaisse qu'un
@@ -85,18 +86,19 @@ void main() {
     );
   });
 
-  testWidgets('un indice ouvert se lit, rendu et non en markdown brut',
-      (tester) async {
+  testWidgets('un indice ouvert se lit dans une fenêtre, rendu et non en '
+      'markdown brut', (tester) async {
     await pumpPanel(tester, clues: const [_lettre]);
 
-    // Replie, il ne montre que son titre : le joueur qui en a ramasse cinq
-    // cherche celui d'avant-hier.
+    // Dans la liste, il ne montre que son titre : le joueur qui en a ramasse
+    // cinq cherche celui d'avant-hier.
     expect(find.text('La lettre de Corbitt'), findsOneWidget);
     expect(find.textContaining('Ne descends pas'), findsNothing);
 
     await tester.tap(find.text('La lettre de Corbitt'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(QBDialog), findsOneWidget);
     expect(find.textContaining('Ne descends pas'), findsOneWidget);
     expect(find.textContaining('## Mon ami'), findsNothing);
   });
@@ -106,10 +108,11 @@ void main() {
     await tester.tap(find.text('La lettre de Corbitt'));
     await tester.pumpAndSettle();
 
-    // Pas « desactive » : les boutons du MJ n'existent pas de ce cote.
+    // Pas « desactive » : les boutons du MJ n'existent pas de ce cote, ni
+    // dans la liste, ni au bas de la fenetre de lecture.
     expect(find.byType(QBButton), findsNothing);
-    expect(find.textContaining('Composer'), findsNothing);
-    expect(find.text('Transmettre'), findsNothing);
+    expect(find.textContaining('Ajouter'), findsNothing);
+    expect(find.text('Partager'), findsNothing);
     expect(find.text('Modifier'), findsNothing);
   });
 

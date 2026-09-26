@@ -7,6 +7,7 @@ import 'package:questbook/data/remote/api_exception.dart';
 import 'package:questbook/data/remote/remote_table.dart';
 import 'package:questbook/data/remote/session_api.dart';
 import 'package:questbook/design_system/components/qb_button.dart';
+import 'package:questbook/design_system/components/qb_dialog.dart';
 import 'package:questbook/features/game_master/panels/clues_panel.dart';
 
 /// Les seuls appels que le volet attend. Le reste du client n'a pas à exister
@@ -161,12 +162,12 @@ void main() {
     return api;
   }
 
-  testWidgets('le volet vide invite à composer', (tester) async {
+  testWidgets('le volet vide invite à en ajouter un', (tester) async {
     await pumpPanel(tester);
 
     expect(find.text('Indices'), findsOneWidget);
     expect(
-      find.textContaining('Compose ce que tes joueurs trouveront'),
+      find.textContaining('Ajoute ce que tes joueurs trouveront'),
       findsOneWidget,
     );
   });
@@ -174,7 +175,7 @@ void main() {
   testWidgets('en composer un l’envoie et l’affiche', (tester) async {
     final api = await pumpPanel(tester);
 
-    await tester.tap(find.widgetWithText(QBButton, '+ Composer un indice'));
+    await tester.tap(find.widgetWithText(QBButton, '+ Ajouter un indice'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -195,7 +196,7 @@ void main() {
   testWidgets('un titre vide ne part pas au serveur', (tester) async {
     final api = await pumpPanel(tester);
 
-    await tester.tap(find.widgetWithText(QBButton, '+ Composer un indice'));
+    await tester.tap(find.widgetWithText(QBButton, '+ Ajouter un indice'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(QBButton, 'Enregistrer'));
     await tester.pumpAndSettle();
@@ -204,9 +205,9 @@ void main() {
     expect(find.text('Donne-lui un titre.'), findsOneWidget);
   });
 
-  /// Ce qu'on regrette de ne pas voir quand on cherche ce qu'on a déjà lâché.
-  testWidgets('chaque carte dit si elle est déjà partie, sans la déplier',
-      (tester) async {
+  /// La liste se parcourt du regard : un titre par carte, et c'est tout. Qui
+  /// a reçu quoi se lit dans la fenêtre de partage, cases cochées.
+  testWidgets('la liste ne porte que des titres', (tester) async {
     await pumpPanel(tester, clues: const [
       _lettre,
       RemoteClue(
@@ -218,20 +219,23 @@ void main() {
       ),
     ]);
 
-    expect(find.text('Non transmis'), findsOneWidget);
-    expect(find.text('2 joueurs'), findsOneWidget);
+    expect(find.text('La lettre de Corbitt'), findsOneWidget);
+    expect(find.text('Le plan'), findsOneWidget);
+    expect(find.textContaining('joueur'), findsNothing);
+    expect(find.text('Non transmis'), findsNothing);
   });
 
-  testWidgets('le contenu se déplie sur place, rendu et non en markdown brut',
-      (tester) async {
+  testWidgets('le contenu s’ouvre dans une fenêtre, rendu et non en markdown '
+      'brut', (tester) async {
     await pumpPanel(tester, clues: const [_lettre]);
 
-    // Replié, la carte ne montre que son titre.
+    // Dans la liste, la carte ne montre que son titre.
     expect(find.textContaining('Ne descends pas'), findsNothing);
 
     await tester.tap(find.text('La lettre de Corbitt'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(QBDialog), findsOneWidget);
     expect(find.textContaining('Ne descends pas'), findsOneWidget);
     expect(
       find.textContaining('## Mon ami'),
@@ -240,13 +244,13 @@ void main() {
     );
   });
 
-  testWidgets('transmettre coche des noms, et le MJ n’en fait pas partie',
+  testWidgets('partager coche des noms, et le MJ n’en fait pas partie',
       (tester) async {
     final api = await pumpPanel(tester, clues: const [_lettre]);
 
     await tester.tap(find.text('La lettre de Corbitt'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(QBButton, 'Transmettre'));
+    await tester.tap(find.widgetWithText(QBButton, 'Partager'));
     await tester.pumpAndSettle();
 
     expect(find.text('Robin'), findsOneWidget);
@@ -264,7 +268,6 @@ void main() {
 
     expect(api.shared?.$1, 'clue-1');
     expect(api.shared?.$2, ['p-1']);
-    expect(find.text('1 joueur'), findsOneWidget);
   });
 
   /// Reprendre un indice est le même geste, avec un nom de moins. Il ne doit
@@ -282,13 +285,13 @@ void main() {
 
     await tester.tap(find.text('La lettre'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(QBButton, 'Transmettre'));
+    await tester.tap(find.widgetWithText(QBButton, 'Partager'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Robin'));
     await tester.pumpAndSettle();
 
-    // Le libellé dit l'état d'arrivée : « Transmettre » mentirait ici.
+    // Le libellé dit l'état d'arrivée : « Partager » mentirait ici.
     expect(
       find.widgetWithText(QBButton, 'Ne le montrer à personne'),
       findsOneWidget,
@@ -299,7 +302,30 @@ void main() {
 
     expect(api.shared?.$1, 'clue-1');
     expect(api.shared?.$2, isEmpty);
-    expect(find.text('Non transmis'), findsOneWidget);
+  });
+
+  /// Vu sur l'émulateur : l'indice disait « 2 joueurs » alors qu'un seul nom
+  /// était coché. Le second destinataire n'était plus joueur de la table, si
+  /// bien qu'aucune case ne le montrait — et valider le renvoyait au serveur.
+  testWidgets('valider n’ouvre l’indice qu’aux noms montrés', (tester) async {
+    final api = await pumpPanel(tester, clues: const [
+      RemoteClue(
+        id: 'clue-1',
+        title: 'La lettre',
+        kind: 'markdown',
+        contentMarkdown: 'X',
+        sharedWith: ['p-1', 'gm-1'],
+      ),
+    ]);
+
+    await tester.tap(find.text('La lettre'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Partager'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(QBButton, 'Valider'));
+    await tester.pumpAndSettle();
+
+    expect(api.shared?.$2, ['p-1']);
   });
 
   testWidgets('le supprimer demande confirmation', (tester) async {

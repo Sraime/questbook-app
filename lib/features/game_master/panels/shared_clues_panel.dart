@@ -5,11 +5,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_card.dart';
-import '../../../design_system/components/qb_markdown.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../providers/game_master_providers.dart';
+import '../widgets/clue_reader_dialog.dart';
 
 /// Ce que le MJ a transmis au joueur qui regarde, et rien d'autre.
 ///
@@ -94,63 +94,51 @@ class SharedCluesPanel extends ConsumerWidget {
   }
 }
 
-/// Un indice recu, replie sur son titre.
+/// Un indice recu : son titre dans la liste, son texte dans une fenetre.
 ///
-/// Repliee par defaut comme chez le MJ : une liste de titres se parcourt du
-/// regard, et un joueur qui en a ramasse cinq cherche celui d'avant-hier.
-class _SharedClueCard extends StatefulWidget {
+/// La meme carte que chez le MJ, moins le badge et les gestes. Une liste de
+/// titres se parcourt du regard, et un joueur qui en a ramasse cinq cherche
+/// celui d'avant-hier.
+class _SharedClueCard extends StatelessWidget {
   const _SharedClueCard({required this.clue});
 
   final RemoteSharedClue clue;
 
   @override
-  State<_SharedClueCard> createState() => _SharedClueCardState();
-}
-
-class _SharedClueCardState extends State<_SharedClueCard> {
-  bool _open = false;
-
-  @override
   Widget build(BuildContext context) {
-    final clue = widget.clue;
-
-    return QBCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            button: true,
-            label: _open ? 'Replier ${clue.title}' : 'Déplier ${clue.title}',
-            child: GestureDetector(
-              onTap: () => setState(() => _open = !_open),
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      clue.title,
-                      style: QBType.game().copyWith(
-                        fontWeight: QBType.weightSemibold,
-                        fontSize: 15,
-                        color: QBColors.ink900,
-                      ),
-                    ),
+    return Semantics(
+      button: true,
+      label: 'Lire ${clue.title}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () => showClueReaderDialog(
+          context,
+          title: clue.title,
+          contentMarkdown: clue.contentMarkdown,
+        ),
+        behavior: HitTestBehavior.opaque,
+        child: QBCard(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  clue.title,
+                  style: QBType.game().copyWith(
+                    fontWeight: QBType.weightSemibold,
+                    fontSize: 15,
+                    color: QBColors.ink900,
                   ),
-                  Icon(
-                    _open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                    size: 18,
-                    color: QBColors.textMuted,
-                  ),
-                ],
+                ),
               ),
-            ),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: QBColors.textMuted,
+              ),
+            ],
           ),
-          if (_open) ...[
-            const SizedBox(height: QBSpace.s3),
-            QBMarkdown(clue.contentMarkdown),
-          ],
-        ],
+        ),
       ),
     );
   }

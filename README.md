@@ -60,7 +60,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde, aux investigateurs de la table et aux indices qu'on lui a transmis. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
-- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il compose pour le transmettre, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
+- **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il prépare pour le partager, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
 - **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
 - **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
@@ -710,7 +710,7 @@ montrerait une seconde ce qui ne le regarde pas.
 | Volet d'accueil | Détails | Plateau |
 | Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
 | Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules, la sienne modifiable |
-| Indices | `CluesPanel` : composer, corriger, transmettre | `SharedCluesPanel` : lire ce qu'on lui a ouvert |
+| Indices | `CluesPanel` : ajouter, corriger, partager | `SharedCluesPanel` : lire ce qu'on lui a ouvert |
 
 Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
 dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
@@ -769,12 +769,27 @@ apparaît dans la seconde.
 
 #### Les indices, et qui les lit
 
-Le MJ compose ses indices en markdown dans le volet **Indices**
+Le MJ ajoute ses indices en markdown dans le volet **Indices**
 (`panels/clues_panel.dart`), les relit rendus plutôt qu'en source — c'est ce
 que le joueur lira —, les corrige, les supprime, et coche pour chacun les
-joueurs de la table autorisés à le lire. Chaque carte dit sans qu'on la
-déplie combien l'ont déjà reçu : c'est ce qu'on regrette de ne pas voir quand
-on cherche ce qu'on a déjà lâché.
+joueurs de la table autorisés à le lire. À qui un indice est ouvert se lit
+là, cases cochées, et nulle part ailleurs : un compteur sur la carte ne
+nommait personne et occupait la ligne.
+
+**Ces cases décident seules de ce qui part.** La liste envoyée est celle des
+noms montrés, et non celle que le serveur renvoyait : un destinataire qui
+n'est plus joueur de la table n'apparaît sur aucune case, et repartait
+pourtant dans l'appel. Le MJ voyait un seul nom coché, validait, et l'indice
+restait ouvert à deux personnes.
+
+**La liste ne porte que des titres, et le texte s'ouvre dans une fenêtre**
+(`widgets/clue_reader_dialog.dart`), la même des deux côtés de l'écran. Seul
+le bas change : le MJ y trouve **Partager** et **Modifier**, le joueur rien.
+Ces deux gestes remplacent la fenêtre de lecture au lieu de s'empiler dessus,
+deux fenêtres l'une sur l'autre ne laissant plus voir ni l'une ni l'autre sur
+un téléphone. Et comme `QBDialog` ne fait pas défiler son contenu, le lecteur
+borne le sien à 60 % de la hauteur de l'écran : un indice n'a pas de longueur
+convenue.
 
 Le joueur a le même onglet, avec un autre volet (`panels/shared_clues_panel.dart`)
 et **un autre appel** : `GET /sessions/:id/clues/mine`, qui ne rend que les

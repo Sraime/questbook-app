@@ -22,6 +22,24 @@ final sessionNpcsProvider =
   return ref.watch(sessionApiProvider).listNpcs(sessionId);
 });
 
+/// Les indices d'une session, avec leurs destinataires. Vue du MJ, et refusée
+/// à un joueur : la liste entière dirait ce qu'il n'a pas reçu.
+///
+/// Rien n'en est gardé sur l'appareil, pour la même raison que les PNJ.
+final sessionCluesProvider =
+    FutureProvider.family<List<RemoteClue>, String>((ref, sessionId) {
+  return ref.watch(sessionApiProvider).listClues(sessionId);
+});
+
+/// Les indices qu'on a ouverts au joueur qui regarde, et eux seuls.
+///
+/// Rechargé à l'ouverture du volet plutôt que poussé en direct : autour d'une
+/// table, le MJ dit à voix haute qu'il vient de transmettre quelque chose.
+final myCluesProvider =
+    FutureProvider.family<List<RemoteSharedClue>, String>((ref, sessionId) {
+  return ref.watch(sessionApiProvider).myClues(sessionId);
+});
+
 final boardLiveClientProvider = Provider<BoardLiveClient>(
   (ref) => BoardLiveClient(origin: AppConfig.apiBaseUrl),
 );

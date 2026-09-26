@@ -57,7 +57,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
-- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde et aux investigateurs de la table. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
+- **Participer à la séance en cours** : une fois la partie commencée, les boutons de réponse cèdent la place à **Participer**, qui ouvre l'écran de la séance — le même que celui du MJ, restreint au plateau qu'on regarde, aux investigateurs de la table et aux indices qu'on lui a transmis. Voir [Le même écran, vu d'une chaise de joueur](#le-même-écran-vu-dune-chaise-de-joueur).
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il compose pour le transmettre, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
@@ -670,15 +670,28 @@ points, ce qu'il faut pour étaler le rail, la carte et le tiroir de front :
 
 | Disposition | Quand | Ce que ça donne |
 | --- | --- | --- |
-| `rail` | Tablette en paysage | Rail de six volets à gauche, tiroir d'assets ouvert à droite de la carte |
+| `rail` | Tablette en paysage | Rail de sept volets à gauche, tiroir d'assets ouvert à droite de la carte |
 | `tabs` | Téléphone, tablette en portrait, fenêtre réduite | Onglets sous l'entête, tiroir en surimpression |
 
-En disposition compacte, les six volets tiennent dans une barre d'onglets
-**en icônes seules** : six libellés dans la largeur d'un téléphone seraient
-illisibles. Seul le volet actif est nommé, et il prend pour cela la place que
-les cinq autres ne réclament pas. Faute de rail, l'entête accueille le nom
-de la table et le bouton de sortie. Un volet de plus rogne cette place :
-ajouter un septième demanderait autre chose qu'une rangée fixe.
+En disposition compacte, les volets tiennent dans une barre d'onglets **en
+icônes seules** : sept libellés dans la largeur d'un téléphone seraient
+illisibles. Faute de rail, l'entête accueille le nom de la table et le bouton
+de sortie.
+
+Ce qui reste aux onglets au repos décide du reste, et `_PanelTabs` a donc
+deux seuils plutôt qu'une règle unique :
+
+| Volets | Ce qui est nommé |
+| --- | --- |
+| Deux | Tous, au repos comme à l'actif |
+| Trois à six | Seul l'actif, qui prend la place que les autres ne réclament pas |
+| Sept et plus | Aucun : tous se partagent la largeur, le fond doré dit l'actif |
+
+Le troisième cas est né du septième volet. Jusque-là, l'actif se payait un
+libellé ; **Détails** s'est alors affiché « Dét… » sur fond doré, et un
+libellé tronqué renseigne moins qu'une icône seule tout en salissant la
+barre. `test/features/game_master/panel_tabs_test.dart` monte l'écran sur
+360 points de large et échoue si un nom de volet apparaît amputé.
 
 #### Le même écran, vu d'une chaise de joueur
 
@@ -693,10 +706,11 @@ montrerait une seconde ce qui ne le regarde pas.
 
 | | MJ | Joueur |
 | --- | --- | --- |
-| Volets | Les six | **Plateau** et **Investigateurs** |
+| Volets | Les sept | **Plateau**, **Investigateurs** et **Indices** |
 | Volet d'accueil | Détails | Plateau |
 | Plateau | `BoardPanel`, son tiroir et ses gestes | `WatchedBoardPanel`, en lecture |
 | Investigateurs | Les fiches, puis les PNJ qu'il prépare | Les fiches seules, la sienne modifiable |
+| Indices | `CluesPanel` : composer, corriger, transmettre | `SharedCluesPanel` : lire ce qu'on lui a ouvert |
 
 Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et l'entête en
 dit déjà l'heure et le lieu — ni **Scénario**, que le MJ raconte et ne montre
@@ -705,9 +719,9 @@ pour tout le monde. Les PNJ portent eux-mêmes la phrase « tes joueurs ne les
 voient pas » : le volet s'arrête donc aux investigateurs, et le filet qui les
 sépare avec.
 
-Deux volets au lieu de six changent la barre d'onglets : ils ont la place
-d'être **nommés au repos**, là où six imposaient l'icône seule. Un joueur qui
-n'a pas l'habitude de l'écran en a besoin.
+Trois volets au lieu de sept changent la barre d'onglets : celui qu'on
+regarde a la place d'être **nommé**, là où sept imposent l'icône seule. Un
+joueur qui n'a pas l'habitude de l'écran en a besoin.
 
 Le plateau du joueur est **en lecture, pas désactivé** : aucun tiroir, aucune
 cible de dépôt, aucune poignée, aucun geste câblé. Il n'y a rien à griser, et
@@ -752,6 +766,32 @@ Le délai de détection n'est pas nul : un réseau qui disparaît sans prévenir
 laisse la socket ouverte jusqu'au `pingInterval`, soit vingt secondes. Un
 Wi-Fi coupé franchement, lui, ferme la socket tout de suite et le bandeau
 apparaît dans la seconde.
+
+#### Les indices, et qui les lit
+
+Le MJ compose ses indices en markdown dans le volet **Indices**
+(`panels/clues_panel.dart`), les relit rendus plutôt qu'en source — c'est ce
+que le joueur lira —, les corrige, les supprime, et coche pour chacun les
+joueurs de la table autorisés à le lire. Chaque carte dit sans qu'on la
+déplie combien l'ont déjà reçu : c'est ce qu'on regrette de ne pas voir quand
+on cherche ce qu'on a déjà lâché.
+
+Le joueur a le même onglet, avec un autre volet (`panels/shared_clues_panel.dart`)
+et **un autre appel** : `GET /sessions/:id/clues/mine`, qui ne rend que les
+indices ouverts, sans destinataires ni compteur. La liste entière dirait ce
+qu'il n'a pas reçu, et deux types distincts (`RemoteClue`, `RemoteSharedClue`)
+évitent qu'un champ de trop finisse par voyager vide plutôt qu'absent.
+
+**Rien n'est poussé en direct.** Un indice transmis pendant que le joueur
+regarde ailleurs apparaît **à l'ouverture du volet** : autour d'une table, le
+MJ dit à voix haute qu'il vient de transmettre quelque chose. C'est
+`myCluesProvider`, en `autoDispose`, qui le permet — pas par souci de
+mémoire, mais parce qu'une liste gardée en vie resterait celle de l'arrivée
+du joueur.
+
+Le rendu markdown est celui des scénarios : `QBMarkdown`
+(`design_system/components/qb_markdown.dart`), sorti de l'écran des scénarios
+le jour où il a eu son troisième consommateur.
 
 ### Les deux bornes d'une séance
 

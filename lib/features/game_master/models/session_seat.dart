@@ -35,21 +35,23 @@ enum SessionSeat {
 
   bool get isGameMaster => this == SessionSeat.gameMaster;
 
-  /// Ce que chacun voit. Le joueur n'a que deux volets, si bien que la barre
-  /// d'onglets tient sans se serrer là où celle du MJ en porte six.
+  /// Ce que chacun voit. Le joueur n'a que trois volets, si bien que la barre
+  /// d'onglets tient sans se serrer là où celle du MJ en porte sept.
   ///
   /// Ni **Détails** — la séance ne se corrige pas depuis sa chaise, et
   /// l'entête en dit déjà l'heure et le lieu — ni **Scénario**, que le MJ
   /// raconte et ne montre pas, ni **Notes**, qui sont les siennes. Les
   /// **Règles** restent à `/regles` pour tout le monde.
   ///
-  /// **Indices** le rejoindra, avec sa vue à lui : ce qu'on lui a ouvert, et
-  /// rien qui laisse deviner le reste.
+  /// **Indices** fait exception : il figure des deux côtés, avec deux vues.
+  /// Celle du joueur ne montre que ce qu'on lui a ouvert, et rien qui laisse
+  /// deviner le reste.
   List<GameMasterPanel> get panels => switch (this) {
         SessionSeat.gameMaster => GameMasterPanel.values,
         SessionSeat.player => const [
             GameMasterPanel.board,
             GameMasterPanel.characters,
+            GameMasterPanel.clues,
           ],
       };
 

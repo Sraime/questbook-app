@@ -128,24 +128,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('les sept volets du MJ tiennent, et aucun n’est nomme a moitie',
-      (tester) async {
-    await pump(tester, role: TableRole.gameMaster);
-
-    final seat = SessionSeat.gameMaster;
-    expect(seat.panels.length, 7);
-
-    // L'icone de chaque volet est la : c'est par elle qu'on navigue.
-    for (final panel in seat.panels) {
-      expect(
-        find.byIcon(panel.icon),
-        findsWidgets,
-        reason: '${seat.labelFor(panel)} doit rester atteignable',
-      );
-    }
-
-    // Et rien a l'ecran ne montre un libelle de volet ampute. C'est la
-    // regression elle-meme : « Détails » devenu « Dét… » sur fond dore.
+  /// Rien a l'ecran ne montre un libelle de volet ampute. C'est la regression
+  /// elle-meme : « Détails » devenu « Dét… » sur fond dore.
+  void aucunLibelleCoupe(WidgetTester tester, SessionSeat seat) {
     final coupes = tester
         .widgetList<Text>(find.byType(Text))
         .map((widget) => widget.data ?? '')
@@ -163,16 +148,42 @@ void main() {
       isEmpty,
       reason: 'un libelle coupe renseigne moins qu’une icone seule',
     );
+  }
+
+  testWidgets('les sept volets du MJ tiennent, et aucun n’est nomme a moitie',
+      (tester) async {
+    await pump(tester, role: TableRole.gameMaster);
+
+    const seat = SessionSeat.gameMaster;
+    expect(seat.panels.length, 7);
+
+    // L'icone de chaque volet est la : c'est par elle qu'on navigue.
+    for (final panel in seat.panels) {
+      expect(
+        find.byIcon(panel.icon),
+        findsWidgets,
+        reason: '${seat.labelFor(panel)} doit rester atteignable',
+      );
+    }
+
+    aucunLibelleCoupe(tester, seat);
   });
 
-  testWidgets('les deux volets d’un joueur gardent leur nom', (tester) async {
+  testWidgets('les trois volets du joueur aussi', (tester) async {
     await pump(tester, role: TableRole.player);
 
-    // Deux volets sur la largeur d'un telephone ont la place de se nommer, et
-    // le joueur n'a pas d'icone familiere pour s'y retrouver sans.
-    final seat = SessionSeat.player;
+    const seat = SessionSeat.player;
     for (final panel in seat.panels) {
-      expect(find.text(seat.labelFor(panel)), findsWidgets);
+      expect(
+        find.byIcon(panel.icon),
+        findsWidgets,
+        reason: '${seat.labelFor(panel)} doit rester atteignable',
+      );
     }
+
+    // Trois volets laissent la place de nommer celui qu'on regarde, et le
+    // joueur n'a pas l'habitude de l'ecran qu'a le MJ.
+    expect(find.text(seat.labelFor(seat.landing)), findsWidgets);
+    aucunLibelleCoupe(tester, seat);
   });
 }

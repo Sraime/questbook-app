@@ -6,10 +6,10 @@ import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_button.dart';
 import '../../../design_system/components/qb_card.dart';
+import '../../../design_system/components/qb_markdown.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
-import '../../scenarios/scenario_detail_screen.dart';
 import '../providers/game_master_providers.dart';
 import '../widgets/clue_dialog.dart';
 import '../widgets/clue_sharing_dialog.dart';
@@ -184,7 +184,7 @@ class _ClueCardState extends ConsumerState<_ClueCard> {
             const SizedBox(height: QBSpace.s3),
             // Le rendu, pas la source : c'est ce que le joueur va lire, et
             // c'est donc ce que le MJ doit relire avant de l'envoyer.
-            ScenarioMarkdown(clue.contentMarkdown),
+            QBMarkdown(clue.contentMarkdown),
             const SizedBox(height: QBSpace.s4),
             Row(
               children: [

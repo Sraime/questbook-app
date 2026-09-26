@@ -180,4 +180,31 @@ void main() {
 
     expect(find.text('Dissoudre la table ?'), findsOneWidget);
   });
+
+  /// L'écran a demandé une « Adresse Google » bien après l'ouverture de la
+  /// porte Apple : le serveur, lui, n'a jamais regardé le fournisseur. Ce
+  /// n'est pas la formulation qu'on fige ici, c'est le fait qu'aucun
+  /// fournisseur ne soit nommé.
+  testWidgets('inviter ne demande l’adresse d’aucun fournisseur',
+      (tester) async {
+    await pump(tester, soloTable);
+
+    await tester.tap(find.widgetWithText(QBButton, '+ Inviter'));
+    await tester.pumpAndSettle();
+
+    final textes = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data ?? '')
+        .join(' ');
+
+    expect(
+      RegExp('Google|Apple|gmail', caseSensitive: false).hasMatch(textes),
+      isFalse,
+      reason: 'un joueur entré par Apple lirait une consigne impossible',
+    );
+
+    // Ce qui doit rester : sans la même adresse, le serveur ne rattache
+    // l'invitation à aucune connexion.
+    expect(find.textContaining('cette adresse'), findsOneWidget);
+  });
 }

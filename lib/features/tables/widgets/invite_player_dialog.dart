@@ -45,7 +45,7 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
   Future<void> _submit() async {
     final email = _controller.text.trim();
     if (email.isEmpty) {
-      setState(() => _error = 'Saisis l’adresse Google du joueur.');
+      setState(() => _error = 'Saisis l’adresse e-mail du joueur.');
       return;
     }
 
@@ -76,7 +76,7 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
       children: [
         Text(
           'S’il n’a pas encore Questbook, il recevra un e-mail pour installer '
-          'l’app et rejoindre la table avec cette adresse Google.',
+          'l’app et rejoindre la table avec cette adresse.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,
             color: QBColors.textMuted,
@@ -84,9 +84,9 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
         ),
         const SizedBox(height: QBSpace.s3),
         QBInput(
-          label: 'Adresse Google',
+          label: 'Adresse e-mail',
           controller: _controller,
-          placeholder: 'joueur@gmail.com',
+          placeholder: 'joueur@exemple.com',
           keyboardType: TextInputType.emailAddress,
           error: _error,
         ),

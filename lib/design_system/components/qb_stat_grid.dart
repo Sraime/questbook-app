@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Evenly spaced N-column grid for circular stat widgets ([QBStatDial],
 /// creation-screen preview circles, …). Each child is centered in a cell

@@ -1,6 +1,11 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
+// Material et Cupertino ont quitte le coeur de Flutter : leurs delegues de
+// traduction viennent desormais des paquets ci-dessus, et seul celui des
+// widgets de base reste ici.
+import 'package:flutter_localizations/flutter_localizations.dart'
+    hide GlobalCupertinoLocalizations, GlobalMaterialLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/auth_gate.dart';

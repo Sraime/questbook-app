@@ -17,10 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version figee, et pas seulement le canal : la stable avance toute
+      # seule, et une montee de Flutter doit etre un geste teste sur une PR
+      # plutot qu'une surprise au premier push de la semaine.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.8
           cache: true
 
       # Les tests de migration Drift ouvrent une vraie base SQLite via le

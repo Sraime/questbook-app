@@ -346,7 +346,7 @@ Seul un système avec une mécanique réellement inédite (non descriptible en d
 
 ## Prérequis
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (canal stable — projet testé avec Flutter 3.44.x / Dart 3.12.x).
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (canal stable — projet testé avec Flutter 3.44.x / Dart 3.12.x). Les workflows épinglent `flutter-version: 3.44.8` : la CI, les builds testeurs et les binaires des stores sortent tous de la même version, et en changer est une PR à part.
 - Un IDE avec plugin Flutter/Dart (VS Code, Android Studio…) ou juste la CLI.
 - Pour lancer sur mobile :
   - **Android** : Android SDK + un émulateur configuré, ou un appareil physique en mode debug USB.

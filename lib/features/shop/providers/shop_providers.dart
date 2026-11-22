@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/remote_providers.dart';
 import '../../../data/remote/remote_shop_item.dart';
+import '../../assets/providers/hosted_assets_provider.dart';
 import '../../assets/providers/owned_assets_provider.dart';
 
 /// The whole catalogue, owned articles included — a shop that hid what you
@@ -23,8 +24,11 @@ final shopItemProvider =
   return ref.watch(shopApiProvider).get(id);
 });
 
+/// Relit aussi les pions hébergés : un asset ajouté au backoffice pendant que
+/// l'app tournait doit avoir son image dans la boutique, sans relancer.
 Future<void> refreshShop(WidgetRef ref) async {
   ref.invalidate(shopCatalogueProvider);
+  ref.invalidate(hostedAssetsProvider);
   await ref.read(shopCatalogueProvider.future);
 }
 
@@ -39,5 +43,6 @@ Future<RemoteShopItemDetail> purchaseShopItem(WidgetRef ref, String id) async {
   ref.invalidate(shopCatalogueProvider);
   ref.invalidate(shopItemProvider(id));
   ref.invalidate(ownedAssetKeysProvider);
+  ref.invalidate(hostedAssetsProvider);
   return bought;
 }

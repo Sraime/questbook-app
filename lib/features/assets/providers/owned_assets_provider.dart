@@ -7,6 +7,7 @@ import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_shop_item.dart';
 import '../../../data/remote/shop_api.dart';
 import '../../game_master/models/board_catalog.dart';
+import 'hosted_assets_provider.dart';
 
 /// Les pions que le compte a achetés, par leur clé.
 ///
@@ -52,5 +53,7 @@ Set<String> _keysOf(List<RemoteShopItem> items) => {
 /// achetés le rejoignent une fraction de seconde plus tard.
 final boardCatalogueProvider = Provider<List<BoardAssetSection>>((ref) {
   final owned = ref.watch(ownedAssetKeysProvider).value ?? const <String>{};
-  return boardAssetSectionsFor(owned);
+  final hosted =
+      ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{};
+  return boardAssetSectionsFor(owned, hosted: hosted);
 });

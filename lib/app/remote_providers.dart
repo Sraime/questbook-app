@@ -10,6 +10,7 @@ import '../data/local/downloaded_scenario_dao.dart';
 import '../data/local/session_board_dao.dart';
 import '../data/remote/api_client.dart';
 import '../data/remote/api_exception.dart';
+import '../data/remote/asset_api.dart';
 import '../data/remote/auth_api.dart';
 import '../data/remote/auth_tokens.dart';
 import '../data/remote/block_api.dart';
@@ -72,6 +73,10 @@ final scenarioApiProvider = Provider<ScenarioApi>(
 
 final shopApiProvider = Provider<ShopApi>(
   (ref) => ShopApi(ref.watch(apiClientProvider)),
+);
+
+final assetApiProvider = Provider<AssetApi>(
+  (ref) => AssetApi(ref.watch(apiClientProvider)),
 );
 
 final notificationApiProvider = Provider<NotificationApi>(

@@ -75,7 +75,7 @@ class _ArticleState extends ConsumerState<_Article> {
           child: SizedBox(
             width: 140,
             height: 140,
-            child: ShopArtwork(imageKey: item.imageKey),
+            child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
           ),
         ),
         const SizedBox(height: QBSpace.s5),

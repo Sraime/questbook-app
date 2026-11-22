@@ -207,7 +207,7 @@ class _ScenarioRow extends StatelessWidget {
               SizedBox(
                 width: 34,
                 height: 34,
-                child: ShopArtwork(imageKey: item.imageKey),
+                child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
               ),
               const SizedBox(width: QBSpace.s3),
               Expanded(
@@ -301,7 +301,7 @@ class _ItemTile extends StatelessWidget {
               // haute qu'une rangée de quatre sans rien montrer de plus.
               SizedBox(
                 height: 68,
-                child: ShopArtwork(imageKey: item.imageKey),
+                child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
               ),
               const SizedBox(height: QBSpace.s2),
               Text(

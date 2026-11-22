@@ -9,6 +9,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../assets/providers/hosted_assets_provider.dart';
 import '../models/board_catalog.dart';
 import '../models/board_token.dart';
 import '../providers/game_master_providers.dart';
@@ -58,6 +59,8 @@ class WatchedBoardPanel extends ConsumerWidget {
     final drawn = _Board(
       tokens: BoardToken.decode(board.tokens),
       map: boardMapById(board.mapId),
+      hosted:
+          ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{},
       compact: compact,
     );
 
@@ -84,11 +87,13 @@ class _Board extends StatelessWidget {
   const _Board({
     required this.tokens,
     required this.map,
+    required this.hosted,
     required this.compact,
   });
 
   final List<BoardToken> tokens;
   final BoardMap map;
+  final Map<String, BoardAsset> hosted;
   final bool compact;
 
   @override
@@ -128,12 +133,16 @@ class _Board extends StatelessWidget {
                         child: BoardTokenView.of(
                           token,
                           // Le joueur regarde les pions du MJ, pas les siens.
-                          // Les illustrations sont dans l'app de tout le
-                          // monde ; c'est l'achat qui décide de ce qu'on peut
-                          // poser, pas de ce qu'on peut voir. Filtrer ici
-                          // rendrait des ronds rouges là où le MJ voit des
-                          // créatures.
-                          ownedKeys: purchasableBoardAssets.keys.toSet(),
+                          // Les illustrations sont chez tout le monde,
+                          // embarquées ou hébergées ; c'est l'achat qui décide
+                          // de ce qu'on peut poser, pas de ce qu'on peut voir.
+                          // Filtrer ici rendrait des ronds rouges là où le MJ
+                          // voit des créatures.
+                          ownedKeys: {
+                            ...purchasableBoardAssets.keys,
+                            ...hosted.keys,
+                          },
+                          hosted: hosted,
                         ),
                       ),
                   ],

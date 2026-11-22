@@ -974,11 +974,29 @@ interdit à un rayon de dériver de la nature qu'il affiche. Les achats arrivent
 en fin de rayon : repérables, sans déplacer ce que le MJ a l'habitude de
 trouver en tête.
 
-Le serveur ne décrit pas à quoi ressemble un pion : la boutique n'envoie qu'une
-`assetKey`, et le dessin qui lui correspond vit dans `purchasableBoardAssets`,
-du côté qui peint. Une clé qu'une version de l'app ne connaît pas encore est
-donc simplement ignorée — le tiroir s'ouvre sans rubrique vide ni pion sans
-visage.
+La boutique n'envoie qu'une `assetKey`, et le dessin qui lui correspond vient
+de l'un de deux endroits :
+
+- **embarqué dans l'app**, dans `purchasableBoardAssets` : le Grand Ancien, et
+  tout pion dont l'image est sous `assets/` ;
+- **hébergé par le serveur**, pour les pions ajoutés depuis le backoffice, sans
+  release : `hostedAssetsProvider`
+  (`features/assets/providers/hosted_assets_provider.dart`) lit `GET /assets`
+  et descend chaque image une fois.
+
+Une clé connue ni de l'un ni de l'autre est ignorée — le tiroir s'ouvre sans
+rubrique vide ni pion sans visage.
+
+Les pions hébergés sont **tous** chargés, possédés ou non, puisqu'un joueur
+dessine ceux que pose le MJ ; c'est la possession qui décide de ce que le
+tiroir propose, pas de ce que le plateau sait dessiner. Ils tiennent **hors
+ligne** : la liste est gardée dans `remote_cache` (`assets.hosted`), les images
+sous `hosted_assets/` dans le dossier de support de l'app, nommées
+`<clé>-<hash>`. Une image remplacée au backoffice change de hash, descend une
+fois, et l'ancienne s'efface ; une image pas encore descendue laisse le pion à
+sa forme. Ces fichiers ne dépendent pas du compte et survivent à la
+déconnexion — ce sont les mêmes pour tout le monde. La liste se relit au
+lancement, en tirant la boutique vers le bas et après un achat.
 
 Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
 enregistrés avant la boutique, et c'est très bien : le socle se décrit
@@ -1110,8 +1128,10 @@ Celui de `/scenarios` ne l'est pas non plus, et la même action refusée d'un
 côté puis offerte de l'autre ferait passer l'un des deux écrans pour cassé.
 Sans réseau, l'appel échoue et le dit.
 
-Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
-colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
+Un pion hébergé se montre en boutique par son image, retrouvée par son
+`assetKey` dans `hostedAssetsProvider`. Une clé d'image qu'aucun fichier
+n'illustre se rend en glyphe plutôt qu'en colis : `scroll` donne un parchemin
+aux scénarios (`shop_artwork.dart`).
 C'est le repli, pas une illustration — le jour où les scénarios auront des
 couvertures, elles se déclarent là.
 

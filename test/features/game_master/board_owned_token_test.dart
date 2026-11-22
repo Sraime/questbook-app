@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:questbook/features/assets/providers/hosted_assets_provider.dart';
 import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
@@ -26,6 +27,7 @@ void main() {
     WidgetTester tester, {
     List<BoardToken> tokens = const [],
     Set<String> ownedKeys = const {},
+    Map<String, BoardAsset> hosted = const {},
   }) async {
     tester.view.physicalSize = const Size(2000, 1300);
     tester.view.devicePixelRatio = 1;
@@ -34,8 +36,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          boardCatalogueProvider
-              .overrideWithValue(boardAssetSectionsFor(ownedKeys)),
+          boardCatalogueProvider.overrideWithValue(
+            boardAssetSectionsFor(ownedKeys, hosted: hosted),
+          ),
+          hostedAssetsProvider.overrideWith((ref) async => hosted),
         ],
         child: MaterialApp(
           home: Scaffold(
@@ -69,6 +73,36 @@ void main() {
     );
 
     expect(drawnOnBoard(tester).image, isNotNull);
+  });
+
+  testWidgets('un pion hébergé se dessine avec l’image gardée sur l’appareil',
+      (tester) async {
+    const shoggoth = BoardAsset(
+      key: 'shoggoth',
+      name: 'Profond Shoggoth',
+      kind: BoardTokenKind.character,
+      color: BoardTokenColor.green,
+      imageFile: '/donnees/hosted_assets/shoggoth-aaa',
+    );
+
+    await pumpBoard(
+      tester,
+      tokens: const [
+        BoardToken(
+          id: 'pion-2',
+          kind: BoardTokenKind.character,
+          color: BoardTokenColor.green,
+          assetKey: 'shoggoth',
+          x: 0.5,
+          y: 0.5,
+        ),
+      ],
+      ownedKeys: const {'shoggoth'},
+      hosted: const {'shoggoth': shoggoth},
+    );
+    await tester.pump();
+
+    expect(drawnOnBoard(tester).imageFile, shoggoth.imageFile);
   });
 
   testWidgets('un pion qu’on ne possède pas retombe sur le rond rouge',

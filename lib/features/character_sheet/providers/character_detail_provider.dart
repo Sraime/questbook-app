@@ -65,4 +65,11 @@ class CharacterActions {
     await _repo.removeInventoryItem(itemId);
     await _push(characterId);
   }
+
+  /// The tombstone travels like any other edit. It is also what makes the
+  /// server withdraw the character from the sessions it was registered for.
+  Future<void> delete(String characterId) async {
+    await _repo.delete(characterId);
+    await _push(characterId);
+  }
 }

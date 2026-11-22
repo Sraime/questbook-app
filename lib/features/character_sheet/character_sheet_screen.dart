@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_system/components/qb_badge.dart';
@@ -39,6 +40,7 @@ class CharacterSheetScreen extends StatelessWidget {
         child: CharacterSheetBody(
           characterId: characterId,
           padding: const EdgeInsets.fromLTRB(18, 24, 18, 90),
+          deletable: true,
         ),
       ),
     );
@@ -57,10 +59,15 @@ class CharacterSheetBody extends ConsumerStatefulWidget {
     required this.characterId,
     required this.padding,
     this.controller,
+    this.deletable = false,
   });
 
   final String characterId;
   final EdgeInsets padding;
+
+  /// Off in the sheet opened at the table: deleting the investigator one is
+  /// playing belongs to the sheet screen, not to the middle of an evening.
+  final bool deletable;
 
   /// Fourni par une feuille glissante, qui a besoin de piloter le défilement
   /// pour savoir quand la refermer.
@@ -99,12 +106,100 @@ class _CharacterSheetBodyState extends ConsumerState<CharacterSheetBody> {
               _OverviewTab(character: character)
             else
               _InventoryTab(character: character),
+            if (widget.deletable && ref.watch(canWriteProvider)) ...[
+              const SizedBox(height: QBSpace.s8),
+              _DeleteCharacter(character: character),
+            ],
           ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text('Erreur : $error')),
     );
+  }
+}
+
+/// Discret, comme « Dissoudre la table » : le geste le plus rare de la fiche,
+/// et le seul qu'on ne défait pas.
+class _DeleteCharacter extends ConsumerWidget {
+  const _DeleteCharacter({required this.character});
+
+  final Character character;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const label = 'Supprimer l’investigateur';
+
+    return Center(
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _confirm(context, ref),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: QBSpace.s2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  LucideIcons.trash2,
+                  size: 15,
+                  color: QBColors.semanticDanger,
+                ),
+                const SizedBox(width: QBSpace.s2),
+                Text(
+                  label,
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.sm,
+                    color: QBColors.semanticDanger,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Supprimer ${character.name} ?'),
+        content: const Text(
+          'Sa fiche disparaîtra de tous tes appareils. S’il est inscrit à '
+          'une session, il en sera retiré, et tu pourras y inscrire un autre '
+          'investigateur tant que c’est encore possible. C’est définitif.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Non'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Read before leaving: once the route is gone, so is this ref.
+    final actions = ref.read(characterActionsProvider);
+    // Leave first, or the sheet would flash "introuvable" under the finger
+    // as soon as the local tombstone is written.
+    GoRouter.of(context).go('/perso');
+
+    try {
+      await actions.delete(character.id);
+    } on Object {
+      // The tombstone is written locally and stays pending: the next sync
+      // sends it, so a failed push loses nothing.
+    }
   }
 }
 

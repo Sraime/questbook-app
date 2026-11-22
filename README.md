@@ -543,7 +543,10 @@ lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 - Chaque écriture locale marque le personnage `needsSync`, avance son
   `updatedAt` et **incrémente son `revision`** ; une suppression laisse une
   **pierre tombale** (`deletedAt`) pour que l'effacement se propage au lieu de
-  disparaître silencieusement.
+  disparaître silencieusement. C'est aussi elle qui retire l'investigateur
+  des séances où il était inscrit : le serveur s'en charge en la recevant
+  (voir le README de `questbook-back`). On supprime depuis le bas de la fiche
+  `/perso/:id`, jamais depuis celle ouverte en séance.
 - **La fiche part aussitôt**, sans attendre la passe suivante : création,
   ressource ajustée, objet ajouté ou retiré appellent
   `SyncController.pushCharacter`, qui envoie cette fiche-là et rien d'autre.

@@ -62,6 +62,7 @@ class BoardAsset {
     required this.color,
     this.key,
     this.image,
+    this.imageFile,
   });
 
   final String name;
@@ -75,6 +76,11 @@ class BoardAsset {
   /// L'illustration, pour les pions qui en ont une. Le socle se dessine
   /// encore à la forme et à la couleur.
   final String? image;
+
+  /// L'illustration d'un pion hébergé par le serveur : un fichier sur
+  /// l'appareil, et non une image embarquée. `null` tant qu'elle n'est pas
+  /// descendue, et le pion se dessine alors à sa forme.
+  final String? imageFile;
 }
 
 class BoardAssetSection {
@@ -192,13 +198,12 @@ const boardAssetSections = <BoardAssetSection>[
   ),
 ];
 
-/// Les pions qui s'achètent, par la clé que la boutique leur donne.
+/// Les pions qui s'achètent et dont le dessin est embarqué dans l'app, par la
+/// clé que la boutique leur donne.
 ///
-/// Le serveur ne décrit pas à quoi ressemble un pion — il n'envoie qu'une
-/// clé — donc son dessin vit ici, du côté qui peint, comme le reste du
-/// catalogue. Une clé absente de cette table est un article que cette
-/// version de l'app ne sait pas encore montrer : elle est ignorée plutôt que
-/// de faire tomber le tiroir.
+/// Ceux qu'on ajoute depuis le backoffice n'y figurent pas : le serveur
+/// héberge leur image, et ils arrivent par `hostedAssetsProvider`. Une clé
+/// connue ni ici ni de là est ignorée plutôt que de faire tomber le tiroir.
 const purchasableBoardAssets = <String, BoardAsset>{
   'grand_ancien': BoardAsset(
     key: 'grand_ancien',
@@ -221,9 +226,15 @@ const purchasableBoardAssets = <String, BoardAsset>{
 /// PNJ ? » — et l'écart grandirait à chaque achat. Ils arrivent en fin de
 /// rayon, après le socle, ce qui les rend repérables sans déplacer ce que le
 /// MJ a l'habitude de trouver en tête.
-List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
+///
+/// [hosted] porte les pions dont le serveur héberge l'image ; ils se rangent
+/// comme les autres.
+List<BoardAssetSection> boardAssetSectionsFor(
+  Iterable<String> ownedKeys, {
+  Map<String, BoardAsset> hosted = const {},
+}) {
   final owned = [
-    for (final key in ownedKeys) ?purchasableBoardAssets[key],
+    for (final key in ownedKeys) ?boardAssetForKey(key, hosted: hosted),
   ];
   if (owned.isEmpty) return boardAssetSections;
 
@@ -246,8 +257,11 @@ List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
 /// Rendre `null` plutôt qu'un pion par défaut est délibéré : c'est à
 /// l'affichage de décider quoi montrer d'un asset qu'on ne possède pas, et
 /// lui seul sait qu'un rond rouge vaut mieux qu'un trou.
-BoardAsset? boardAssetForKey(String? key) =>
-    key == null ? null : purchasableBoardAssets[key];
+BoardAsset? boardAssetForKey(
+  String? key, {
+  Map<String, BoardAsset> hosted = const {},
+}) =>
+    key == null ? null : purchasableBoardAssets[key] ?? hosted[key];
 
 /// Ce qui reste de [sections] une fois [query] saisi.
 ///

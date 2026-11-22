@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
+import 'package:questbook/features/game_master/models/board_token.dart';
 
 void main() {
   group('boardMapById', () {
@@ -122,5 +123,39 @@ void main() {
         expect(asset.name, isNotEmpty);
       }
     }
+  });
+
+  group('hosted assets', () {
+    const autel = BoardAsset(
+      key: 'autel_brise',
+      name: 'Autel brisé',
+      kind: BoardTokenKind.environment,
+      color: BoardTokenColor.green,
+      imageFile: '/tmp/autel_brise-aaa',
+    );
+    const hosted = {'autel_brise': autel};
+
+    test('are found by their key, next to the bundled ones', () {
+      expect(boardAssetForKey('autel_brise', hosted: hosted), autel);
+      expect(boardAssetForKey('grand_ancien', hosted: hosted)?.name,
+          'Le Grand Ancien');
+    });
+
+    test('join the section of their kind once owned', () {
+      final sections =
+          boardAssetSectionsFor({'autel_brise'}, hosted: hosted);
+      final decor = sections.firstWhere((s) => s.title == 'Environnement');
+
+      expect(decor.assets.last, autel);
+    });
+
+    test('stay out of the drawer until owned', () {
+      final sections = boardAssetSectionsFor(const {}, hosted: hosted);
+
+      expect(
+        sections.expand((s) => s.assets).map((a) => a.key),
+        isNot(contains('autel_brise')),
+      );
+    });
   });
 }

@@ -11,6 +11,7 @@ import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../assets/providers/hosted_assets_provider.dart';
 import '../../assets/providers/owned_assets_provider.dart';
 import '../models/board_catalog.dart';
 import '../models/board_token.dart';
@@ -135,6 +136,8 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
       for (final section in sections)
         for (final asset in section.assets) ?asset.key,
     };
+    final hosted =
+        ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{};
 
     final board = Padding(
       padding: EdgeInsets.all(widget.compact ? QBSpace.s3 : QBSpace.s5),
@@ -154,6 +157,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
                     child: _Board(
                       map: _map,
                       ownedKeys: ownedKeys,
+                      hosted: hosted,
                       tokens: _tokens,
                       selectedId: _selectedId,
                       resizing: _resizing,
@@ -278,6 +282,7 @@ class _Board extends StatelessWidget {
   const _Board({
     required this.map,
     required this.ownedKeys,
+    required this.hosted,
     required this.tokens,
     required this.selectedId,
     required this.resizing,
@@ -294,6 +299,9 @@ class _Board extends StatelessWidget {
   /// Les assets achetés dont ce compte dispose, pour savoir lesquels des
   /// pions posés il sait encore dessiner.
   final Set<String> ownedKeys;
+
+  /// Les pions dont le serveur héberge l'image.
+  final Map<String, BoardAsset> hosted;
   final ValueListenable<List<BoardToken>> tokens;
   final ValueListenable<String?> selectedId;
   final ValueListenable<bool> resizing;
@@ -352,6 +360,7 @@ class _Board extends StatelessWidget {
                         _PlacedToken(
                           token: token,
                           ownedKeys: ownedKeys,
+                          hosted: hosted,
                           boardWidth: width,
                           boardHeight: height,
                           reference: reference,
@@ -379,6 +388,7 @@ class _PlacedToken extends StatelessWidget {
   const _PlacedToken({
     required this.token,
     required this.ownedKeys,
+    required this.hosted,
     required this.boardWidth,
     required this.boardHeight,
     required this.reference,
@@ -396,6 +406,7 @@ class _PlacedToken extends StatelessWidget {
 
   final BoardToken token;
   final Set<String> ownedKeys;
+  final Map<String, BoardAsset> hosted;
   final double boardWidth;
   final double boardHeight;
 
@@ -439,6 +450,7 @@ class _PlacedToken extends StatelessWidget {
               token,
               selected: selected,
               ownedKeys: ownedKeys,
+              hosted: hosted,
             ),
           ),
         ),

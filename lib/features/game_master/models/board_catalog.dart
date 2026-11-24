@@ -86,6 +86,7 @@ class BoardAsset {
     this.key,
     this.image,
     this.imageFile,
+    this.character,
   });
 
   final String name;
@@ -104,6 +105,82 @@ class BoardAsset {
   /// l'appareil, et non une image embarquée. `null` tant qu'elle n'est pas
   /// descendue, et le pion se dessine alors à sa forme.
   final String? imageFile;
+
+  /// Le personnage que ce pion représente. Le tiroir le propose alors sous
+  /// le nom du personnage, et le pion posé en garde le lien.
+  final BoardCharacterLink? character;
+
+  /// Ce pion, au nom de [name] et lié à [character].
+  BoardAsset representing(String name, BoardCharacterLink character) =>
+      BoardAsset(
+        name: name,
+        kind: kind,
+        color: color,
+        key: key,
+        image: image,
+        imageFile: imageFile,
+        character: character,
+      );
+
+  /// La référence que garde un personnage associé à ce pion.
+  String get ref => key == null ? 'socle:${color.wire}' : 'asset:$key';
+}
+
+/// Le pion qu'un personnage s'est vu associer, d'après sa référence :
+/// `asset:<clé>` pour un pion de la boutique, `socle:<couleur>` pour un pion
+/// du socle.
+///
+/// Aucune vérification de propriété ici : le pion d'un investigateur est
+/// celui de son joueur, que le MJ n'a pas forcément acheté, et c'est lui qu'il
+/// doit voir. `null` pour une référence que l'app ne sait pas dessiner.
+BoardAsset? boardAssetForRef(
+  String? ref, {
+  Map<String, BoardAsset> hosted = const {},
+}) {
+  if (ref == null) return null;
+  final separator = ref.indexOf(':');
+  if (separator < 0) return null;
+  final value = ref.substring(separator + 1);
+
+  switch (ref.substring(0, separator)) {
+    case 'asset':
+      return boardAssetForKey(value, hosted: hosted);
+    case 'socle':
+      for (final asset in boardAssetSections.first.assets) {
+        if (asset.color.wire == value) return asset;
+      }
+  }
+  return null;
+}
+
+/// Les pions qu'on peut associer à un personnage : ceux du rayon
+/// « Personnages » de [sections], socle et achats compris.
+List<BoardAsset> characterTokensOf(List<BoardAssetSection> sections) => [
+      for (final section in sections)
+        if (section.title == _personnages)
+          for (final asset in section.assets)
+            if (asset.character == null) asset,
+    ];
+
+/// [sections], avec en tête du rayon « Personnages » les pions de [cast] :
+/// ceux des investigateurs et des PNJ de la session.
+///
+/// En tête plutôt qu'en fin : ce sont eux que le MJ pose au début de chaque
+/// scène. Les pions d'origine restent dessous, et se posent toujours seuls.
+List<BoardAssetSection> withCast(
+  List<BoardAssetSection> sections,
+  List<BoardAsset> cast,
+) {
+  if (cast.isEmpty) return sections;
+  return [
+    for (final section in sections)
+      section.title == _personnages
+          ? BoardAssetSection(
+              title: section.title,
+              assets: [...cast, ...section.assets],
+            )
+          : section,
+  ];
 }
 
 class BoardAssetSection {
@@ -286,7 +363,8 @@ BoardAsset? boardAssetForKey(
 }) =>
     key == null ? null : purchasableBoardAssets[key] ?? hosted[key];
 
-/// Ce qui reste de [sections] une fois [query] saisi.
+/// Ce qui reste de [sections] une fois [query] saisi. Un pion lié se
+/// cherche au nom de son personnage.
 ///
 /// La recherche porte aussi sur le titre de la section : taper « zone » ou
 /// « personnage » doit rendre le rayon entier, c'est ce qu'on attend d'un

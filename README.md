@@ -1019,6 +1019,32 @@ plus théorique depuis que le plateau remonte au serveur : un joueur qui regarde
 la séance lit les pions du MJ, et n'a aucune raison de posséder les assets que
 celui-ci a achetés.
 
+#### Le pion d'un personnage
+
+Pour une séance, **le MJ** donne un pion à chaque investigateur et à chaque PNJ,
+parmi les pions de personnage qu'il possède (`characterTokensOf`). **Le joueur
+ne choisit rien** : le plateau est celui du MJ, et la fiche d'un investigateur
+ne porte aucun pion. Le choix se fait depuis la pastille de chaque carte du
+volet Personnages — investigateurs et PNJ, ceux du scénario compris — que seul
+le MJ voit. La référence est `asset:<clé>` pour un pion acheté, `socle:<couleur>`
+pour un pion du socle, qui n'a pas de clé ; `boardAssetForRef` la retraduit en
+pion. Les deux vivent sur le serveur et pour la séance seulement : celui de
+l'investigateur sur sa participation (`PUT /sessions/:id/attendances/:userId/token`,
+que le détail de la session renvoie), celui du PNJ à côté de la séance
+(`PUT /sessions/:id/npcs/:npcId/token`). Un joueur qui change d'investigateur
+perd le pion, choisi pour l'autre.
+
+Le tiroir du plateau place ces personnages **en tête du rayon Personnages**, sous
+leur nom : **fond jaune pour un investigateur, rouge pour un PNJ**. Le pion
+d'origine reste dessous, anonyme, et se pose toujours seul.
+
+Posé, le pion garde le lien (`BoardToken.character` : `investigator` avec le
+joueur, ou `npc`). Sa barre d'actions gagne un bouton qui **ouvre la fiche du
+moment** : un PNJ renommé depuis s'ouvre sous son nouveau nom, et un personnage
+sorti de la session le dit au lieu d'ouvrir une fiche vide. **Un pion lié se
+dessine même quand le lecteur ne possède pas son asset** : c'est le MJ qui l'a
+acheté, et le joueur qui regarde le plateau doit voir ce pion, pas un rond rouge.
+
 Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
 et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
 scénarios, alors que la boutique elle-même ne se lit pas hors ligne : il n'y a

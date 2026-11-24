@@ -6,6 +6,7 @@ import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
 import 'package:questbook/features/game_master/panels/board_panel.dart';
+import 'board_test_session.dart';
 import 'package:questbook/features/game_master/widgets/board_token_view.dart';
 
 /// Un pion acheté, posé au milieu du plateau.
@@ -36,6 +37,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          boardTestNpcs(),
           boardCatalogueProvider.overrideWithValue(
             boardAssetSectionsFor(ownedKeys, hosted: hosted),
           ),
@@ -44,6 +46,7 @@ void main() {
         child: MaterialApp(
           home: Scaffold(
             body: BoardPanel(
+              session: boardTestSession(),
               initialTokens: tokens,
               initialMapId: 'grille',
               onTokensPersisted: saved.add,

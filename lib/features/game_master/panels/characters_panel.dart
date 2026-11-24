@@ -18,6 +18,7 @@ import '../../tables/providers/table_providers.dart';
 import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/session_seat.dart';
 import '../providers/game_master_providers.dart';
+import '../widgets/character_token_picker.dart';
 import '../widgets/npc_dialog.dart';
 import '../../../design_system/components/qb_reader_dialog.dart';
 
@@ -91,7 +92,11 @@ class CharactersPanel extends ConsumerWidget {
         else
           for (final attendance in attending) ...[
             const SizedBox(height: QBSpace.s3),
-            _AttendeeCard(sessionId: session.id, attendance: attendance),
+            _AttendeeCard(
+              session: session,
+              attendance: attendance,
+              gameMaster: seat.isGameMaster,
+            ),
           ],
         // Les PNJ sont la préparation du MJ — « tes joueurs ne les voient
         // pas » est écrit dans la section elle-même. Un joueur s'arrête donc
@@ -234,6 +239,15 @@ class _NpcCard extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Ouvert aussi aux PNJ du scénario : qui se tient sur le
+              // plateau est l'affaire du MJ, quel que soit l'auteur.
+              CharacterTokenSlot(
+                token: npc.token,
+                characterName: npc.name,
+                size: 36,
+                onTap: () => _pickToken(context, ref),
+              ),
+              const SizedBox(width: QBSpace.s3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,6 +301,23 @@ class _NpcCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _pickToken(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final api = ref.read(sessionApiProvider);
+    final choice = await showCharacterTokenPicker(
+      context,
+      characterName: npc.name,
+      current: npc.token,
+    );
+    if (choice == null || choice.token == npc.token) return;
+    try {
+      await api.setNpcToken(sessionId, npc.id, choice.token);
+      ref.invalidate(sessionNpcsProvider(sessionId));
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   Future<void> _confirmRemoval(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -319,10 +350,20 @@ class _NpcCard extends ConsumerWidget {
 }
 
 class _AttendeeCard extends ConsumerWidget {
-  const _AttendeeCard({required this.sessionId, required this.attendance});
+  const _AttendeeCard({
+    required this.session,
+    required this.attendance,
+    required this.gameMaster,
+  });
 
-  final String sessionId;
+  final RemoteGameSession session;
   final RemoteAttendance attendance;
+
+  /// Le MJ seul choisit le pion qui représentera l'investigateur sur son
+  /// plateau : le joueur ne voit pas la pastille.
+  final bool gameMaster;
+
+  String get sessionId => session.id;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -360,25 +401,60 @@ class _AttendeeCard extends ConsumerWidget {
         behavior: HitTestBehavior.opaque,
         child: QBCard(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: switch (sheet) {
-            AsyncData(value: final character) => _Sheet(
-                character: character,
-                playerLabel: attendance.user.label,
-              ),
-            AsyncError(error: final error) => _Unavailable(
-                playerLabel: attendance.user.label,
-                error: error,
-              ),
-            _ => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(QBSpace.s4),
-                  child: CircularProgressIndicator(),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (gameMaster && attendance.character != null) ...[
+                CharacterTokenSlot(
+                  token: attendance.token,
+                  characterName: attendance.character!.name,
+                  size: 36,
+                  onTap: () => _pickToken(context, ref),
                 ),
+                const SizedBox(width: QBSpace.s3),
+              ],
+              Expanded(
+                child: switch (sheet) {
+                  AsyncData(value: final character) => _Sheet(
+                      character: character,
+                      playerLabel: attendance.user.label,
+                    ),
+                  AsyncError(error: final error) => _Unavailable(
+                      playerLabel: attendance.user.label,
+                      error: error,
+                    ),
+                  _ => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(QBSpace.s4),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                },
               ),
-          },
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Le pion vit sur la participation, que porte le détail de la table : on
+  /// relit celui-ci pour que la carte et le tiroir du plateau le voient.
+  Future<void> _pickToken(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final api = ref.read(sessionApiProvider);
+    final choice = await showCharacterTokenPicker(
+      context,
+      characterName: attendance.character!.name,
+      current: attendance.token,
+    );
+    if (choice == null || choice.token == attendance.token) return;
+    try {
+      await api.setAttendeeToken(sessionId, attendance.userId, choice.token);
+      ref.invalidate(tableDetailProvider(session.tableId));
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   /// La carte, elle, vient du serveur : après une modification faite en

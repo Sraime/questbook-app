@@ -5,6 +5,7 @@ import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
 import 'package:questbook/features/game_master/panels/board_panel.dart';
+import 'board_test_session.dart';
 
 /// Le plateau sur un écran de téléphone : le tiroir n'a plus de colonne à lui,
 /// il recouvre la carte et s'efface dès qu'on tire un pion.
@@ -21,12 +22,14 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          boardTestNpcs(),
           boardCatalogueProvider
               .overrideWithValue(boardAssetSectionsFor(const {})),
         ],
         child: MaterialApp(
           home: Scaffold(
             body: BoardPanel(
+              session: boardTestSession(),
               initialTokens: const <BoardToken>[],
               initialMapId: null,
               compact: compact,

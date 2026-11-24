@@ -33,6 +33,9 @@ class BoardTokenView extends StatelessWidget {
   /// silence serait pire que l'afficher au mauvais visage. Le cas se
   /// présentera le jour où les plateaux se partageront entre MJ.
   ///
+  /// Un pion lié à un personnage échappe à la règle : c'est celui que son
+  /// joueur a choisi, et le MJ doit le voir même sans l'avoir acheté.
+  ///
   /// [hosted] porte les pions dont le serveur héberge l'image.
   factory BoardTokenView.of(
     BoardToken token, {
@@ -42,7 +45,7 @@ class BoardTokenView extends StatelessWidget {
     Map<String, BoardAsset> hosted = const {},
   }) {
     if (token.assetKey case final assetKey?) {
-      final asset = ownedKeys.contains(assetKey)
+      final asset = ownedKeys.contains(assetKey) || token.character != null
           ? boardAssetForKey(assetKey, hosted: hosted)
           : null;
 

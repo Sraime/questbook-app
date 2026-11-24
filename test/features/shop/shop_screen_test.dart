@@ -434,10 +434,14 @@ void main() {
     await pumpShop(tester, items: [_bundle()], at: '/boutique/bundle-1');
 
     expect(find.text('Contenu'), findsOneWidget);
-    expect(find.text('Le gardien'), findsOneWidget);
-    expect(find.text('Le Phare de Kerloc’h'), findsOneWidget);
-    expect(find.text('Le Retour du gardien'), findsOneWidget);
-    expect(find.text('Déjà possédé'), findsOneWidget);
+    expect(find.text('Le gardien', findRichText: true), findsOneWidget);
+    expect(find.text('Le Phare de Kerloc’h', findRichText: true), findsOneWidget);
+    // Seul le scénario déjà possédé le dit, à la suite de son nom.
+    expect(
+      find.text('Le Retour du gardien (possédé)', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.textContaining('(possédé)', findRichText: true), findsOneWidget);
     expect(find.text('Obtenir'), findsOneWidget);
   });
 

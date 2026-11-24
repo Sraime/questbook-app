@@ -281,8 +281,23 @@ class _BundleContents extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        entry.title,
+                      // « possédé » à la suite du nom, discret : une
+                      // information de passage, pas un bouton de plus.
+                      Text.rich(
+                        TextSpan(
+                          text: entry.title,
+                          children: [
+                            if (entry.owned)
+                              TextSpan(
+                                text: ' (possédé)',
+                                style: QBType.body().copyWith(
+                                  fontSize: QBType.sm,
+                                  fontWeight: QBType.weightRegular,
+                                  color: QBColors.semanticSuccess,
+                                ),
+                              ),
+                          ],
+                        ),
                         style: QBType.body().copyWith(
                           fontSize: QBType.sm,
                           fontWeight: QBType.weightSemibold,
@@ -305,8 +320,6 @@ class _BundleContents extends ConsumerWidget {
                     ],
                   ),
                 ),
-                if (entry.owned)
-                  const QBBadge(label: 'Déjà possédé', tone: QBTone.success),
               ],
             ),
           ),

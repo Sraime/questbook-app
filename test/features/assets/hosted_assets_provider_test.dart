@@ -17,6 +17,8 @@ import 'package:questbook/data/remote/token_store.dart';
 import 'package:questbook/features/assets/providers/hosted_assets_provider.dart';
 import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
+import 'package:questbook/features/shop/providers/shop_providers.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Les pions ajoutés au backoffice : leur image vient du serveur, descend une
 /// fois, et reste sur l'appareil pour les parties sans réseau.
@@ -42,6 +44,9 @@ class _FakeAssetApi extends AssetApi {
   String hash = 'aaa';
   final downloads = <String>[];
 
+  /// Ce que le backoffice ajoute pendant que l'app tourne.
+  final added = <RemoteAsset>[];
+
   @override
   Future<List<RemoteAsset>> list() async {
     if (failure case final error?) throw error;
@@ -52,6 +57,15 @@ class _FakeAssetApi extends AssetApi {
         kind: 'character',
         imageHash: hash,
       ),
+      const RemoteAsset(
+        key: 'crypte',
+        name: 'Crypte de Kingsport',
+        kind: 'map',
+        imageHash: 'ccc',
+        width: 300,
+        height: 200,
+      ),
+      ...added,
     ];
   }
 
@@ -76,6 +90,15 @@ class _FakeShopApi extends ShopApi {
             'priceCents': 0,
             'imageKey': 'asset',
             'assetKey': 'shoggoth',
+            'owned': true,
+          },
+          {
+            'id': 'item-2',
+            'title': 'Crypte de Kingsport',
+            'type': 'asset',
+            'priceCents': 0,
+            'imageKey': 'asset',
+            'assetKey': 'crypte',
             'owned': true,
           },
         ],
@@ -127,31 +150,32 @@ void main() {
 
   test('une image déjà sur l’appareil ne se retélécharge pas', () async {
     await container.read(hostedAssetsProvider.future);
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     await container.read(hostedAssetsProvider.future);
 
-    expect(assets.downloads, ['shoggoth']);
+    expect(assets.downloads, unorderedEquals(['shoggoth', 'crypte']));
   });
 
   test('une image remplacée descend, et l’ancienne s’efface', () async {
     await container.read(hostedAssetsProvider.future);
 
     assets.hash = 'bbb';
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     final hosted = await container.read(hostedAssetsProvider.future);
 
-    expect(assets.downloads, ['shoggoth', 'shoggoth']);
+    expect(assets.downloads.where((key) => key == 'shoggoth'), hasLength(2));
     expect(hosted['shoggoth']!.imageFile, endsWith('shoggoth-bbb'));
-    expect(root.listSync().map((entry) => entry.uri.pathSegments.last), [
-      'shoggoth-bbb',
-    ]);
+    expect(
+      root.listSync().map((entry) => entry.uri.pathSegments.last),
+      unorderedEquals(['shoggoth-bbb', 'crypte-ccc']),
+    );
   });
 
   test('hors réseau, le pion reste dessiné', () async {
     await container.read(hostedAssetsProvider.future);
 
     assets.failure = _networkDown;
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     final hosted = await container.read(hostedAssetsProvider.future);
 
     // Une partie se joue parfois sans couverture : le plateau garde ses
@@ -166,5 +190,70 @@ void main() {
     final personnages = container.read(boardCatalogueProvider).first;
     expect(personnages.assets.last.name, 'Profond Shoggoth');
     expect(personnages.assets.last.imageFile, isNotNull);
+  });
+
+  test('une carte n’est pas un pion : elle ne va dans aucun rayon', () async {
+    final tokens = await container.read(hostedAssetsProvider.future);
+    await container.read(ownedAssetKeysProvider.future);
+
+    expect(tokens.keys, ['shoggoth']);
+    expect(
+      container
+          .read(boardCatalogueProvider)
+          .expand((section) => section.assets)
+          .map((asset) => asset.key),
+      isNot(contains('crypte')),
+    );
+  });
+
+  testWidgets(
+      'une carte ajoutée au backoffice après le lancement arrive en '
+      'tirant la boutique', (tester) async {
+    late WidgetRef captured;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: Consumer(
+          builder: (context, ref, _) {
+            captured = ref;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    await tester.runAsync(() async {
+      await container.read(hostedMapsProvider.future);
+      assets.added.add(
+        const RemoteAsset(
+          key: 'chantier',
+          name: 'Chantier de minage',
+          kind: 'map',
+          imageHash: 'ddd',
+          width: 1312,
+          height: 1199,
+        ),
+      );
+
+      await refreshShop(captured);
+      final maps = await container.read(hostedMapsProvider.future);
+
+      // Inconnue, elle se rangeait parmi les pions, sans image.
+      expect(maps['chantier']?.file, isNotNull);
+    });
+  });
+
+  test('une carte possédée rejoint celles de l’app, à ses proportions',
+      () async {
+    await container.read(hostedMapsProvider.future);
+    await container.read(ownedAssetKeysProvider.future);
+
+    final maps = container.read(boardMapsCatalogueProvider);
+    expect(maps.map((map) => map.id), ['manoir', 'grille', 'crypte']);
+
+    final crypte = maps.last;
+    expect(crypte.label, 'Crypte de Kingsport');
+    expect(crypte.aspectRatio, 300 / 200);
+    expect(await File(crypte.file!).readAsBytes(), _png);
   });
 }

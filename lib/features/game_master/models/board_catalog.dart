@@ -2,23 +2,28 @@ import 'board_token.dart';
 
 /// Un fond de carte proposé au MJ.
 ///
-/// Le catalogue est écrit en dur pour l'instant. Ajouter une carte, c'est
-/// déposer l'image sous `assets/board/` et ajouter une entrée ici ; #39 les
-/// fera venir du back avec les scénarios.
+/// Deux sont embarquées, offertes à tous ; les autres s'achètent en
+/// boutique, ajoutées depuis le backoffice, et arrivent par
+/// `hostedMapsProvider`. Leur `id` est alors la clé de l'asset.
 class BoardMap {
   const BoardMap({
     required this.id,
     required this.label,
     required this.asset,
     required this.aspectRatio,
+    this.file,
   });
 
   final String id;
   final String label;
 
-  /// `null` pour la grille : il n'y a pas d'illustration, le plateau se
-  /// dessine.
+  /// L'image embarquée. `null` pour la grille, qui se dessine, et pour une
+  /// carte hébergée, dont l'image est un [file].
   final String? asset;
+
+  /// L'image d'une carte hébergée, sur l'appareil. `null` tant qu'elle n'est
+  /// pas descendue : la carte montre alors la grille.
+  final String? file;
 
   /// Les proportions de l'image. Le plateau s'y conforme, sinon les pions
   /// glisseraient sur une carte étirée.
@@ -43,12 +48,30 @@ const boardMaps = <BoardMap>[
   ),
 ];
 
-BoardMap boardMapById(String? id) {
+/// La carte d'un plateau, embarquée ou parmi les [hosted].
+///
+/// Une carte inconnue rend la première plutôt qu'un plateau vide : une carte
+/// achetée par le MJ peut arriver chez un joueur avant la liste qui la décrit.
+BoardMap boardMapById(
+  String? id, {
+  Map<String, BoardMap> hosted = const {},
+}) {
   for (final map in boardMaps) {
     if (map.id == id) return map;
   }
-  return boardMaps.first;
+  return hosted[id] ?? boardMaps.first;
 }
+
+/// Les cartes qu'un compte peut choisir : celles de l'app, puis celles qu'il
+/// a achetées, dans l'ordre de la boutique.
+List<BoardMap> boardMapsFor(
+  Iterable<String> ownedKeys, {
+  Map<String, BoardMap> hosted = const {},
+}) =>
+    [
+      ...boardMaps,
+      for (final key in ownedKeys) ?hosted[key],
+    ];
 
 /// Un pion proposé dans le tiroir.
 ///

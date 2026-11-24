@@ -61,8 +61,8 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il prépare pour le partager, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
-- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
-- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des cartes et des pions qu'un MJ peut poser sur un plateau — les cartes en tête, offertes ou achetées, puis les pions rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Trois rayons, **Cartes**, **Pions** et **Scénarios** ; les deux premiers en grille, le dernier en liste. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -997,6 +997,18 @@ fois, et l'ancienne s'efface ; une image pas encore descendue laisse le pion à
 sa forme. Ces fichiers ne dépendent pas du compte et survivent à la
 déconnexion — ce sont les mêmes pour tout le monde. La liste se relit au
 lancement, en tirant la boutique vers le bas et après un achat.
+
+**Les cartes arrivent par le même chemin.** Un asset de nature `map` n'est pas
+un pion : `hostedDownloadsProvider` descend tout, puis `hostedAssetsProvider`
+garde les pions et `hostedMapsProvider` les cartes, chacune avec les
+proportions que l'API lit dans son image (`width`, `height`). Une carte
+possédée rejoint le manoir et la grille dans `boardMapsCatalogueProvider`, que
+lisent le volet « Carte » du tiroir et la section « Cartes » de `/assets`.
+Le plateau ne retient que son identifiant (`SessionBoard.mapId`, la clé de
+l'asset), résolu à chaque dessin parmi **toutes** les cartes hébergées : le
+joueur voit celle du MJ sans l'avoir, et une carte dont l'image n'est pas
+encore descendue montre la grille. En boutique, un article dont la clé est
+celle d'une carte se range dans le rayon **Cartes**.
 
 Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
 enregistrés avant la boutique, et c'est très bien : le socle se décrit

@@ -15,6 +15,40 @@ void main() {
     test('gives back the chosen map', () {
       expect(boardMapById('grille').label, 'Grille vierge');
     });
+
+    test('trouve une carte hébergée, possédée ou non', () {
+      const crypte = BoardMap(
+        id: 'crypte',
+        label: 'Crypte',
+        asset: null,
+        file: '/tmp/crypte-ccc',
+        aspectRatio: 1.5,
+      );
+
+      expect(
+        boardMapById('crypte', hosted: {'crypte': crypte}).file,
+        '/tmp/crypte-ccc',
+      );
+    });
+
+    test('ne propose que les cartes hébergées possédées', () {
+      const crypte = BoardMap(
+        id: 'crypte',
+        label: 'Crypte',
+        asset: null,
+        aspectRatio: 1.5,
+      );
+
+      expect(
+        boardMapsFor(const [], hosted: {'crypte': crypte}).map((m) => m.id),
+        ['manoir', 'grille'],
+      );
+      expect(
+        boardMapsFor(const ['crypte', 'inconnue'], hosted: {'crypte': crypte})
+            .map((m) => m.id),
+        ['manoir', 'grille', 'crypte'],
+      );
+    });
   });
 
   group('filterBoardAssets', () {

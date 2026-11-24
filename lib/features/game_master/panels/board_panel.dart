@@ -59,7 +59,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
   final _selectedId = ValueNotifier<String?>(null);
   final _resizing = ValueNotifier<bool>(false);
 
-  late BoardMap _map = boardMapById(widget.initialMapId);
+  /// L'identifiant seul, résolu à chaque dessin : une carte achetée peut
+  /// arriver après l'ouverture du plateau, avec la liste des cartes hébergées.
+  late String? _mapId = widget.initialMapId;
 
   /// Le tiroir se replie pour rendre la carte à la table : une fois les pions
   /// posés, c'est le plateau qu'on regarde, pas le catalogue. Il démarre
@@ -122,7 +124,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
   }
 
   void _selectMap(BoardMap map) {
-    setState(() => _map = map);
+    setState(() => _mapId = map.id);
     widget.onMapPersisted(map.id);
   }
 
@@ -138,16 +140,23 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
     };
     final hosted =
         ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{};
+    final maps = ref.watch(boardMapsCatalogueProvider);
+    // Toutes les cartes hébergées, pas seulement les possédées : un plateau
+    // repris d'une autre table garde sa carte, même si ce MJ ne l'a pas.
+    final map = boardMapById(
+      _mapId,
+      hosted: ref.watch(hostedMapsProvider).value ?? const {},
+    );
 
     final board = Padding(
       padding: EdgeInsets.all(widget.compact ? QBSpace.s3 : QBSpace.s5),
       child: LayoutBuilder(
         builder: (context, constraints) {
                 var width = constraints.maxWidth;
-                var height = width / _map.aspectRatio;
+                var height = width / map.aspectRatio;
                 if (height > constraints.maxHeight) {
                   height = constraints.maxHeight;
-                  width = height * _map.aspectRatio;
+                  width = height * map.aspectRatio;
                 }
                 return Center(
                   child: SizedBox(
@@ -155,7 +164,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
                     width: width,
                     height: height,
                     child: _Board(
-                      map: _map,
+                      map: map,
                       ownedKeys: ownedKeys,
                       hosted: hosted,
                       tokens: _tokens,
@@ -180,8 +189,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
           offstage: !_drawerOpen,
           child: _AssetDrawer(
             sections: sections,
+            maps: maps,
             feedbackSide: _feedbackSide,
-            selectedMapId: _map.id,
+            selectedMapId: map.id,
             width: width,
             minColumns: minColumns,
             onSelectMap: _selectMap,
@@ -557,6 +567,7 @@ class _PlacedToken extends StatelessWidget {
 class _AssetDrawer extends StatefulWidget {
   const _AssetDrawer({
     required this.sections,
+    required this.maps,
     required this.feedbackSide,
     required this.selectedMapId,
     required this.onSelectMap,
@@ -567,6 +578,9 @@ class _AssetDrawer extends StatefulWidget {
 
   /// Le catalogue de ce compte, socle et collection réunis.
   final List<BoardAssetSection> sections;
+
+  /// Les cartes qu'il peut choisir, de même.
+  final List<BoardMap> maps;
   final double feedbackSide;
   final String selectedMapId;
   final ValueChanged<BoardMap> onSelectMap;
@@ -644,7 +658,7 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                     minColumns: 2,
                     onToggle: () => _toggle('Carte'),
                     children: [
-                      for (final map in boardMaps)
+                      for (final map in widget.maps)
                         _MapTile(
                           map: map,
                           selected: map.id == widget.selectedMapId,
@@ -873,8 +887,6 @@ class _MapTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = map.asset;
-
     return Semantics(
       selected: selected,
       button: true,
@@ -900,15 +912,7 @@ class _MapTile extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(QBRadius.xs),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: asset == null
-                      ? const ColoredBox(
-                          color: QBColors.paper200,
-                          child: CustomPaint(painter: BoardGridPainter()),
-                        )
-                      : Image.asset(asset, fit: BoxFit.cover),
-                ),
+                child: BoardMapPreview(map: map),
               ),
               const SizedBox(height: 4),
               _TileLabel(map.label),

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../../design_system/tokens/colors.dart';
@@ -13,13 +15,53 @@ class BoardSurface extends StatelessWidget {
   final BoardMap map;
 
   @override
+  Widget build(BuildContext context) =>
+      _MapImage(map: map, fit: BoxFit.fill, grid: QBColors.paper100);
+}
+
+/// La vignette d'une carte, rognée à ses proportions de vignette : le tiroir
+/// du MJ et l'écran des assets montrent la même.
+class BoardMapPreview extends StatelessWidget {
+  const BoardMapPreview({super.key, required this.map});
+
+  final BoardMap map;
+
+  @override
+  Widget build(BuildContext context) => AspectRatio(
+        aspectRatio: 4 / 3,
+        child: _MapImage(map: map, fit: BoxFit.cover, grid: QBColors.paper200),
+      );
+}
+
+/// L'image d'une carte, embarquée ou hébergée, et la grille à défaut.
+///
+/// Une carte hébergée dont l'image manque ou ne se lit pas montre la grille :
+/// le plateau reste utilisable, et les pions restent à leur place.
+class _MapImage extends StatelessWidget {
+  const _MapImage({required this.map, required this.fit, required this.grid});
+
+  final BoardMap map;
+  final BoxFit fit;
+  final Color grid;
+
+  @override
   Widget build(BuildContext context) {
-    final asset = map.asset;
-    if (asset != null) return Image.asset(asset, fit: BoxFit.fill);
-    return const ColoredBox(
-      color: QBColors.paper100,
-      child: CustomPaint(painter: BoardGridPainter()),
+    final blank = ColoredBox(
+      color: grid,
+      child: const CustomPaint(painter: BoardGridPainter()),
     );
+
+    final asset = map.asset;
+    if (asset != null) return Image.asset(asset, fit: fit);
+    final file = map.file;
+    if (file != null) {
+      return Image.file(
+        File(file),
+        fit: fit,
+        errorBuilder: (_, _, _) => blank,
+      );
+    }
+    return blank;
   }
 }
 

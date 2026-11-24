@@ -24,11 +24,13 @@ final shopItemProvider =
   return ref.watch(shopApiProvider).get(id);
 });
 
-/// Relit aussi les pions hébergés : un asset ajouté au backoffice pendant que
-/// l'app tournait doit avoir son image dans la boutique, sans relancer.
+/// Relit aussi les assets hébergés : un pion ou une carte ajouté au
+/// backoffice pendant que l'app tournait doit avoir son image et son rayon
+/// dans la boutique, sans relancer. C'est la source qu'on invalide, pas une
+/// de ses vues, qui ne ferait que relire l'ancienne liste.
 Future<void> refreshShop(WidgetRef ref) async {
   ref.invalidate(shopCatalogueProvider);
-  ref.invalidate(hostedAssetsProvider);
+  ref.invalidate(hostedDownloadsProvider);
   await ref.read(shopCatalogueProvider.future);
 }
 
@@ -43,6 +45,6 @@ Future<RemoteShopItemDetail> purchaseShopItem(WidgetRef ref, String id) async {
   ref.invalidate(shopCatalogueProvider);
   ref.invalidate(shopItemProvider(id));
   ref.invalidate(ownedAssetKeysProvider);
-  ref.invalidate(hostedAssetsProvider);
+  ref.invalidate(hostedDownloadsProvider);
   return bought;
 }

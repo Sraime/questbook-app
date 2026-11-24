@@ -90,7 +90,7 @@ class _ArticleState extends ConsumerState<_Article> {
         const SizedBox(height: QBSpace.s3),
         Row(
           children: [
-            QBTag(label: item.type.label),
+            QBTag(label: shopItemTypeLabel(ref, item.type, item.assetKey)),
             const SizedBox(width: QBSpace.s2),
             if (item.owned)
               const QBBadge(label: 'Possédé', tone: QBTone.success)

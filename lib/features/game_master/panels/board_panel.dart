@@ -6,16 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../data/remote/remote_table.dart';
 import '../../../design_system/components/qb_icon_button.dart';
+import '../../../design_system/components/qb_reader_dialog.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/effects.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../assets/providers/hosted_assets_provider.dart';
 import '../../assets/providers/owned_assets_provider.dart';
 import '../models/board_catalog.dart';
+import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/board_token.dart';
+import '../providers/game_master_providers.dart';
 import '../widgets/board_surface.dart';
 import '../widgets/board_token_view.dart';
+import '../widgets/npc_dialog.dart';
 
 /// La carte, les pions posés dessus, et le tiroir d'où on les tire.
 ///
@@ -27,12 +33,17 @@ import '../widgets/board_token_view.dart';
 class BoardPanel extends ConsumerStatefulWidget {
   const BoardPanel({
     super.key,
+    required this.session,
     required this.initialTokens,
     required this.initialMapId,
     required this.onTokensPersisted,
     required this.onMapPersisted,
     this.compact = false,
   });
+
+  /// Ses investigateurs et ses PNJ ont leur pion dans le tiroir, et c'est
+  /// leur fiche qu'ouvre un pion posé.
+  final RemoteGameSession session;
 
   final List<BoardToken> initialTokens;
   final String? initialMapId;
@@ -58,7 +69,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
   final _selectedId = ValueNotifier<String?>(null);
   final _resizing = ValueNotifier<bool>(false);
 
-  late BoardMap _map = boardMapById(widget.initialMapId);
+  /// L'identifiant seul, résolu à chaque dessin : une carte achetée peut
+  /// arriver après l'ouverture du plateau, avec la liste des cartes hébergées.
+  late String? _mapId = widget.initialMapId;
 
   /// Le tiroir se replie pour rendre la carte à la table : une fois les pions
   /// posés, c'est le plateau qu'on regarde, pas le catalogue. Il démarre
@@ -97,6 +110,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
         kind: asset.kind,
         color: asset.color,
         assetKey: asset.key,
+        character: asset.character,
         x: (local.dx / box.size.width).clamp(0.0, 1.0),
         y: (local.dy / box.size.height).clamp(0.0, 1.0),
       ),
@@ -121,30 +135,123 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
   }
 
   void _selectMap(BoardMap map) {
-    setState(() => _map = map);
+    setState(() => _mapId = map.id);
     widget.onMapPersisted(map.id);
+  }
+
+  /// Les personnages de la session qui ont un pion : les investigateurs,
+  /// puis les PNJ.
+  List<BoardAsset> _cast(
+    Map<String, BoardAsset> hosted,
+    List<RemoteNpc> npcs,
+  ) {
+    final cast = <BoardAsset>[];
+    for (final attendance in widget.session.accepted) {
+      final character = attendance.character;
+      if (character == null) continue;
+      final asset = boardAssetForRef(attendance.token, hosted: hosted);
+      if (asset == null) continue;
+      cast.add(asset.representing(
+        character.name,
+        BoardCharacterLink(
+          kind: BoardCharacterKind.investigator,
+          id: character.id,
+          userId: attendance.userId,
+        ),
+      ));
+    }
+    for (final npc in npcs) {
+      final asset = boardAssetForRef(npc.token, hosted: hosted);
+      if (asset == null) continue;
+      cast.add(asset.representing(
+        npc.name,
+        BoardCharacterLink(kind: BoardCharacterKind.npc, id: npc.id),
+      ));
+    }
+    return cast;
+  }
+
+  /// La fiche du personnage d'un pion posé, telle qu'elle est maintenant :
+  /// un PNJ renommé depuis s'ouvre sous son nouveau nom.
+  void _openCharacter(BoardCharacterLink link) {
+    final sessionId = widget.session.id;
+    final messenger = ScaffoldMessenger.of(context);
+
+    switch (link.kind) {
+      case BoardCharacterKind.investigator:
+        final attendance = widget.session.accepted
+            .where((each) =>
+                each.userId == link.userId && each.character?.id == link.id)
+            .firstOrNull;
+        if (attendance == null) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('Cet investigateur n’est plus dans la session.'),
+          ));
+          return;
+        }
+        showAttendeeCharacterSheet(
+          context,
+          sessionId: sessionId,
+          userId: attendance.userId,
+          playerLabel: attendance.user.label,
+        );
+      case BoardCharacterKind.npc:
+        final npc = ref
+            .read(sessionNpcsProvider(sessionId))
+            .value
+            ?.where((each) => each.id == link.id)
+            .firstOrNull;
+        if (npc == null) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('Ce PNJ n’est plus dans la session.'),
+          ));
+          return;
+        }
+        if (npc.isEditable) {
+          showNpcDialog(context, sessionId: sessionId, existing: npc);
+        } else {
+          showQBReaderDialog(
+            context,
+            title: npc.name,
+            contentMarkdown: npc.description,
+          );
+        }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final sections = ref.watch(boardCatalogueProvider);
+    final hostedTokens =
+        ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{};
+    final npcs =
+        ref.watch(sessionNpcsProvider(widget.session.id)).value ?? const [];
+    final catalogue = ref.watch(boardCatalogueProvider);
+    final sections = withCast(catalogue, _cast(hostedTokens, npcs));
     // Ce que le tiroir propose est exactement ce que le plateau sait
     // dessiner : un pion venu d'ailleurs — un plateau partagé, un achat
     // rendu — se rend en pion par défaut plutôt que de s'évanouir.
     final ownedKeys = {
-      for (final section in sections)
+      for (final section in catalogue)
         for (final asset in section.assets) ?asset.key,
     };
+    final hosted = hostedTokens;
+    final maps = ref.watch(boardMapsCatalogueProvider);
+    // Toutes les cartes hébergées, pas seulement les possédées : un plateau
+    // repris d'une autre table garde sa carte, même si ce MJ ne l'a pas.
+    final map = boardMapById(
+      _mapId,
+      hosted: ref.watch(hostedMapsProvider).value ?? const {},
+    );
 
     final board = Padding(
       padding: EdgeInsets.all(widget.compact ? QBSpace.s3 : QBSpace.s5),
       child: LayoutBuilder(
         builder: (context, constraints) {
                 var width = constraints.maxWidth;
-                var height = width / _map.aspectRatio;
+                var height = width / map.aspectRatio;
                 if (height > constraints.maxHeight) {
                   height = constraints.maxHeight;
-                  width = height * _map.aspectRatio;
+                  width = height * map.aspectRatio;
                 }
                 return Center(
                   child: SizedBox(
@@ -152,8 +259,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
                     width: width,
                     height: height,
                     child: _Board(
-                      map: _map,
+                      map: map,
                       ownedKeys: ownedKeys,
+                      hosted: hosted,
                       tokens: _tokens,
                       selectedId: _selectedId,
                       resizing: _resizing,
@@ -163,6 +271,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
                       onRemove: _remove,
                       onToggleResize: () => _resizing.value = !_resizing.value,
                       onDrop: _drop,
+                      onOpenCharacter: _openCharacter,
                     ),
                   ),
                 );
@@ -176,8 +285,9 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
           offstage: !_drawerOpen,
           child: _AssetDrawer(
             sections: sections,
+            maps: maps,
             feedbackSide: _feedbackSide,
-            selectedMapId: _map.id,
+            selectedMapId: map.id,
             width: width,
             minColumns: minColumns,
             onSelectMap: _selectMap,
@@ -278,6 +388,7 @@ class _Board extends StatelessWidget {
   const _Board({
     required this.map,
     required this.ownedKeys,
+    required this.hosted,
     required this.tokens,
     required this.selectedId,
     required this.resizing,
@@ -287,6 +398,7 @@ class _Board extends StatelessWidget {
     required this.onRemove,
     required this.onToggleResize,
     required this.onDrop,
+    required this.onOpenCharacter,
   });
 
   final BoardMap map;
@@ -294,6 +406,9 @@ class _Board extends StatelessWidget {
   /// Les assets achetés dont ce compte dispose, pour savoir lesquels des
   /// pions posés il sait encore dessiner.
   final Set<String> ownedKeys;
+
+  /// Les pions dont le serveur héberge l'image.
+  final Map<String, BoardAsset> hosted;
   final ValueListenable<List<BoardToken>> tokens;
   final ValueListenable<String?> selectedId;
   final ValueListenable<bool> resizing;
@@ -303,6 +418,7 @@ class _Board extends StatelessWidget {
   final ValueChanged<String> onRemove;
   final VoidCallback onToggleResize;
   final void Function(BoardAsset asset, Offset globalTopLeft) onDrop;
+  final ValueChanged<BoardCharacterLink> onOpenCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +468,7 @@ class _Board extends StatelessWidget {
                         _PlacedToken(
                           token: token,
                           ownedKeys: ownedKeys,
+                          hosted: hosted,
                           boardWidth: width,
                           boardHeight: height,
                           reference: reference,
@@ -362,6 +479,10 @@ class _Board extends StatelessWidget {
                           onCommit: onCommit,
                           onRemove: () => onRemove(token.id),
                           onToggleResize: onToggleResize,
+                          onOpenCharacter: switch (token.character) {
+                            final link? => () => onOpenCharacter(link),
+                            null => null,
+                          },
                         ),
                     ],
                   );
@@ -379,6 +500,7 @@ class _PlacedToken extends StatelessWidget {
   const _PlacedToken({
     required this.token,
     required this.ownedKeys,
+    required this.hosted,
     required this.boardWidth,
     required this.boardHeight,
     required this.reference,
@@ -389,6 +511,7 @@ class _PlacedToken extends StatelessWidget {
     required this.onCommit,
     required this.onRemove,
     required this.onToggleResize,
+    this.onOpenCharacter,
   });
 
   static const double _handleSide = 18;
@@ -396,6 +519,7 @@ class _PlacedToken extends StatelessWidget {
 
   final BoardToken token;
   final Set<String> ownedKeys;
+  final Map<String, BoardAsset> hosted;
   final double boardWidth;
   final double boardHeight;
 
@@ -409,6 +533,10 @@ class _PlacedToken extends StatelessWidget {
   final VoidCallback onCommit;
   final VoidCallback onRemove;
   final VoidCallback onToggleResize;
+
+  /// Présent pour un pion lié à un personnage : la barre gagne alors un
+  /// bouton qui ouvre sa fiche.
+  final VoidCallback? onOpenCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +567,7 @@ class _PlacedToken extends StatelessWidget {
               token,
               selected: selected,
               ownedKeys: ownedKeys,
+              hosted: hosted,
             ),
           ),
         ),
@@ -453,10 +582,11 @@ class _PlacedToken extends StatelessWidget {
     // passe alors dessous plutôt que de sortir du cadre.
     final above = top - _actionsHeight - 6;
     final y = above >= 0 ? above : top + side + 6;
+    final width = onOpenCharacter == null ? 80.0 : 112.0;
 
     return [
       Positioned(
-        left: (left + side / 2 - 40).clamp(0.0, boardWidth - 80),
+        left: (left + side / 2 - width / 2).clamp(0.0, boardWidth - width),
         top: y,
         child: Container(
           padding: const EdgeInsets.all(3),
@@ -468,6 +598,20 @@ class _PlacedToken extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (onOpenCharacter case final open?) ...[
+                QBIconButton(
+                  icon: const Icon(
+                    LucideIcons.scrollText,
+                    size: 14,
+                    color: QBColors.paper100,
+                  ),
+                  label: 'Ouvrir la fiche du personnage',
+                  size: 28,
+                  variant: QBIconButtonVariant.solid,
+                  onPressed: open,
+                ),
+                const SizedBox(width: 4),
+              ],
               QBIconButton(
                 icon: Icon(
                   LucideIcons.scaling,
@@ -545,6 +689,7 @@ class _PlacedToken extends StatelessWidget {
 class _AssetDrawer extends StatefulWidget {
   const _AssetDrawer({
     required this.sections,
+    required this.maps,
     required this.feedbackSide,
     required this.selectedMapId,
     required this.onSelectMap,
@@ -555,6 +700,9 @@ class _AssetDrawer extends StatefulWidget {
 
   /// Le catalogue de ce compte, socle et collection réunis.
   final List<BoardAssetSection> sections;
+
+  /// Les cartes qu'il peut choisir, de même.
+  final List<BoardMap> maps;
   final double feedbackSide;
   final String selectedMapId;
   final ValueChanged<BoardMap> onSelectMap;
@@ -632,7 +780,7 @@ class _AssetDrawerState extends State<_AssetDrawer> {
                     minColumns: 2,
                     onToggle: () => _toggle('Carte'),
                     children: [
-                      for (final map in boardMaps)
+                      for (final map in widget.maps)
                         _MapTile(
                           map: map,
                           selected: map.id == widget.selectedMapId,
@@ -861,8 +1009,6 @@ class _MapTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = map.asset;
-
     return Semantics(
       selected: selected,
       button: true,
@@ -888,15 +1034,7 @@ class _MapTile extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(QBRadius.xs),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: asset == null
-                      ? const ColoredBox(
-                          color: QBColors.paper200,
-                          child: CustomPaint(painter: BoardGridPainter()),
-                        )
-                      : Image.asset(asset, fit: BoxFit.cover),
-                ),
+                child: BoardMapPreview(map: map),
               ),
               const SizedBox(height: 4),
               _TileLabel(map.label),
@@ -947,6 +1085,9 @@ class _AssetTile extends StatelessWidget {
     this.onDragStarted,
   });
 
+  static const _investigatorFill = Color(0xFFFFE89A);
+  static const _npcFill = Color(0xFFF8C4C2);
+
   final BoardAsset asset;
   final double feedbackSide;
   final VoidCallback? onDragStarted;
@@ -974,9 +1115,21 @@ class _AssetTile extends StatelessWidget {
             horizontal: QBSpace.s2,
             vertical: QBSpace.s3,
           ),
+          // Jaune pour un investigateur, rouge pour un PNJ : le même pion
+          // figure aussi dessous, anonyme, et c'est le fond qui les distingue.
           decoration: BoxDecoration(
-            color: QBColors.paper50,
-            border: Border.all(color: QBColors.borderDefault),
+            color: switch (asset.character?.kind) {
+              BoardCharacterKind.investigator => _investigatorFill,
+              BoardCharacterKind.npc => _npcFill,
+              null => QBColors.paper50,
+            },
+            border: Border.all(
+              color: switch (asset.character?.kind) {
+                BoardCharacterKind.investigator => QBColors.juicyGoldBottom,
+                BoardCharacterKind.npc => QBColors.juicyRedBottom,
+                null => QBColors.borderDefault,
+              },
+            ),
             borderRadius: BorderRadius.circular(QBRadius.md),
           ),
           child: Column(

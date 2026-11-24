@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../../design_system/tokens/colors.dart';
@@ -13,13 +15,15 @@ class BoardTokenView extends StatelessWidget {
     required this.color,
     this.selected = false,
     this.image,
+    this.imageFile,
   });
 
   /// Le dessin d'un pion du catalogue, illustration comprise s'il en a une.
   BoardTokenView.ofAsset(BoardAsset asset, {super.key, this.selected = false})
       : kind = asset.kind,
         color = asset.color,
-        image = asset.image;
+        image = asset.image,
+        imageFile = asset.imageFile;
 
   /// Le dessin d'un pion posé sur le plateau, pour un compte qui possède
   /// [ownedKeys].
@@ -28,15 +32,21 @@ class BoardTokenView extends StatelessWidget {
   /// le pion par défaut — plutôt que de disparaître : perdre une position en
   /// silence serait pire que l'afficher au mauvais visage. Le cas se
   /// présentera le jour où les plateaux se partageront entre MJ.
+  ///
+  /// Un pion lié à un personnage échappe à la règle : c'est celui que son
+  /// joueur a choisi, et le MJ doit le voir même sans l'avoir acheté.
+  ///
+  /// [hosted] porte les pions dont le serveur héberge l'image.
   factory BoardTokenView.of(
     BoardToken token, {
     Key? key,
     bool selected = false,
     Set<String> ownedKeys = const {},
+    Map<String, BoardAsset> hosted = const {},
   }) {
     if (token.assetKey case final assetKey?) {
-      final asset = ownedKeys.contains(assetKey)
-          ? boardAssetForKey(assetKey)
+      final asset = ownedKeys.contains(assetKey) || token.character != null
+          ? boardAssetForKey(assetKey, hosted: hosted)
           : null;
 
       return asset == null
@@ -65,22 +75,41 @@ class BoardTokenView extends StatelessWidget {
   /// un pion illustré n'est plus un rond de couleur.
   final String? image;
 
+  /// La même chose pour un pion hébergé : un fichier sur l'appareil.
+  final String? imageFile;
+
   @override
   Widget build(BuildContext context) {
     final outline = selected
         ? Border.all(color: QBColors.gold500, width: 3)
         : Border.all(color: _edge, width: 2);
 
-    if (image case final image?) {
+    final Widget? illustration = switch ((image, imageFile)) {
+      (final image?, _) => Image.asset(image, fit: BoxFit.contain),
+      // Un fichier illisible — effacé par le système, coupé à l'écriture —
+      // rend le pion à sa forme plutôt qu'à un cadre vide.
+      (_, final file?) => Image.file(
+          File(file),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stack) => _shape(outline),
+        ),
+      _ => null,
+    };
+
+    if (illustration != null) {
       return DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: selected ? outline : null,
         ),
-        child: Image.asset(image, fit: BoxFit.contain),
+        child: illustration,
       );
     }
 
+    return _shape(outline);
+  }
+
+  Widget _shape(Border outline) {
     return switch (kind) {
       BoardTokenKind.character => Container(
           decoration: BoxDecoration(

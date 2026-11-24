@@ -55,6 +55,61 @@ enum BoardTokenColor {
   }
 }
 
+enum BoardCharacterKind {
+  investigator('investigator'),
+  npc('npc');
+
+  const BoardCharacterKind(this.wire);
+
+  final String wire;
+
+  static BoardCharacterKind? parse(Object? value) {
+    for (final kind in BoardCharacterKind.values) {
+      if (kind.wire == value) return kind;
+    }
+    return null;
+  }
+}
+
+/// Le personnage qu'un pion représente : un investigateur de la session, ou
+/// l'un de ses PNJ.
+///
+/// Le plateau garde l'identifiant, pas le nom ni la fiche : un PNJ se
+/// renomme, et c'est sa fiche du moment qu'on veut ouvrir en touchant le
+/// pion.
+class BoardCharacterLink {
+  const BoardCharacterLink({required this.kind, required this.id, this.userId});
+
+  /// `null` pour un lien illisible : le pion reste sur le plateau, il perd
+  /// seulement l'accès à la fiche.
+  static BoardCharacterLink? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final kind = BoardCharacterKind.parse(json['type']);
+    final id = json['id'];
+    if (kind == null || id is! String) return null;
+    return BoardCharacterLink(
+      kind: kind,
+      id: id,
+      userId: json['userId'] as String?,
+    );
+  }
+
+  final BoardCharacterKind kind;
+
+  /// L'investigateur ou le PNJ.
+  final String id;
+
+  /// Le joueur de l'investigateur : c'est par lui que la session ouvre une
+  /// fiche. `null` pour un PNJ.
+  final String? userId;
+
+  Map<String, dynamic> toJson() => {
+        'type': kind.wire,
+        'id': id,
+        if (userId != null) 'userId': userId,
+      };
+}
+
 /// Un pion posé sur le plateau.
 ///
 /// Les coordonnées sont des fractions de la carte, pas des pixels : le même
@@ -69,6 +124,7 @@ class BoardToken {
     required this.y,
     this.size = defaultSize,
     this.assetKey,
+    this.character,
   });
 
   factory BoardToken.fromJson(Map<String, dynamic> json) => BoardToken(
@@ -82,6 +138,7 @@ class BoardToken {
         // bien : un pion du socle se décrit entièrement par sa forme et sa
         // couleur, la clé ne sert qu'à ceux qui s'achètent.
         assetKey: json['assetKey'] as String?,
+        character: BoardCharacterLink.fromJson(json['character']),
       );
 
   /// Côté d'un pion, en fraction du plus petit côté de la carte.
@@ -101,6 +158,9 @@ class BoardToken {
   /// par défaut au lieu de le perdre.
   final String? assetKey;
 
+  /// Le personnage que ce pion représente, `null` pour un pion anonyme.
+  final BoardCharacterLink? character;
+
   /// Centre du pion, entre 0 et 1.
   final double x;
   final double y;
@@ -114,6 +174,7 @@ class BoardToken {
         y: y ?? this.y,
         size: size ?? this.size,
         assetKey: assetKey,
+        character: character,
       );
 
   Map<String, dynamic> toJson() => {
@@ -124,6 +185,7 @@ class BoardToken {
         'y': y,
         'size': size,
         if (assetKey != null) 'assetKey': assetKey,
+        if (character != null) 'character': character!.toJson(),
       };
 
   static List<BoardToken> decode(String payload) {

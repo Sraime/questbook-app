@@ -2,23 +2,28 @@ import 'board_token.dart';
 
 /// Un fond de carte proposé au MJ.
 ///
-/// Le catalogue est écrit en dur pour l'instant. Ajouter une carte, c'est
-/// déposer l'image sous `assets/board/` et ajouter une entrée ici ; #39 les
-/// fera venir du back avec les scénarios.
+/// Deux sont embarquées, offertes à tous ; les autres s'achètent en
+/// boutique, ajoutées depuis le backoffice, et arrivent par
+/// `hostedMapsProvider`. Leur `id` est alors la clé de l'asset.
 class BoardMap {
   const BoardMap({
     required this.id,
     required this.label,
     required this.asset,
     required this.aspectRatio,
+    this.file,
   });
 
   final String id;
   final String label;
 
-  /// `null` pour la grille : il n'y a pas d'illustration, le plateau se
-  /// dessine.
+  /// L'image embarquée. `null` pour la grille, qui se dessine, et pour une
+  /// carte hébergée, dont l'image est un [file].
   final String? asset;
+
+  /// L'image d'une carte hébergée, sur l'appareil. `null` tant qu'elle n'est
+  /// pas descendue : la carte montre alors la grille.
+  final String? file;
 
   /// Les proportions de l'image. Le plateau s'y conforme, sinon les pions
   /// glisseraient sur une carte étirée.
@@ -43,12 +48,30 @@ const boardMaps = <BoardMap>[
   ),
 ];
 
-BoardMap boardMapById(String? id) {
+/// La carte d'un plateau, embarquée ou parmi les [hosted].
+///
+/// Une carte inconnue rend la première plutôt qu'un plateau vide : une carte
+/// achetée par le MJ peut arriver chez un joueur avant la liste qui la décrit.
+BoardMap boardMapById(
+  String? id, {
+  Map<String, BoardMap> hosted = const {},
+}) {
   for (final map in boardMaps) {
     if (map.id == id) return map;
   }
-  return boardMaps.first;
+  return hosted[id] ?? boardMaps.first;
 }
+
+/// Les cartes qu'un compte peut choisir : celles de l'app, puis celles qu'il
+/// a achetées, dans l'ordre de la boutique.
+List<BoardMap> boardMapsFor(
+  Iterable<String> ownedKeys, {
+  Map<String, BoardMap> hosted = const {},
+}) =>
+    [
+      ...boardMaps,
+      for (final key in ownedKeys) ?hosted[key],
+    ];
 
 /// Un pion proposé dans le tiroir.
 ///
@@ -62,6 +85,8 @@ class BoardAsset {
     required this.color,
     this.key,
     this.image,
+    this.imageFile,
+    this.character,
   });
 
   final String name;
@@ -75,6 +100,87 @@ class BoardAsset {
   /// L'illustration, pour les pions qui en ont une. Le socle se dessine
   /// encore à la forme et à la couleur.
   final String? image;
+
+  /// L'illustration d'un pion hébergé par le serveur : un fichier sur
+  /// l'appareil, et non une image embarquée. `null` tant qu'elle n'est pas
+  /// descendue, et le pion se dessine alors à sa forme.
+  final String? imageFile;
+
+  /// Le personnage que ce pion représente. Le tiroir le propose alors sous
+  /// le nom du personnage, et le pion posé en garde le lien.
+  final BoardCharacterLink? character;
+
+  /// Ce pion, au nom de [name] et lié à [character].
+  BoardAsset representing(String name, BoardCharacterLink character) =>
+      BoardAsset(
+        name: name,
+        kind: kind,
+        color: color,
+        key: key,
+        image: image,
+        imageFile: imageFile,
+        character: character,
+      );
+
+  /// La référence que garde un personnage associé à ce pion.
+  String get ref => key == null ? 'socle:${color.wire}' : 'asset:$key';
+}
+
+/// Le pion qu'un personnage s'est vu associer, d'après sa référence :
+/// `asset:<clé>` pour un pion de la boutique, `socle:<couleur>` pour un pion
+/// du socle.
+///
+/// Aucune vérification de propriété ici : le pion d'un investigateur est
+/// celui de son joueur, que le MJ n'a pas forcément acheté, et c'est lui qu'il
+/// doit voir. `null` pour une référence que l'app ne sait pas dessiner.
+BoardAsset? boardAssetForRef(
+  String? ref, {
+  Map<String, BoardAsset> hosted = const {},
+}) {
+  if (ref == null) return null;
+  final separator = ref.indexOf(':');
+  if (separator < 0) return null;
+  final value = ref.substring(separator + 1);
+
+  switch (ref.substring(0, separator)) {
+    case 'asset':
+      return boardAssetForKey(value, hosted: hosted);
+    case 'socle':
+      for (final asset in boardAssetSections.first.assets) {
+        if (asset.color.wire == value) return asset;
+      }
+  }
+  return null;
+}
+
+/// Les pions qu'on peut associer à un personnage : ceux du rayon
+/// « Personnages » de [sections], socle et achats compris.
+List<BoardAsset> characterTokensOf(List<BoardAssetSection> sections) => [
+      for (final section in sections)
+        if (section.title == _personnages)
+          for (final asset in section.assets)
+            if (asset.character == null) asset,
+    ];
+
+/// [sections], avec en tête du rayon « Personnages » les pions de [cast] :
+/// ceux des investigateurs et des PNJ de la session.
+///
+/// En tête plutôt qu'en fin : ce sont eux que le MJ pose au début de chaque
+/// scène. Les pions d'origine restent dessous, et se posent toujours seuls.
+List<BoardAssetSection> withCast(
+  List<BoardAssetSection> sections,
+  List<BoardAsset> cast,
+) {
+  if (cast.isEmpty) return sections;
+  return [
+    for (final section in sections)
+      section.title == _personnages
+          ? BoardAssetSection(
+              title: section.title,
+              assets: [...cast, ...section.assets],
+            )
+          : section,
+  ];
 }
 
 class BoardAssetSection {
@@ -192,13 +298,12 @@ const boardAssetSections = <BoardAssetSection>[
   ),
 ];
 
-/// Les pions qui s'achètent, par la clé que la boutique leur donne.
+/// Les pions qui s'achètent et dont le dessin est embarqué dans l'app, par la
+/// clé que la boutique leur donne.
 ///
-/// Le serveur ne décrit pas à quoi ressemble un pion — il n'envoie qu'une
-/// clé — donc son dessin vit ici, du côté qui peint, comme le reste du
-/// catalogue. Une clé absente de cette table est un article que cette
-/// version de l'app ne sait pas encore montrer : elle est ignorée plutôt que
-/// de faire tomber le tiroir.
+/// Ceux qu'on ajoute depuis le backoffice n'y figurent pas : le serveur
+/// héberge leur image, et ils arrivent par `hostedAssetsProvider`. Une clé
+/// connue ni ici ni de là est ignorée plutôt que de faire tomber le tiroir.
 const purchasableBoardAssets = <String, BoardAsset>{
   'grand_ancien': BoardAsset(
     key: 'grand_ancien',
@@ -221,9 +326,15 @@ const purchasableBoardAssets = <String, BoardAsset>{
 /// PNJ ? » — et l'écart grandirait à chaque achat. Ils arrivent en fin de
 /// rayon, après le socle, ce qui les rend repérables sans déplacer ce que le
 /// MJ a l'habitude de trouver en tête.
-List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
+///
+/// [hosted] porte les pions dont le serveur héberge l'image ; ils se rangent
+/// comme les autres.
+List<BoardAssetSection> boardAssetSectionsFor(
+  Iterable<String> ownedKeys, {
+  Map<String, BoardAsset> hosted = const {},
+}) {
   final owned = [
-    for (final key in ownedKeys) ?purchasableBoardAssets[key],
+    for (final key in ownedKeys) ?boardAssetForKey(key, hosted: hosted),
   ];
   if (owned.isEmpty) return boardAssetSections;
 
@@ -246,10 +357,14 @@ List<BoardAssetSection> boardAssetSectionsFor(Iterable<String> ownedKeys) {
 /// Rendre `null` plutôt qu'un pion par défaut est délibéré : c'est à
 /// l'affichage de décider quoi montrer d'un asset qu'on ne possède pas, et
 /// lui seul sait qu'un rond rouge vaut mieux qu'un trou.
-BoardAsset? boardAssetForKey(String? key) =>
-    key == null ? null : purchasableBoardAssets[key];
+BoardAsset? boardAssetForKey(
+  String? key, {
+  Map<String, BoardAsset> hosted = const {},
+}) =>
+    key == null ? null : purchasableBoardAssets[key] ?? hosted[key];
 
-/// Ce qui reste de [sections] une fois [query] saisi.
+/// Ce qui reste de [sections] une fois [query] saisi. Un pion lié se
+/// cherche au nom de son personnage.
 ///
 /// La recherche porte aussi sur le titre de la section : taper « zone » ou
 /// « personnage » doit rendre le rayon entier, c'est ce qu'on attend d'un

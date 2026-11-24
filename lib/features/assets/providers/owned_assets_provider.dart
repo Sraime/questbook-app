@@ -7,6 +7,7 @@ import '../../../data/remote/api_exception.dart';
 import '../../../data/remote/remote_shop_item.dart';
 import '../../../data/remote/shop_api.dart';
 import '../../game_master/models/board_catalog.dart';
+import 'hosted_assets_provider.dart';
 
 /// Les pions que le compte a achetés, par leur clé.
 ///
@@ -52,5 +53,17 @@ Set<String> _keysOf(List<RemoteShopItem> items) => {
 /// achetés le rejoignent une fraction de seconde plus tard.
 final boardCatalogueProvider = Provider<List<BoardAssetSection>>((ref) {
   final owned = ref.watch(ownedAssetKeysProvider).value ?? const <String>{};
-  return boardAssetSectionsFor(owned);
+  final hosted =
+      ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{};
+  return boardAssetSectionsFor(owned, hosted: hosted);
+});
+
+/// Les cartes que ce compte peut poser sous un plateau : celles de l'app,
+/// puis celles qu'il a achetées. Comme pour les pions, les premières sont là
+/// tout de suite et les achats les rejoignent dès que la boutique répond.
+final boardMapsCatalogueProvider = Provider<List<BoardMap>>((ref) {
+  final owned = ref.watch(ownedAssetKeysProvider).value ?? const <String>{};
+  final hosted =
+      ref.watch(hostedMapsProvider).value ?? const <String, BoardMap>{};
+  return boardMapsFor(owned, hosted: hosted);
 });

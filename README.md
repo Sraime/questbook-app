@@ -61,8 +61,8 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 
 > Le MJ n'est pas un participant : il anime la séance, il n'a donc rien à confirmer et n'apparaît pas parmi les joueurs attendus.
 - **Écran de la séance (`/tables/:id/sessions/:sessionId/mj`)** : la route est celle du mode MJ, et les joueurs la partagent — c'est le siège, lu sur la table, qui décide de ce qu'on y voit. Pour le maître du jeu, sept volets, dans un rail à gauche sur tablette et dans une barre d'onglets sur téléphone, **ouvert sur le premier** : **Détails** (les champs de la session, un bouton pour enregistrer, un autre pour l'annuler), **Plateau** (un fond de carte à choisir, un tiroir de pions nommés — repliables par rayon et cherchables — à faire glisser dessus, puis à déplacer, redimensionner ou retirer), **Personnages** (les **Investigateurs** des joueurs qui viennent, puis les **PNJ** que le MJ prépare pour cette séance — le volet garde son nom parce qu'il tient les deux), **Règles** (le même contenu que `/regles`, déplié), **Scénario** (le document téléchargé, rattaché à la session), **Indices** (ce qu'il prépare pour le partager, et à qui) et **Notes** (un carnet libre). Voir [Mode MJ](#mode-mj-tablette-et-téléphone).
-- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des pions qu'un MJ peut poser sur un plateau, rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
-- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Deux rayons, **Pions** et **Scénarios**, qui ne se montrent pas de la même façon. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
+- **Assets (`/assets`, depuis le menu du burger)** : la vitrine des cartes et des pions qu'un MJ peut poser sur un plateau — les cartes en tête, offertes ou achetées, puis les pions rangés par rayon (Personnages, Environnement, Effets, Zones) — les pions achetés en boutique s'y rangent avec les autres, d'après leur nature, et non dans une rubrique à part. Le tiroir du mode MJ montre exactement les mêmes, mais seulement une fois la session ouverte : on ne pouvait pas savoir avant de s'asseoir à la table ce qu'on aurait sous la main. Les deux écrans lisent `boardCatalogueProvider` (`features/assets/providers/owned_assets_provider.dart`) et ne redéclarent rien — un pion ajouté au socle ou acheté en boutique apparaît des deux côtés sans qu'on y pense, et des tests l'exigent. Voir [Les pions achetés](#les-pions-achetés).
+- **Boutique (`/boutique`)** : le catalogue en entier, possédé ou non — une boutique qui cacherait ce qu'on n'a pas acheté n'aurait rien à vendre. Trois rayons, **Cartes**, **Pions** et **Scénarios** ; les deux premiers en grille, le dernier en liste. Un article déjà détenu porte « Possédé » à la place de son prix — ce qu'il coûtait n'intéresse plus personne une fois qu'il est à vous. Voir [Les deux rayons de la boutique](#les-deux-rayons-de-la-boutique).
 - **Notifications (`/notifications`)** : historique des invitations, sessions et réponses. Doublé de notifications push (Firebase Cloud Messaging).
 - **Profil (`/profil`)** : le compte connecté, son pseudo et l'état de la synchronisation. Le pseudo est la seule chose qui s'y modifie — l'adresse et la photo appartiennent à Google, et le serveur a cessé de recopier le nom Google à chaque connexion pour ne pas défaire ce choix. Tout en bas, et nulle part ailleurs, la suppression du compte : voir [Supprimer son compte](#supprimer-son-compte).
 - **Livre de règle (`/regles`)** : les cinq chapitres de l'écran du gardien (Tests, Combat, Santé, Folie, Poursuites), en sommaire puis en chapitre.
@@ -543,7 +543,10 @@ lignes vers le serveur et rapatrier ce que les autres appareils ont changé.
 - Chaque écriture locale marque le personnage `needsSync`, avance son
   `updatedAt` et **incrémente son `revision`** ; une suppression laisse une
   **pierre tombale** (`deletedAt`) pour que l'effacement se propage au lieu de
-  disparaître silencieusement.
+  disparaître silencieusement. C'est aussi elle qui retire l'investigateur
+  des séances où il était inscrit : le serveur s'en charge en la recevant
+  (voir le README de `questbook-back`). On supprime depuis le bas de la fiche
+  `/perso/:id`, jamais depuis celle ouverte en séance.
 - **La fiche part aussitôt**, sans attendre la passe suivante : création,
   ressource ajustée, objet ajouté ou retiré appellent
   `SyncController.pushCharacter`, qui envoie cette fiche-là et rien d'autre.
@@ -971,11 +974,41 @@ interdit à un rayon de dériver de la nature qu'il affiche. Les achats arrivent
 en fin de rayon : repérables, sans déplacer ce que le MJ a l'habitude de
 trouver en tête.
 
-Le serveur ne décrit pas à quoi ressemble un pion : la boutique n'envoie qu'une
-`assetKey`, et le dessin qui lui correspond vit dans `purchasableBoardAssets`,
-du côté qui peint. Une clé qu'une version de l'app ne connaît pas encore est
-donc simplement ignorée — le tiroir s'ouvre sans rubrique vide ni pion sans
-visage.
+La boutique n'envoie qu'une `assetKey`, et le dessin qui lui correspond vient
+de l'un de deux endroits :
+
+- **embarqué dans l'app**, dans `purchasableBoardAssets` : le Grand Ancien, et
+  tout pion dont l'image est sous `assets/` ;
+- **hébergé par le serveur**, pour les pions ajoutés depuis le backoffice, sans
+  release : `hostedAssetsProvider`
+  (`features/assets/providers/hosted_assets_provider.dart`) lit `GET /assets`
+  et descend chaque image une fois.
+
+Une clé connue ni de l'un ni de l'autre est ignorée — le tiroir s'ouvre sans
+rubrique vide ni pion sans visage.
+
+Les pions hébergés sont **tous** chargés, possédés ou non, puisqu'un joueur
+dessine ceux que pose le MJ ; c'est la possession qui décide de ce que le
+tiroir propose, pas de ce que le plateau sait dessiner. Ils tiennent **hors
+ligne** : la liste est gardée dans `remote_cache` (`assets.hosted`), les images
+sous `hosted_assets/` dans le dossier de support de l'app, nommées
+`<clé>-<hash>`. Une image remplacée au backoffice change de hash, descend une
+fois, et l'ancienne s'efface ; une image pas encore descendue laisse le pion à
+sa forme. Ces fichiers ne dépendent pas du compte et survivent à la
+déconnexion — ce sont les mêmes pour tout le monde. La liste se relit au
+lancement, en tirant la boutique vers le bas et après un achat.
+
+**Les cartes arrivent par le même chemin.** Un asset de nature `map` n'est pas
+un pion : `hostedDownloadsProvider` descend tout, puis `hostedAssetsProvider`
+garde les pions et `hostedMapsProvider` les cartes, chacune avec les
+proportions que l'API lit dans son image (`width`, `height`). Une carte
+possédée rejoint le manoir et la grille dans `boardMapsCatalogueProvider`, que
+lisent le volet « Carte » du tiroir et la section « Cartes » de `/assets`.
+Le plateau ne retient que son identifiant (`SessionBoard.mapId`, la clé de
+l'asset), résolu à chaque dessin parmi **toutes** les cartes hébergées : le
+joueur voit celle du MJ sans l'avoir, et une carte dont l'image n'est pas
+encore descendue montre la grille. En boutique, un article dont la clé est
+celle d'une carte se range dans le rayon **Cartes**.
 
 Un pion posé garde cette clé (`BoardToken.assetKey`, absente des plateaux
 enregistrés avant la boutique, et c'est très bien : le socle se décrit
@@ -985,6 +1018,32 @@ position en silence serait pire que l'afficher au mauvais visage. Ce repli n'est
 plus théorique depuis que le plateau remonte au serveur : un joueur qui regarde
 la séance lit les pions du MJ, et n'a aucune raison de posséder les assets que
 celui-ci a achetés.
+
+#### Le pion d'un personnage
+
+Pour une séance, **le MJ** donne un pion à chaque investigateur et à chaque PNJ,
+parmi les pions de personnage qu'il possède (`characterTokensOf`). **Le joueur
+ne choisit rien** : le plateau est celui du MJ, et la fiche d'un investigateur
+ne porte aucun pion. Le choix se fait depuis la pastille de chaque carte du
+volet Personnages — investigateurs et PNJ, ceux du scénario compris — que seul
+le MJ voit. La référence est `asset:<clé>` pour un pion acheté, `socle:<couleur>`
+pour un pion du socle, qui n'a pas de clé ; `boardAssetForRef` la retraduit en
+pion. Les deux vivent sur le serveur et pour la séance seulement : celui de
+l'investigateur sur sa participation (`PUT /sessions/:id/attendances/:userId/token`,
+que le détail de la session renvoie), celui du PNJ à côté de la séance
+(`PUT /sessions/:id/npcs/:npcId/token`). Un joueur qui change d'investigateur
+perd le pion, choisi pour l'autre.
+
+Le tiroir du plateau place ces personnages **en tête du rayon Personnages**, sous
+leur nom : **fond jaune pour un investigateur, rouge pour un PNJ**. Le pion
+d'origine reste dessous, anonyme, et se pose toujours seul.
+
+Posé, le pion garde le lien (`BoardToken.character` : `investigator` avec le
+joueur, ou `npc`). Sa barre d'actions gagne un bouton qui **ouvre la fiche du
+moment** : un PNJ renommé depuis s'ouvre sous son nouveau nom, et un personnage
+sorti de la session le dit au lieu d'ouvrir une fiche vide. **Un pion lié se
+dessine même quand le lecteur ne possède pas son asset** : c'est le MJ qui l'a
+acheté, et le joueur qui regarde le plateau doit voir ce pion, pas un rond rouge.
 
 Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
 et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
@@ -1107,8 +1166,10 @@ Celui de `/scenarios` ne l'est pas non plus, et la même action refusée d'un
 côté puis offerte de l'autre ferait passer l'un des deux écrans pour cassé.
 Sans réseau, l'appel échoue et le dit.
 
-Une clé d'image qu'aucun fichier n'illustre se rend en glyphe plutôt qu'en
-colis : `scroll` donne un parchemin aux scénarios (`shop_artwork.dart`).
+Un pion hébergé se montre en boutique par son image, retrouvée par son
+`assetKey` dans `hostedAssetsProvider`. Une clé d'image qu'aucun fichier
+n'illustre se rend en glyphe plutôt qu'en colis : `scroll` donne un parchemin
+aux scénarios (`shop_artwork.dart`).
 C'est le repli, pas une illustration — le jour où les scénarios auront des
 couvertures, elles se déclarent là.
 

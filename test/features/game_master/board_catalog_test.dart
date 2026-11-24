@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:questbook/features/game_master/models/board_catalog.dart';
+import 'package:questbook/features/game_master/models/board_token.dart';
 
 void main() {
   group('boardMapById', () {
@@ -13,6 +14,40 @@ void main() {
 
     test('gives back the chosen map', () {
       expect(boardMapById('grille').label, 'Grille vierge');
+    });
+
+    test('trouve une carte hébergée, possédée ou non', () {
+      const crypte = BoardMap(
+        id: 'crypte',
+        label: 'Crypte',
+        asset: null,
+        file: '/tmp/crypte-ccc',
+        aspectRatio: 1.5,
+      );
+
+      expect(
+        boardMapById('crypte', hosted: {'crypte': crypte}).file,
+        '/tmp/crypte-ccc',
+      );
+    });
+
+    test('ne propose que les cartes hébergées possédées', () {
+      const crypte = BoardMap(
+        id: 'crypte',
+        label: 'Crypte',
+        asset: null,
+        aspectRatio: 1.5,
+      );
+
+      expect(
+        boardMapsFor(const [], hosted: {'crypte': crypte}).map((m) => m.id),
+        ['manoir', 'grille'],
+      );
+      expect(
+        boardMapsFor(const ['crypte', 'inconnue'], hosted: {'crypte': crypte})
+            .map((m) => m.id),
+        ['manoir', 'grille', 'crypte'],
+      );
     });
   });
 
@@ -122,5 +157,39 @@ void main() {
         expect(asset.name, isNotEmpty);
       }
     }
+  });
+
+  group('hosted assets', () {
+    const autel = BoardAsset(
+      key: 'autel_brise',
+      name: 'Autel brisé',
+      kind: BoardTokenKind.environment,
+      color: BoardTokenColor.green,
+      imageFile: '/tmp/autel_brise-aaa',
+    );
+    const hosted = {'autel_brise': autel};
+
+    test('are found by their key, next to the bundled ones', () {
+      expect(boardAssetForKey('autel_brise', hosted: hosted), autel);
+      expect(boardAssetForKey('grand_ancien', hosted: hosted)?.name,
+          'Le Grand Ancien');
+    });
+
+    test('join the section of their kind once owned', () {
+      final sections =
+          boardAssetSectionsFor({'autel_brise'}, hosted: hosted);
+      final decor = sections.firstWhere((s) => s.title == 'Environnement');
+
+      expect(decor.assets.last, autel);
+    });
+
+    test('stay out of the drawer until owned', () {
+      final sections = boardAssetSectionsFor(const {}, hosted: hosted);
+
+      expect(
+        sections.expand((s) => s.assets).map((a) => a.key),
+        isNot(contains('autel_brise')),
+      );
+    });
   });
 }

@@ -1,22 +1,59 @@
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../data/remote/remote_shop_item.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
+import '../assets/providers/hosted_assets_provider.dart';
+import 'providers/shop_providers.dart';
+
+/// What an article is, as its tag says it.
+///
+/// An `asset` article does not say whether it sells a token or a map; the
+/// hosted catalogue does. A map reads « Carte » rather than the generic
+/// « Asset », and stays « Asset » until that catalogue has answered.
+String shopItemTypeLabel(WidgetRef ref, ShopItemType type, String? assetKey) {
+  final maps = ref.watch(hostedMapsProvider).value ?? const {};
+  return maps.containsKey(assetKey) ? 'Carte' : type.label;
+}
 
 /// The picture of an article.
 ///
-/// The server sends a key, not a URL — nothing hosts files yet — so the
-/// mapping to a bundled image lives here, on the side that draws. A key this
-/// version does not know falls back to a neutral mark rather than a broken
-/// frame: the catalogue may grow before the app is updated, and an article
-/// one cannot picture is still an article one can read about and buy.
-class ShopArtwork extends StatelessWidget {
-  const ShopArtwork({super.key, required this.imageKey});
+/// An asset added from the backoffice is pictured by the image the server
+/// hosts, found through its [assetKey]. Everything else sends a key, not a
+/// URL, and the mapping to a bundled image lives here, on the side that
+/// draws. A key this version does not know falls back to a neutral mark
+/// rather than a broken frame: the catalogue may grow before the app is
+/// updated, and an article one cannot picture is still an article one can
+/// read about and buy.
+class ShopArtwork extends ConsumerWidget {
+  const ShopArtwork({
+    super.key,
+    required this.imageKey,
+    this.assetKey,
+    this.itemId,
+    this.imageHash,
+  });
+
+  /// L'image d'un article, quelle qu'en soit la source.
+  factory ShopArtwork.of(RemoteShopItem item) => ShopArtwork(
+        imageKey: item.imageKey,
+        assetKey: item.assetKey,
+        itemId: item.id,
+        imageHash: item.imageHash,
+      );
 
   final String imageKey;
+  final String? assetKey;
+
+  /// L'article et le hash de son image propre, quand le serveur en héberge
+  /// une — celle d'un bundle.
+  final String? itemId;
+  final String? imageHash;
 
   static const _assets = {
     'logo_mark': 'assets/brand/logo-mark.png',
@@ -26,10 +63,21 @@ class ShopArtwork extends StatelessWidget {
   /// que le colis du repli : une aventure n'est pas un article inconnu.
   static const _glyphs = {
     'scroll': LucideIcons.scrollText,
+    'bundle': LucideIcons.package,
   };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cover = switch ((itemId, imageHash)) {
+      (final String id, final String hash) =>
+        ref.watch(shopCoverProvider((id: id, hash: hash))).value,
+      _ => null,
+    };
+    final hosted = cover ??
+        (assetKey == null
+            ? null
+            : ref.watch(hostedAssetsProvider).value?[assetKey]?.imageFile ??
+                ref.watch(hostedMapsProvider).value?[assetKey]?.file);
     final asset = _assets[imageKey];
     final glyph = _glyphs[imageKey];
 
@@ -38,7 +86,9 @@ class ShopArtwork extends StatelessWidget {
     // une vignette de plus.
     return Padding(
       padding: const EdgeInsets.all(QBSpace.s2),
-      child: asset != null
+      child: hosted != null
+          ? Image.file(File(hosted), fit: BoxFit.contain)
+          : asset != null
           ? Image.asset(asset, fit: BoxFit.contain)
           : LayoutBuilder(
               builder: (context, constraints) => Center(

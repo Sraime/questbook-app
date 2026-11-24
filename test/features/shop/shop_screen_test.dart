@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,6 +34,9 @@ class _FakeShopApi implements ShopApi {
   @override
   Future<RemoteShopItemDetail> get(String id) async =>
       _items.firstWhere((item) => item.id == id);
+
+  @override
+  Future<Uint8List> image(String id) async => Uint8List(0);
 
   @override
   Future<RemoteShopItemDetail> purchase(String id) async {
@@ -109,7 +114,59 @@ RemoteShopItemDetail _ownedCopy(RemoteShopItemDetail item) =>
       owned: true,
       description: item.description,
       scenarioId: item.scenarioId,
+      contents: [
+        for (final entry in item.contents)
+          RemoteBundleEntry(
+            isScenario: entry.isScenario,
+            title: entry.title,
+            itemId: entry.itemId,
+            assetKey: entry.assetKey,
+            scenarioId: entry.scenarioId,
+            owned: true,
+          ),
+      ],
     );
+
+/// Deux scénarios et un pion, dont un scénario que le lecteur a déjà.
+RemoteShopItemDetail _bundle({bool owned = false}) {
+  return RemoteShopItemDetail(
+    id: 'bundle-1',
+    title: 'Le Phare, au complet',
+    type: ShopItemType.bundle,
+    priceCents: 0,
+    imageKey: 'bundle',
+    assetKey: null,
+    owned: owned,
+    description: 'Le scénario, sa suite et le gardien du phare.',
+    scenarioId: null,
+    contents: [
+      const RemoteBundleEntry(
+        isScenario: false,
+        title: 'Le gardien',
+        itemId: 'item-gardien',
+        assetKey: 'gardien',
+        scenarioId: null,
+        owned: false,
+      ),
+      RemoteBundleEntry(
+        isScenario: true,
+        title: 'Le Phare de Kerloc’h',
+        itemId: null,
+        assetKey: null,
+        scenarioId: 'sc-phare',
+        owned: owned,
+      ),
+      const RemoteBundleEntry(
+        isScenario: true,
+        title: 'Le Retour du gardien',
+        itemId: null,
+        assetKey: null,
+        scenarioId: 'sc-retour',
+        owned: true,
+      ),
+    ],
+  );
+}
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
@@ -359,6 +416,51 @@ void main() {
       find.widgetWithText(QBButton, 'Télécharger'),
     );
     expect(button.onPressed, isNotNull);
+  });
+
+  testWidgets('les bundles ont leur rayon, en pleine largeur', (tester) async {
+    await pumpShop(tester, items: [_item(), _scenarioItem(), _bundle()]);
+
+    expect(find.text('Bundles'), findsOneWidget);
+    expect(find.textContaining('sa suite et le gardien'), findsOneWidget);
+    // Un bundle n'est pas un pion de plus.
+    final pions = tester.getTopLeft(find.text('Pions'));
+    final bundle = tester.getTopLeft(find.text('Le Phare, au complet'));
+    expect(bundle.dy, lessThan(pions.dy));
+  });
+
+  testWidgets('un bundle dit ce qu’il contient, et ce qu’on a déjà',
+      (tester) async {
+    await pumpShop(tester, items: [_bundle()], at: '/boutique/bundle-1');
+
+    expect(find.text('Contenu'), findsOneWidget);
+    expect(find.text('Le gardien', findRichText: true), findsOneWidget);
+    expect(find.text('Le Phare de Kerloc’h', findRichText: true), findsOneWidget);
+    // Seul le scénario déjà possédé le dit, à la suite de son nom.
+    expect(
+      find.text('Le Retour du gardien (possédé)', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.textContaining('(possédé)', findRichText: true), findsOneWidget);
+    expect(find.text('Obtenir'), findsOneWidget);
+  });
+
+  testWidgets('obtenir un bundle propose d’en télécharger les scénarios',
+      (tester) async {
+    final api = await pumpShop(
+      tester,
+      items: [_bundle()],
+      at: '/boutique/bundle-1',
+    );
+
+    await tester.tap(find.text('Obtenir'));
+    await tester.pumpAndSettle();
+
+    expect(api.purchases, 1);
+    expect(
+      find.widgetWithText(QBButton, 'Télécharger les 2 scénarios'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('un pion possédé renvoie toujours vers les assets',

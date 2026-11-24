@@ -208,9 +208,11 @@ class RemoteAttendance {
     required this.respondedAt,
     required this.user,
     required this.character,
+    this.token,
   });
 
   factory RemoteAttendance.fromJson(Map<String, dynamic> json) => RemoteAttendance(
+        token: json['token'] as String?,
         userId: json['userId'] as String,
         status: AttendanceStatus.parse(json['status'] as String),
         respondedAt: DateTime.parse(json['respondedAt'] as String).toLocal(),
@@ -230,6 +232,10 @@ class RemoteAttendance {
   /// Who they are playing, once they have said. Confirming and choosing a
   /// character are two separate moments.
   final RemoteAttendanceCharacter? character;
+
+  /// Le pion que le MJ a donné à cet investigateur pour cette séance :
+  /// `asset:<clé>` ou `socle:<couleur>`. Le joueur ne le choisit pas.
+  final String? token;
 }
 
 /// Tout ce qui est à la table sans être un joueur : créature, indicateur,
@@ -244,6 +250,7 @@ class RemoteNpc {
     required this.name,
     required this.description,
     this.origin = 'gameMaster',
+    this.token,
   });
 
   factory RemoteNpc.fromJson(Map<String, dynamic> json) => RemoteNpc(
@@ -251,11 +258,15 @@ class RemoteNpc {
         name: json['name'] as String,
         description: json['description'] as String? ?? '',
         origin: json['origin'] as String? ?? 'gameMaster',
+        token: json['token'] as String?,
       );
 
   final String id;
   final String name;
   final String description;
+
+  /// Le pion que le MJ lui a associé pour cette session.
+  final String? token;
 
   /// `scenario` ou `gameMaster`. Une séance joue les deux à la fois : ce que
   /// l'aventure livre, et ce que le MJ a écrit.

@@ -407,15 +407,6 @@ class $CharactersTable extends Characters
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _tokenMeta = const VerificationMeta('token');
-  @override
-  late final GeneratedColumn<String> token = GeneratedColumn<String>(
-    'token',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -429,7 +420,6 @@ class $CharactersTable extends Characters
     deletedAt,
     needsSync,
     revision,
-    token,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -517,12 +507,6 @@ class $CharactersTable extends Characters
         revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
       );
     }
-    if (data.containsKey('token')) {
-      context.handle(
-        _tokenMeta,
-        token.isAcceptableOrUnknown(data['token']!, _tokenMeta),
-      );
-    }
     return context;
   }
 
@@ -576,10 +560,6 @@ class $CharactersTable extends Characters
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
       )!,
-      token: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}token'],
-      ),
     );
   }
 
@@ -622,10 +602,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
   /// land in the same one. Clearing the flag on that basis would strand the
   /// second tap on the device until some later edit happened to push it.
   final int revision;
-
-  /// Le pion qui le représente sur un plateau : `asset:<clé>` ou
-  /// `socle:<couleur>`. Voir `BoardTokenRef`.
-  final String? token;
   const CharacterRow({
     required this.id,
     required this.systemId,
@@ -638,7 +614,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     this.deletedAt,
     required this.needsSync,
     required this.revision,
-    this.token,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -660,9 +635,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     }
     map['needs_sync'] = Variable<bool>(needsSync);
     map['revision'] = Variable<int>(revision);
-    if (!nullToAbsent || token != null) {
-      map['token'] = Variable<String>(token);
-    }
     return map;
   }
 
@@ -685,9 +657,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           : Value(deletedAt),
       needsSync: Value(needsSync),
       revision: Value(revision),
-      token: token == null && nullToAbsent
-          ? const Value.absent()
-          : Value(token),
     );
   }
 
@@ -708,7 +677,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       needsSync: serializer.fromJson<bool>(json['needsSync']),
       revision: serializer.fromJson<int>(json['revision']),
-      token: serializer.fromJson<String?>(json['token']),
     );
   }
   @override
@@ -726,7 +694,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'needsSync': serializer.toJson<bool>(needsSync),
       'revision': serializer.toJson<int>(revision),
-      'token': serializer.toJson<String?>(token),
     };
   }
 
@@ -742,7 +709,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     Value<DateTime?> deletedAt = const Value.absent(),
     bool? needsSync,
     int? revision,
-    Value<String?> token = const Value.absent(),
   }) => CharacterRow(
     id: id ?? this.id,
     systemId: systemId ?? this.systemId,
@@ -755,7 +721,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     needsSync: needsSync ?? this.needsSync,
     revision: revision ?? this.revision,
-    token: token.present ? token.value : this.token,
   );
   CharacterRow copyWithCompanion(CharactersCompanion data) {
     return CharacterRow(
@@ -774,7 +739,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       needsSync: data.needsSync.present ? data.needsSync.value : this.needsSync,
       revision: data.revision.present ? data.revision.value : this.revision,
-      token: data.token.present ? data.token.value : this.token,
     );
   }
 
@@ -791,8 +755,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('needsSync: $needsSync, ')
-          ..write('revision: $revision, ')
-          ..write('token: $token')
+          ..write('revision: $revision')
           ..write(')'))
         .toString();
   }
@@ -810,7 +773,6 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
     deletedAt,
     needsSync,
     revision,
-    token,
   );
   @override
   bool operator ==(Object other) =>
@@ -826,8 +788,7 @@ class CharacterRow extends DataClass implements Insertable<CharacterRow> {
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
           other.needsSync == this.needsSync &&
-          other.revision == this.revision &&
-          other.token == this.token);
+          other.revision == this.revision);
 }
 
 class CharactersCompanion extends UpdateCompanion<CharacterRow> {
@@ -842,7 +803,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
   final Value<DateTime?> deletedAt;
   final Value<bool> needsSync;
   final Value<int> revision;
-  final Value<String?> token;
   final Value<int> rowid;
   const CharactersCompanion({
     this.id = const Value.absent(),
@@ -856,7 +816,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.deletedAt = const Value.absent(),
     this.needsSync = const Value.absent(),
     this.revision = const Value.absent(),
-    this.token = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CharactersCompanion.insert({
@@ -871,7 +830,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     this.deletedAt = const Value.absent(),
     this.needsSync = const Value.absent(),
     this.revision = const Value.absent(),
-    this.token = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        systemId = Value(systemId),
@@ -889,7 +847,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Expression<DateTime>? deletedAt,
     Expression<bool>? needsSync,
     Expression<int>? revision,
-    Expression<String>? token,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -904,7 +861,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (needsSync != null) 'needs_sync': needsSync,
       if (revision != null) 'revision': revision,
-      if (token != null) 'token': token,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -921,7 +877,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     Value<DateTime?>? deletedAt,
     Value<bool>? needsSync,
     Value<int>? revision,
-    Value<String?>? token,
     Value<int>? rowid,
   }) {
     return CharactersCompanion(
@@ -936,7 +891,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
       deletedAt: deletedAt ?? this.deletedAt,
       needsSync: needsSync ?? this.needsSync,
       revision: revision ?? this.revision,
-      token: token ?? this.token,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -977,9 +931,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
-    if (token.present) {
-      map['token'] = Variable<String>(token.value);
-    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1000,7 +951,6 @@ class CharactersCompanion extends UpdateCompanion<CharacterRow> {
           ..write('deletedAt: $deletedAt, ')
           ..write('needsSync: $needsSync, ')
           ..write('revision: $revision, ')
-          ..write('token: $token, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3923,7 +3873,6 @@ typedef $$CharactersTableCreateCompanionBuilder =
       Value<DateTime?> deletedAt,
       Value<bool> needsSync,
       Value<int> revision,
-      Value<String?> token,
       Value<int> rowid,
     });
 typedef $$CharactersTableUpdateCompanionBuilder =
@@ -3939,7 +3888,6 @@ typedef $$CharactersTableUpdateCompanionBuilder =
       Value<DateTime?> deletedAt,
       Value<bool> needsSync,
       Value<int> revision,
-      Value<String?> token,
       Value<int> rowid,
     });
 
@@ -4081,11 +4029,6 @@ class $$CharactersTableFilterComposer
 
   ColumnFilters<int> get revision => $composableBuilder(
     column: $table.revision,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get token => $composableBuilder(
-    column: $table.token,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4247,11 +4190,6 @@ class $$CharactersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get token => $composableBuilder(
-    column: $table.token,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   $$GameSystemsTableOrderingComposer get systemId {
     final $$GameSystemsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4318,9 +4256,6 @@ class $$CharactersTableAnnotationComposer
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
-
-  GeneratedColumn<String> get token =>
-      $composableBuilder(column: $table.token, builder: (column) => column);
 
   $$GameSystemsTableAnnotationComposer get systemId {
     final $$GameSystemsTableAnnotationComposer composer = $composerBuilder(
@@ -4466,7 +4401,6 @@ class $$CharactersTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<bool> needsSync = const Value.absent(),
                 Value<int> revision = const Value.absent(),
-                Value<String?> token = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion(
                 id: id,
@@ -4480,7 +4414,6 @@ class $$CharactersTableTableManager
                 deletedAt: deletedAt,
                 needsSync: needsSync,
                 revision: revision,
-                token: token,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4496,7 +4429,6 @@ class $$CharactersTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<bool> needsSync = const Value.absent(),
                 Value<int> revision = const Value.absent(),
-                Value<String?> token = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CharactersCompanion.insert(
                 id: id,
@@ -4510,7 +4442,6 @@ class $$CharactersTableTableManager
                 deletedAt: deletedAt,
                 needsSync: needsSync,
                 revision: revision,
-                token: token,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

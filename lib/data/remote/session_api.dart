@@ -205,6 +205,22 @@ class SessionApi {
     );
   }
 
+  /// Le pion de l'investigateur de [userId] pour cette séance, ou `null`
+  /// pour le lui retirer. Réservé au MJ.
+  Future<RemoteGameSession> setAttendeeToken(
+    String sessionId,
+    String userId,
+    String? token,
+  ) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$sessionId/attendances/$userId/token',
+        data: {'token': token},
+      ),
+      parse: _parseSession,
+    );
+  }
+
   Future<void> deleteNpc(String sessionId, String npcId) {
     return _client.send(
       (dio) => dio.delete<dynamic>('/sessions/$sessionId/npcs/$npcId'),

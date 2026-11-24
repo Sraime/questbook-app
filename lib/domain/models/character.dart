@@ -15,9 +15,6 @@ abstract class Character with _$Character {
     String? occupation,
     String? description,
     @Default(1) int level,
-    /// Le pion qui le représente sur un plateau, `asset:<clé>` ou
-    /// `socle:<couleur>` ; `null` tant que son joueur n'en a pas choisi.
-    String? token,
     required DateTime createdAt,
     @Default([]) List<CharacterResource> resources,
     @Default([]) List<CharacterStat> stats,

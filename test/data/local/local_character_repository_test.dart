@@ -101,20 +101,6 @@ void main() {
     expect((await row(id)).needsSync, isTrue);
   });
 
-  test('choosing a token keeps it and marks the character dirty again',
-      () async {
-    final id = await createCharacter();
-    await markClean(id);
-
-    await repository.updateToken(id, 'socle:yellow');
-
-    expect((await row(id)).needsSync, isTrue);
-    expect((await repository.watchById(id).first)!.token, 'socle:yellow');
-
-    await repository.updateToken(id, null);
-    expect((await repository.watchById(id).first)!.token, isNull);
-  });
-
   test('adding an inventory item marks the character dirty again', () async {
     final id = await createCharacter();
     await markClean(id);

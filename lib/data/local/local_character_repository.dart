@@ -163,16 +163,6 @@ class LocalCharacterRepository implements CharacterRepository {
   }
 
   @override
-  Future<void> updateToken(String characterId, String? token) async {
-    await _db.transaction(() async {
-      await (_db.update(_db.characters)
-            ..where((c) => c.id.equals(characterId)))
-          .write(CharactersCompanion(token: Value(token)));
-      await _touch(characterId);
-    });
-  }
-
-  @override
   Future<void> delete(String characterId) async {
     final now = DateTime.now();
     await (_db.update(_db.characters)..where((c) => c.id.equals(characterId)))
@@ -232,7 +222,6 @@ class LocalCharacterRepository implements CharacterRepository {
       occupation: row.occupation,
       description: row.description,
       level: row.level,
-      token: row.token,
       createdAt: row.createdAt,
       stats: statRows.map(_statFromRow).toList(),
       resources: resourceRows.map(_resourceFromRow).toList(),

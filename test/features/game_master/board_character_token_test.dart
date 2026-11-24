@@ -12,7 +12,9 @@ import 'package:questbook/features/game_master/widgets/board_token_view.dart';
 
 import 'board_test_session.dart';
 
-/// Ernest a choisi le Grand Ancien, que le MJ n'a pas acheté.
+/// Le MJ a donné le Grand Ancien à Ernest pour la séance. Le catalogue du
+/// test ne le compte pas parmi ses pions : la vignette doit se dessiner quand
+/// même, comme chez un joueur qui regarde le plateau.
 final _ernest = RemoteAttendance(
   userId: 'joueur-1',
   status: AttendanceStatus.yes,
@@ -26,8 +28,8 @@ final _ernest = RemoteAttendance(
     id: 'perso-1',
     name: 'Ernest Blackwood',
     occupation: 'Antiquaire',
-    token: 'asset:grand_ancien',
   ),
+  token: 'asset:grand_ancien',
 );
 
 const _gardien = RemoteNpc(

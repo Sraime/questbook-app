@@ -51,10 +51,6 @@ class Characters extends Table {
   /// second tap on the device until some later edit happened to push it.
   IntColumn get revision => integer().withDefault(const Constant(0))();
 
-  /// Le pion qui le représente sur un plateau : `asset:<clé>` ou
-  /// `socle:<couleur>`. Voir `BoardTokenRef`.
-  TextColumn get token => text().nullable()();
-
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -198,7 +194,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -242,9 +238,6 @@ class AppDatabase extends _$AppDatabase {
             // Toutes les fiches repartent de zéro : le compteur ne vaut que
             // comparé à lui-même, et rien n'est en vol pendant une migration.
             await m.addColumn(characters, characters.revision);
-          }
-          if (from < 9) {
-            await m.addColumn(characters, characters.token);
           }
         },
       );

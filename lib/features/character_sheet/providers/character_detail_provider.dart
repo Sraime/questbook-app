@@ -66,13 +66,6 @@ class CharacterActions {
     await _push(characterId);
   }
 
-  /// [token] vaut `asset:<clé>` ou `socle:<couleur>`, `null` pour n'en
-  /// garder aucun.
-  Future<void> setToken(String characterId, String? token) async {
-    await _repo.updateToken(characterId, token);
-    await _push(characterId);
-  }
-
   /// The tombstone travels like any other edit. It is also what makes the
   /// server withdraw the character from the sessions it was registered for.
   Future<void> delete(String characterId) async {

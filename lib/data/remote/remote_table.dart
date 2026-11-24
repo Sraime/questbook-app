@@ -187,7 +187,6 @@ class RemoteAttendanceCharacter {
     required this.id,
     required this.name,
     required this.occupation,
-    this.token,
   });
 
   factory RemoteAttendanceCharacter.fromJson(Map<String, dynamic> json) =>
@@ -195,16 +194,11 @@ class RemoteAttendanceCharacter {
         id: json['id'] as String,
         name: json['name'] as String,
         occupation: json['occupation'] as String?,
-        token: json['token'] as String?,
       );
 
   final String id;
   final String name;
   final String? occupation;
-
-  /// Le pion que son joueur lui a associé : le tiroir du MJ le propose sous
-  /// le nom de l'investigateur.
-  final String? token;
 }
 
 class RemoteAttendance {
@@ -214,9 +208,11 @@ class RemoteAttendance {
     required this.respondedAt,
     required this.user,
     required this.character,
+    this.token,
   });
 
   factory RemoteAttendance.fromJson(Map<String, dynamic> json) => RemoteAttendance(
+        token: json['token'] as String?,
         userId: json['userId'] as String,
         status: AttendanceStatus.parse(json['status'] as String),
         respondedAt: DateTime.parse(json['respondedAt'] as String).toLocal(),
@@ -236,6 +232,10 @@ class RemoteAttendance {
   /// Who they are playing, once they have said. Confirming and choosing a
   /// character are two separate moments.
   final RemoteAttendanceCharacter? character;
+
+  /// Le pion que le MJ a donné à cet investigateur pour cette séance :
+  /// `asset:<clé>` ou `socle:<couleur>`. Le joueur ne le choisit pas.
+  final String? token;
 }
 
 /// Tout ce qui est à la table sans être un joueur : créature, indicateur,

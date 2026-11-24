@@ -42,10 +42,6 @@ abstract interface class CharacterRepository {
 
   Future<void> removeInventoryItem(String itemId);
 
-  /// Le pion qui représente l'investigateur sur un plateau, ou `null` pour
-  /// n'en avoir aucun.
-  Future<void> updateToken(String characterId, String? token);
-
   /// Soft delete: the row survives locally as a tombstone until the API has
   /// been told about it, so the deletion reaches the user's other devices.
   Future<void> delete(String characterId);

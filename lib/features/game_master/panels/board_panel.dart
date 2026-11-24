@@ -149,7 +149,7 @@ class _BoardPanelState extends ConsumerState<BoardPanel> {
     for (final attendance in widget.session.accepted) {
       final character = attendance.character;
       if (character == null) continue;
-      final asset = boardAssetForRef(character.token, hosted: hosted);
+      final asset = boardAssetForRef(attendance.token, hosted: hosted);
       if (asset == null) continue;
       cast.add(asset.representing(
         character.name,

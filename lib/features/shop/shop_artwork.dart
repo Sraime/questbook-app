@@ -9,6 +9,7 @@ import '../../data/remote/remote_shop_item.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../assets/providers/hosted_assets_provider.dart';
+import 'providers/shop_providers.dart';
 
 /// What an article is, as its tag says it.
 ///
@@ -30,10 +31,29 @@ String shopItemTypeLabel(WidgetRef ref, ShopItemType type, String? assetKey) {
 /// updated, and an article one cannot picture is still an article one can
 /// read about and buy.
 class ShopArtwork extends ConsumerWidget {
-  const ShopArtwork({super.key, required this.imageKey, this.assetKey});
+  const ShopArtwork({
+    super.key,
+    required this.imageKey,
+    this.assetKey,
+    this.itemId,
+    this.imageHash,
+  });
+
+  /// L'image d'un article, quelle qu'en soit la source.
+  factory ShopArtwork.of(RemoteShopItem item) => ShopArtwork(
+        imageKey: item.imageKey,
+        assetKey: item.assetKey,
+        itemId: item.id,
+        imageHash: item.imageHash,
+      );
 
   final String imageKey;
   final String? assetKey;
+
+  /// L'article et le hash de son image propre, quand le serveur en héberge
+  /// une — celle d'un bundle.
+  final String? itemId;
+  final String? imageHash;
 
   static const _assets = {
     'logo_mark': 'assets/brand/logo-mark.png',
@@ -43,14 +63,21 @@ class ShopArtwork extends ConsumerWidget {
   /// que le colis du repli : une aventure n'est pas un article inconnu.
   static const _glyphs = {
     'scroll': LucideIcons.scrollText,
+    'bundle': LucideIcons.package,
   };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hosted = assetKey == null
-        ? null
-        : ref.watch(hostedAssetsProvider).value?[assetKey]?.imageFile ??
-            ref.watch(hostedMapsProvider).value?[assetKey]?.file;
+    final cover = switch ((itemId, imageHash)) {
+      (final String id, final String hash) =>
+        ref.watch(shopCoverProvider((id: id, hash: hash))).value,
+      _ => null,
+    };
+    final hosted = cover ??
+        (assetKey == null
+            ? null
+            : ref.watch(hostedAssetsProvider).value?[assetKey]?.imageFile ??
+                ref.watch(hostedMapsProvider).value?[assetKey]?.file);
     final asset = _assets[imageKey];
     final glyph = _glyphs[imageKey];
 

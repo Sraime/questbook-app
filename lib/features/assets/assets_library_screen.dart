@@ -11,6 +11,7 @@ import '../../design_system/tokens/typography.dart';
 // plateau ; cet écran n'en est qu'une vitrine et ne le redéclare pas, sous
 // peine de lister un jour des pions qui n'existent plus.
 import '../game_master/models/board_catalog.dart';
+import '../game_master/widgets/board_surface.dart';
 import '../game_master/widgets/board_token_view.dart';
 import 'providers/owned_assets_provider.dart';
 
@@ -26,6 +27,7 @@ class AssetsLibraryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sections = ref.watch(boardCatalogueProvider);
+    final maps = ref.watch(boardMapsCatalogueProvider);
 
     return QBPageBackground(
       child: SafeArea(
@@ -43,13 +45,15 @@ class AssetsLibraryScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Les pions que tu peux poser sur un plateau quand tu animes une '
-              'session.',
+              'Les cartes et les pions que tu peux poser sur un plateau quand '
+              'tu animes une session.',
               style: QBType.body().copyWith(
                 fontSize: QBType.sm,
                 color: QBColors.textMuted,
               ),
             ),
+            const SizedBox(height: QBSpace.s5),
+            _MapSection(maps: maps),
             const SizedBox(height: QBSpace.s5),
             for (final section in sections) ...[
               _Section(section: section),
@@ -71,6 +75,94 @@ class AssetsLibraryScreen extends ConsumerWidget {
   }
 }
 
+/// Les fonds de plateau, en tête : c'est le premier choix d'un MJ, avant
+/// d'y poser le moindre pion.
+class _MapSection extends StatelessWidget {
+  const _MapSection({required this.maps});
+
+  final List<BoardMap> maps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('Cartes'),
+        const SizedBox(height: QBSpace.s3),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Deux par ligne sur un téléphone : une carte se lit en
+            // rectangle, et à quatre on n'en verrait plus que la couleur.
+            const gap = QBSpace.s2;
+            final columns = math.max(2, (constraints.maxWidth / 220).floor());
+            final side = (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final map in maps)
+                  SizedBox(width: side, child: _MapTile(map: map)),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MapTile extends StatelessWidget {
+  const _MapTile({required this.map});
+
+  final BoardMap map;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Carte ${map.label}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: QBColors.paper50,
+          border: Border.all(color: QBColors.borderDefault),
+          borderRadius: BorderRadius.circular(QBRadius.md),
+        ),
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(QBRadius.xs),
+              child: BoardMapPreview(map: map),
+            ),
+            const SizedBox(height: QBSpace.s2),
+            _TileLabel(map.label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: QBType.game().copyWith(
+        fontWeight: QBType.weightSemibold,
+        fontSize: 13,
+        color: QBColors.leather700,
+      ),
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({required this.section});
 
@@ -81,14 +173,7 @@ class _Section extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          section.title,
-          style: QBType.game().copyWith(
-            fontWeight: QBType.weightSemibold,
-            fontSize: 13,
-            color: QBColors.leather700,
-          ),
-        ),
+        _SectionTitle(section.title),
         const SizedBox(height: QBSpace.s3),
         LayoutBuilder(
           builder: (context, constraints) {

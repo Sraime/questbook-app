@@ -5,9 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../data/remote/remote_shop_item.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../assets/providers/hosted_assets_provider.dart';
+
+/// What an article is, as its tag says it.
+///
+/// An `asset` article does not say whether it sells a token or a map; the
+/// hosted catalogue does. A map reads « Carte » rather than the generic
+/// « Asset », and stays « Asset » until that catalogue has answered.
+String shopItemTypeLabel(WidgetRef ref, ShopItemType type, String? assetKey) {
+  final maps = ref.watch(hostedMapsProvider).value ?? const {};
+  return maps.containsKey(assetKey) ? 'Carte' : type.label;
+}
 
 /// The picture of an article.
 ///
@@ -38,7 +49,8 @@ class ShopArtwork extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hosted = assetKey == null
         ? null
-        : ref.watch(hostedAssetsProvider).value?[assetKey]?.imageFile;
+        : ref.watch(hostedAssetsProvider).value?[assetKey]?.imageFile ??
+            ref.watch(hostedMapsProvider).value?[assetKey]?.file;
     final asset = _assets[imageKey];
     final glyph = _glyphs[imageKey];
 

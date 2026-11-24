@@ -4,7 +4,8 @@ import 'package:dio/dio.dart';
 
 import 'api_client.dart';
 
-/// Un pion dont le serveur héberge l'image, ajouté depuis le backoffice.
+/// Un pion ou une carte dont le serveur héberge l'image, ajouté depuis le
+/// backoffice.
 ///
 /// `imageHash` est la version de l'image : la copie gardée sur l'appareil en
 /// porte le nom, et une image qui n'a pas changé ne se retélécharge pas.
@@ -14,6 +15,8 @@ class RemoteAsset {
     required this.name,
     required this.kind,
     required this.imageHash,
+    this.width,
+    this.height,
   });
 
   factory RemoteAsset.fromJson(Map<String, dynamic> json) => RemoteAsset(
@@ -21,15 +24,33 @@ class RemoteAsset {
         name: json['name'] as String,
         kind: json['kind'] as String,
         imageHash: json['imageHash'] as String,
+        width: (json['width'] as num?)?.toInt(),
+        height: (json['height'] as num?)?.toInt(),
       );
+
+  /// La nature d'une carte : un fond de plateau, pas un pion.
+  static const mapKind = 'map';
 
   final String key;
   final String name;
   final String kind;
   final String imageHash;
 
-  Map<String, dynamic> toJson() =>
-      {'key': key, 'name': name, 'kind': kind, 'imageHash': imageHash};
+  /// En pixels. Ceux d'une carte font les proportions du plateau ; un pion
+  /// hébergé avant les cartes n'en a pas.
+  final int? width;
+  final int? height;
+
+  bool get isMap => kind == mapKind;
+
+  Map<String, dynamic> toJson() => {
+        'key': key,
+        'name': name,
+        'kind': kind,
+        'imageHash': imageHash,
+        'width': width,
+        'height': height,
+      };
 }
 
 class AssetApi {

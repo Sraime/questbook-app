@@ -52,6 +52,14 @@ class _FakeAssetApi extends AssetApi {
         kind: 'character',
         imageHash: hash,
       ),
+      const RemoteAsset(
+        key: 'crypte',
+        name: 'Crypte de Kingsport',
+        kind: 'map',
+        imageHash: 'ccc',
+        width: 300,
+        height: 200,
+      ),
     ];
   }
 
@@ -76,6 +84,15 @@ class _FakeShopApi extends ShopApi {
             'priceCents': 0,
             'imageKey': 'asset',
             'assetKey': 'shoggoth',
+            'owned': true,
+          },
+          {
+            'id': 'item-2',
+            'title': 'Crypte de Kingsport',
+            'type': 'asset',
+            'priceCents': 0,
+            'imageKey': 'asset',
+            'assetKey': 'crypte',
             'owned': true,
           },
         ],
@@ -127,31 +144,32 @@ void main() {
 
   test('une image déjà sur l’appareil ne se retélécharge pas', () async {
     await container.read(hostedAssetsProvider.future);
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     await container.read(hostedAssetsProvider.future);
 
-    expect(assets.downloads, ['shoggoth']);
+    expect(assets.downloads, unorderedEquals(['shoggoth', 'crypte']));
   });
 
   test('une image remplacée descend, et l’ancienne s’efface', () async {
     await container.read(hostedAssetsProvider.future);
 
     assets.hash = 'bbb';
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     final hosted = await container.read(hostedAssetsProvider.future);
 
-    expect(assets.downloads, ['shoggoth', 'shoggoth']);
+    expect(assets.downloads.where((key) => key == 'shoggoth'), hasLength(2));
     expect(hosted['shoggoth']!.imageFile, endsWith('shoggoth-bbb'));
-    expect(root.listSync().map((entry) => entry.uri.pathSegments.last), [
-      'shoggoth-bbb',
-    ]);
+    expect(
+      root.listSync().map((entry) => entry.uri.pathSegments.last),
+      unorderedEquals(['shoggoth-bbb', 'crypte-ccc']),
+    );
   });
 
   test('hors réseau, le pion reste dessiné', () async {
     await container.read(hostedAssetsProvider.future);
 
     assets.failure = _networkDown;
-    container.invalidate(hostedAssetsProvider);
+    container.invalidate(hostedDownloadsProvider);
     final hosted = await container.read(hostedAssetsProvider.future);
 
     // Une partie se joue parfois sans couverture : le plateau garde ses
@@ -166,5 +184,33 @@ void main() {
     final personnages = container.read(boardCatalogueProvider).first;
     expect(personnages.assets.last.name, 'Profond Shoggoth');
     expect(personnages.assets.last.imageFile, isNotNull);
+  });
+
+  test('une carte n’est pas un pion : elle ne va dans aucun rayon', () async {
+    final tokens = await container.read(hostedAssetsProvider.future);
+    await container.read(ownedAssetKeysProvider.future);
+
+    expect(tokens.keys, ['shoggoth']);
+    expect(
+      container
+          .read(boardCatalogueProvider)
+          .expand((section) => section.assets)
+          .map((asset) => asset.key),
+      isNot(contains('crypte')),
+    );
+  });
+
+  test('une carte possédée rejoint celles de l’app, à ses proportions',
+      () async {
+    await container.read(hostedMapsProvider.future);
+    await container.read(ownedAssetKeysProvider.future);
+
+    final maps = container.read(boardMapsCatalogueProvider);
+    expect(maps.map((map) => map.id), ['manoir', 'grille', 'crypte']);
+
+    final crypte = maps.last;
+    expect(crypte.label, 'Crypte de Kingsport');
+    expect(crypte.aspectRatio, 300 / 200);
+    expect(await File(crypte.file!).readAsBytes(), _png);
   });
 }

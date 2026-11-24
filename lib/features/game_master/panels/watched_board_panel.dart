@@ -58,7 +58,12 @@ class WatchedBoardPanel extends ConsumerWidget {
 
     final drawn = _Board(
       tokens: BoardToken.decode(board.tokens),
-      map: boardMapById(board.mapId),
+      // Toutes les cartes hébergées : le joueur voit celle du MJ sans l'avoir
+      // achetée, comme ses pions.
+      map: boardMapById(
+        board.mapId,
+        hosted: ref.watch(hostedMapsProvider).value ?? const {},
+      ),
       hosted:
           ref.watch(hostedAssetsProvider).value ?? const <String, BoardAsset>{},
       compact: compact,

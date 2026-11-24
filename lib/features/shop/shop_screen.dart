@@ -10,6 +10,7 @@ import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../assets/providers/hosted_assets_provider.dart';
 import '../tables/providers/table_providers.dart';
 import 'providers/shop_providers.dart';
 import 'shop_artwork.dart';
@@ -37,7 +38,7 @@ class ShopScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Pions et scénarios à ajouter à ta collection.',
+                'Cartes, pions et scénarios à ajouter à ta collection.',
                 style: QBType.body().copyWith(
                   fontSize: QBType.sm,
                   color: QBColors.textMuted,
@@ -82,13 +83,13 @@ class ShopScreen extends ConsumerWidget {
 /// vignette de cent points n'en dit rien. Les deux ne se montrent donc pas
 /// de la même façon, et les mêler les aurait obligés à un compromis qui
 /// n'aurait servi ni l'un ni l'autre.
-class _Catalogue extends StatelessWidget {
+class _Catalogue extends ConsumerWidget {
   const _Catalogue({required this.items});
 
   final List<RemoteShopItem> items;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
       return Text(
         'Rien en rayon pour le moment.',
@@ -102,20 +103,36 @@ class _Catalogue extends StatelessWidget {
     final scenarios = items
         .where((item) => item.type == ShopItemType.scenario)
         .toList();
+    // L'article ne dit pas s'il vend une carte ou un pion ; la liste des
+    // assets hébergés, si. Tant qu'elle n'est pas là, une carte attend
+    // parmi les pions plutôt que de faire patienter tout le rayon.
+    final mapKeys =
+        ref.watch(hostedMapsProvider).value?.keys.toSet() ?? const <String>{};
     final rest = items
         .where((item) => item.type != ShopItemType.scenario)
         .toList();
+    final maps =
+        rest.where((item) => mapKeys.contains(item.assetKey)).toList();
+    final tokens =
+        rest.where((item) => !mapKeys.contains(item.assetKey)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (rest.isNotEmpty) ...[
+        if (maps.isNotEmpty) ...[
+          const _SectionTitle('Cartes'),
+          const SizedBox(height: QBSpace.s3),
+          _Tiles(items: maps),
+          const SizedBox(height: QBSpace.s6),
+        ],
+        if (tokens.isNotEmpty) ...[
           // « Pions », et non « le reste » : c'est tout ce que le rayon
-          // contient à côté des scénarios, et les packs ne s'achètent pas
-          // encore. Le jour où ils arrivent, ce titre est à revoir.
+          // contient à côté des cartes et des scénarios, et les packs ne
+          // s'achètent pas encore. Le jour où ils arrivent, ce titre est à
+          // revoir.
           const _SectionTitle('Pions'),
           const SizedBox(height: QBSpace.s3),
-          _Tiles(items: rest),
+          _Tiles(items: tokens),
         ],
         if (scenarios.isNotEmpty) ...[
           if (rest.isNotEmpty) const SizedBox(height: QBSpace.s6),
@@ -272,13 +289,13 @@ class _ScenarioRow extends StatelessWidget {
 /// Même chrome que les pions du tiroir du mode MJ : on y prend et on y repose
 /// les mêmes objets, les montrer autrement ici laisserait croire à deux
 /// catalogues sans rapport.
-class _ItemTile extends StatelessWidget {
+class _ItemTile extends ConsumerWidget {
   const _ItemTile({required this.item});
 
   final RemoteShopItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () => context.go('/boutique/${item.id}'),
       behavior: HitTestBehavior.opaque,
@@ -305,7 +322,7 @@ class _ItemTile extends StatelessWidget {
               ),
               const SizedBox(height: QBSpace.s2),
               Text(
-                item.type.label,
+                shopItemTypeLabel(ref, item.type, item.assetKey),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: QBType.mono().copyWith(

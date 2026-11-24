@@ -187,6 +187,7 @@ class RemoteAttendanceCharacter {
     required this.id,
     required this.name,
     required this.occupation,
+    this.token,
   });
 
   factory RemoteAttendanceCharacter.fromJson(Map<String, dynamic> json) =>
@@ -194,11 +195,16 @@ class RemoteAttendanceCharacter {
         id: json['id'] as String,
         name: json['name'] as String,
         occupation: json['occupation'] as String?,
+        token: json['token'] as String?,
       );
 
   final String id;
   final String name;
   final String? occupation;
+
+  /// Le pion que son joueur lui a associé : le tiroir du MJ le propose sous
+  /// le nom de l'investigateur.
+  final String? token;
 }
 
 class RemoteAttendance {
@@ -244,6 +250,7 @@ class RemoteNpc {
     required this.name,
     required this.description,
     this.origin = 'gameMaster',
+    this.token,
   });
 
   factory RemoteNpc.fromJson(Map<String, dynamic> json) => RemoteNpc(
@@ -251,11 +258,15 @@ class RemoteNpc {
         name: json['name'] as String,
         description: json['description'] as String? ?? '',
         origin: json['origin'] as String? ?? 'gameMaster',
+        token: json['token'] as String?,
       );
 
   final String id;
   final String name;
   final String description;
+
+  /// Le pion que le MJ lui a associé pour cette session.
+  final String? token;
 
   /// `scenario` ou `gameMaster`. Une séance joue les deux à la fois : ce que
   /// l'aventure livre, et ce que le MJ a écrit.

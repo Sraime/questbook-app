@@ -192,6 +192,19 @@ class SessionApi {
     );
   }
 
+  /// Associe un pion à un PNJ pour cette session, ou le lui retire avec
+  /// `null`. Vaut aussi pour un PNJ du scénario, qui refuse toute autre
+  /// modification.
+  Future<RemoteNpc> setNpcToken(String sessionId, String npcId, String? token) {
+    return _client.send(
+      (dio) => dio.put<dynamic>(
+        '/sessions/$sessionId/npcs/$npcId/token',
+        data: {'token': token},
+      ),
+      parse: _parseNpc,
+    );
+  }
+
   Future<void> deleteNpc(String sessionId, String npcId) {
     return _client.send(
       (dio) => dio.delete<dynamic>('/sessions/$sessionId/npcs/$npcId'),

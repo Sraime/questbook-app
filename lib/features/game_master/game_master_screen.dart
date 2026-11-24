@@ -278,6 +278,7 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
         // serveur. Le même widget les dessine.
         GameMasterPanel.board => seat.isGameMaster
             ? BoardPanel(
+                session: session,
                 initialTokens: _tokens,
                 initialMapId: _mapId,
                 compact: compact,

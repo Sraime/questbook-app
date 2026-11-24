@@ -18,6 +18,7 @@ import '../../tables/providers/table_providers.dart';
 import '../../tables/widgets/attendee_character_sheet.dart';
 import '../models/session_seat.dart';
 import '../providers/game_master_providers.dart';
+import '../widgets/character_token_picker.dart';
 import '../widgets/npc_dialog.dart';
 import '../../../design_system/components/qb_reader_dialog.dart';
 
@@ -234,6 +235,15 @@ class _NpcCard extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Ouvert aussi aux PNJ du scénario : qui se tient sur le
+              // plateau est l'affaire du MJ, quel que soit l'auteur.
+              CharacterTokenSlot(
+                token: npc.token,
+                characterName: npc.name,
+                size: 36,
+                onTap: () => _pickToken(context, ref),
+              ),
+              const SizedBox(width: QBSpace.s3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,6 +295,23 @@ class _NpcCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _pickToken(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final api = ref.read(sessionApiProvider);
+    final choice = await showCharacterTokenPicker(
+      context,
+      characterName: npc.name,
+      current: npc.token,
+    );
+    if (choice == null || choice.token == npc.token) return;
+    try {
+      await api.setNpcToken(sessionId, npc.id, choice.token);
+      ref.invalidate(sessionNpcsProvider(sessionId));
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Future<void> _confirmRemoval(BuildContext context, WidgetRef ref) async {

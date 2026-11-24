@@ -45,9 +45,15 @@ void main() {
     );
   }
 
+  /// Every version up to 8 predates the character's token.
+  void dropToken(raw.Database db) {
+    db.execute('ALTER TABLE characters DROP COLUMN token');
+  }
+
   /// Every version up to 7 predates the local revision counter, so each
-  /// fixture below has to take it back off.
+  /// fixture below has to take it back off, and the token with it.
   void dropRevision(raw.Database db) {
+    dropToken(db);
     db.execute('ALTER TABLE characters DROP COLUMN revision');
   }
 
@@ -155,7 +161,7 @@ void main() {
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.data.values.first, 8);
+    expect(version.data.values.first, 9);
   });
 
   /// Rewinds the file to schema version 2, which still carried the local-only
@@ -241,7 +247,7 @@ void main() {
     expect(await db.select(db.remoteCache).get(), hasLength(1));
   });
 
-  test('upgrades straight from v1 to v8, mockup dropped and cache opened',
+  test('upgrades straight from v1 to v9, mockup dropped and cache opened',
       () async {
     downgradeToV1(createdAt: DateTime.utc(2025, 3, 14));
 
@@ -256,7 +262,7 @@ void main() {
         )
         .get();
 
-    expect(version.data.values.first, 8);
+    expect(version.data.values.first, 9);
     expect(mockup, isEmpty);
     expect(await db.select(db.remoteCache).get(), isEmpty);
     expect(await db.select(db.downloadedScenarios).get(), isEmpty);
@@ -372,5 +378,29 @@ void main() {
     // tout le monde ne perd rien, et la fiche reste en attente d'envoi.
     expect(character.revision, 0);
     expect(character.needsSync, isTrue);
+  });
+
+  test('keeps the characters of a v8 install when adding the token', () async {
+    final before = raw.sqlite3.open(dbPath);
+    dropToken(before);
+    before.execute('PRAGMA user_version = 8');
+    before.execute(
+      "INSERT INTO game_systems (id, name, occupation_suggestions) "
+      "VALUES ('call_of_cthulhu_classique', 'Classique', '[]')",
+    );
+    before.execute(
+      'INSERT INTO characters (id, system_id, name, level, created_at, '
+      'updated_at, needs_sync, revision) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ['perso-1', 'call_of_cthulhu_classique', 'Ernest', 1, 0, 0, 0, 3],
+    );
+    before.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+    addTearDown(db.close);
+
+    final character = (await db.select(db.characters).get()).single;
+
+    expect(character.revision, 3);
+    expect(character.token, isNull);
   });
 }

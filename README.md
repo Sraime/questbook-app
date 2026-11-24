@@ -1019,6 +1019,32 @@ plus théorique depuis que le plateau remonte au serveur : un joueur qui regarde
 la séance lit les pions du MJ, et n'a aucune raison de posséder les assets que
 celui-ci a achetés.
 
+#### Le pion d'un personnage
+
+Un investigateur et un PNJ peuvent recevoir **un pion**, choisi parmi les pions
+de personnage que le compte possède (`characterTokensOf`) : le joueur le choisit
+depuis la pastille à gauche du nom de sa fiche, le MJ depuis celle de chaque
+carte PNJ du volet Personnages, PNJ du scénario compris. La référence est
+`asset:<clé>` pour un pion acheté, `socle:<couleur>` pour un pion du socle, qui
+n'a pas de clé ; `boardAssetForRef` la retraduit en pion. Celle de
+l'investigateur vit dans sa fiche (colonne `characters.token`, schéma Drift v9)
+et part avec la synchronisation. Celle du PNJ vit sur le serveur, pour la
+séance seulement (`PUT /sessions/:id/npcs/:npcId/token`).
+
+Le tiroir du plateau place ces personnages **en tête du rayon Personnages**, sous
+leur nom : **fond jaune pour un investigateur, rouge pour un PNJ**. Le pion
+d'origine reste dessous, anonyme, et se pose toujours seul. Le MJ lit le pion
+d'un investigateur dans le détail de la session, où chaque participation le
+porte : un choix fait par le joueur pendant que la séance est ouverte n'arrive
+qu'au rechargement de la session.
+
+Posé, le pion garde le lien (`BoardToken.character` : `investigator` avec le
+joueur, ou `npc`). Sa barre d'actions gagne un bouton qui **ouvre la fiche du
+moment** : un PNJ renommé depuis s'ouvre sous son nouveau nom, et un personnage
+sorti de la session le dit au lieu d'ouvrir une fiche vide. **Un pion lié se
+dessine même quand le lecteur ne possède pas son asset** : c'est le joueur qui
+l'a acheté, et le MJ doit voir le pion qu'il a choisi, pas un rond rouge.
+
 Les clés possédées viennent de `/shop/items`, dont le résumé porte déjà `owned`
 et `assetKey`. Elles sont gardées dans `remote_cache` comme les tables et les
 scénarios, alors que la boutique elle-même ne se lit pas hors ligne : il n'y a

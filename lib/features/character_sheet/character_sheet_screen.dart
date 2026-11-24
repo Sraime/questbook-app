@@ -21,6 +21,7 @@ import '../../app/remote_providers.dart';
 import '../../domain/models/character.dart';
 import '../../domain/models/creation_mode_config.dart';
 import '../../domain/models/tone.dart';
+import '../game_master/widgets/character_token_picker.dart';
 import 'providers/character_detail_provider.dart';
 import 'widgets/resource_edit_dialog.dart';
 import 'widgets/skill_roll_dialog.dart';
@@ -215,22 +216,42 @@ class _Header extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          character.name,
-          style: QBType.game().copyWith(
-            fontWeight: QBType.weightBold,
-            fontSize: 22,
-            color: QBColors.ink900,
-          ),
-        ),
-        if (character.occupation case final occupation?)
-          Text(
-            occupation,
-            style: QBType.body().copyWith(
-              fontSize: QBType.sm,
-              color: QBColors.textMuted,
+        Row(
+          children: [
+            // Le pion qui le représentera sur les plateaux : le MJ le
+            // retrouve dans son tiroir, au nom de l'investigateur.
+            CharacterTokenSlot(
+              token: character.token,
+              characterName: character.name,
+              size: 44,
+              onTap: canWrite ? () => _pickToken(context, ref) : null,
             ),
-          ),
+            const SizedBox(width: QBSpace.s3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    character.name,
+                    style: QBType.game().copyWith(
+                      fontWeight: QBType.weightBold,
+                      fontSize: 22,
+                      color: QBColors.ink900,
+                    ),
+                  ),
+                  if (character.occupation case final occupation?)
+                    Text(
+                      occupation,
+                      style: QBType.body().copyWith(
+                        fontSize: QBType.sm,
+                        color: QBColors.textMuted,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: QBSpace.s3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,6 +291,22 @@ class _Header extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _pickToken(BuildContext context, WidgetRef ref) async {
+    final actions = ref.read(characterActionsProvider);
+    final choice = await showCharacterTokenPicker(
+      context,
+      characterName: character.name,
+      current: character.token,
+    );
+    if (choice == null || choice.token == character.token) return;
+    try {
+      await actions.setToken(character.id, choice.token);
+    } on Object {
+      // Écrit en local et marqué à envoyer : la prochaine synchronisation
+      // s'en charge.
+    }
   }
 
   String _resourceTitle(String key) => switch (key) {

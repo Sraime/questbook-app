@@ -18,6 +18,7 @@ class RemoteCharacter {
     required this.stats,
     required this.resources,
     required this.inventory,
+    this.token,
   });
 
   factory RemoteCharacter.fromJson(Map<String, dynamic> json) {
@@ -28,6 +29,7 @@ class RemoteCharacter {
       occupation: json['occupation'] as String?,
       description: json['description'] as String?,
       level: json['level'] as int? ?? 1,
+      token: json['token'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       deletedAt: json['deletedAt'] == null
@@ -45,6 +47,9 @@ class RemoteCharacter {
   final String? occupation;
   final String? description;
   final int level;
+
+  /// `asset:<clé>` ou `socle:<couleur>`, le pion de l'investigateur.
+  final String? token;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -62,6 +67,7 @@ class RemoteCharacter {
         'occupation': occupation,
         'description': description,
         'level': level,
+        'token': token,
         'createdAt': createdAt.toUtc().toIso8601String(),
         'updatedAt': updatedAt.toUtc().toIso8601String(),
         'deletedAt': deletedAt?.toUtc().toIso8601String(),

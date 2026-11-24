@@ -103,13 +103,17 @@ class _Catalogue extends ConsumerWidget {
     final scenarios = items
         .where((item) => item.type == ShopItemType.scenario)
         .toList();
+    final bundles =
+        items.where((item) => item.type == ShopItemType.bundle).toList();
     // L'article ne dit pas s'il vend une carte ou un pion ; la liste des
     // assets hébergés, si. Tant qu'elle n'est pas là, une carte attend
     // parmi les pions plutôt que de faire patienter tout le rayon.
     final mapKeys =
         ref.watch(hostedMapsProvider).value?.keys.toSet() ?? const <String>{};
     final rest = items
-        .where((item) => item.type != ShopItemType.scenario)
+        .where((item) =>
+            item.type != ShopItemType.scenario &&
+            item.type != ShopItemType.bundle)
         .toList();
     final maps =
         rest.where((item) => mapKeys.contains(item.assetKey)).toList();
@@ -119,6 +123,17 @@ class _Catalogue extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // En tête : un bundle donne de quoi préparer toute une partie, et
+        // se montre comme une aventure, sur ce qu'il raconte.
+        if (bundles.isNotEmpty) ...[
+          const _SectionTitle('Bundles'),
+          const SizedBox(height: QBSpace.s3),
+          for (final item in bundles) ...[
+            _WideRow(item: item, artwork: 56),
+            const SizedBox(height: QBSpace.s3),
+          ],
+          const SizedBox(height: QBSpace.s3),
+        ],
         if (maps.isNotEmpty) ...[
           const _SectionTitle('Cartes'),
           const SizedBox(height: QBSpace.s3),
@@ -126,10 +141,6 @@ class _Catalogue extends ConsumerWidget {
           const SizedBox(height: QBSpace.s6),
         ],
         if (tokens.isNotEmpty) ...[
-          // « Pions », et non « le reste » : c'est tout ce que le rayon
-          // contient à côté des cartes et des scénarios, et les packs ne
-          // s'achètent pas encore. Le jour où ils arrivent, ce titre est à
-          // revoir.
           const _SectionTitle('Pions'),
           const SizedBox(height: QBSpace.s3),
           _Tiles(items: tokens),
@@ -141,7 +152,7 @@ class _Catalogue extends ConsumerWidget {
           const _SectionTitle('Scénarios'),
           const SizedBox(height: QBSpace.s3),
           for (final item in scenarios) ...[
-            _ScenarioRow(item: item),
+            _WideRow(item: item),
             const SizedBox(height: QBSpace.s3),
           ],
         ],
@@ -197,12 +208,17 @@ class _Tiles extends StatelessWidget {
   }
 }
 
-/// Une aventure, pleine largeur : son titre, son prix, et assez de lignes
-/// pour donner envie de l'ouvrir. On n'achète pas un scénario sur un dessin.
-class _ScenarioRow extends StatelessWidget {
-  const _ScenarioRow({required this.item});
+/// Une aventure ou un bundle, pleine largeur : son titre, son prix, et assez
+/// de lignes pour donner envie de l'ouvrir. On n'achète pas un scénario sur
+/// un dessin.
+class _WideRow extends StatelessWidget {
+  const _WideRow({required this.item, this.artwork = 34});
 
   final RemoteShopItem item;
+
+  /// Le côté de l'image : un glyphe tient dans peu, l'illustration d'un
+  /// bundle demande à être vue.
+  final double artwork;
 
   @override
   Widget build(BuildContext context) {
@@ -222,9 +238,9 @@ class _ScenarioRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 34,
-                height: 34,
-                child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
+                width: artwork,
+                height: artwork,
+                child: ShopArtwork.of(item),
               ),
               const SizedBox(width: QBSpace.s3),
               Expanded(
@@ -318,7 +334,7 @@ class _ItemTile extends ConsumerWidget {
               // haute qu'une rangée de quatre sans rien montrer de plus.
               SizedBox(
                 height: 68,
-                child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
+                child: ShopArtwork.of(item),
               ),
               const SizedBox(height: QBSpace.s2),
               Text(

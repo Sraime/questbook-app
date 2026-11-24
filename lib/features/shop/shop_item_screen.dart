@@ -75,7 +75,7 @@ class _ArticleState extends ConsumerState<_Article> {
           child: SizedBox(
             width: 140,
             height: 140,
-            child: ShopArtwork(imageKey: item.imageKey, assetKey: item.assetKey),
+            child: ShopArtwork.of(item),
           ),
         ),
         const SizedBox(height: QBSpace.s5),
@@ -114,6 +114,10 @@ class _ArticleState extends ConsumerState<_Article> {
             color: QBColors.textBody,
           ),
         ),
+        if (item.contents.isNotEmpty) ...[
+          const SizedBox(height: QBSpace.s5),
+          _BundleContents(entries: item.contents),
+        ],
         const SizedBox(height: QBSpace.s6),
         if (!item.owned)
           QBButton(
@@ -128,6 +132,13 @@ class _ArticleState extends ConsumerState<_Article> {
           // l'achat sur la même page, plutôt que d'envoyer le lecteur le
           // chercher dans le menu des scénarios.
           _ScenarioActions(scenarioId: scenarioId)
+        else if (item.contents.any((entry) => entry.isScenario))
+          _BundleScenarios(
+            entries: [
+              for (final entry in item.contents)
+                if (entry.isScenario && entry.scenarioId != null) entry,
+            ],
+          )
         else
           Text(
             'Cet article est à toi. Tu le retrouveras parmi tes assets.',
@@ -223,6 +234,180 @@ class _ScenarioActionsState extends ConsumerState<_ScenarioActions> {
       await downloadScenario(ref, widget.scenarioId);
       if (!mounted) return;
       showQBToast(context, 'Scénario téléchargé', tone: QBTone.success);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      showQBToast(context, error.message, tone: QBTone.danger);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// Ce que donne un bundle, élément par élément, et ce que le lecteur a déjà :
+/// l'obtenir quand même est permis, mais ne doit pas surprendre.
+class _BundleContents extends ConsumerWidget {
+  const _BundleContents({required this.entries});
+
+  final List<RemoteBundleEntry> entries;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Contenu',
+          style: QBType.game().copyWith(
+            fontWeight: QBType.weightSemibold,
+            fontSize: 15,
+            color: QBColors.ink900,
+          ),
+        ),
+        const SizedBox(height: QBSpace.s2),
+        for (final entry in entries)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: QBSpace.s1),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: entry.isScenario
+                      ? const ShopArtwork(imageKey: 'scroll')
+                      : ShopArtwork(imageKey: 'asset', assetKey: entry.assetKey),
+                ),
+                const SizedBox(width: QBSpace.s2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // « possédé » à la suite du nom, discret : une
+                      // information de passage, pas un bouton de plus.
+                      Text.rich(
+                        TextSpan(
+                          text: entry.title,
+                          children: [
+                            if (entry.owned)
+                              TextSpan(
+                                text: ' (possédé)',
+                                style: QBType.body().copyWith(
+                                  fontSize: QBType.sm,
+                                  fontWeight: QBType.weightRegular,
+                                  color: QBColors.semanticSuccess,
+                                ),
+                              ),
+                          ],
+                        ),
+                        style: QBType.body().copyWith(
+                          fontSize: QBType.sm,
+                          fontWeight: QBType.weightSemibold,
+                          color: QBColors.textBody,
+                        ),
+                      ),
+                      Text(
+                        entry.isScenario
+                            ? 'Scénario'
+                            : shopItemTypeLabel(
+                                ref,
+                                ShopItemType.asset,
+                                entry.assetKey,
+                              ),
+                        style: QBType.mono().copyWith(
+                          fontSize: QBType.xs,
+                          color: QBColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Les scénarios d'un bundle obtenu, à télécharger sans aller les chercher
+/// un par un dans le menu des scénarios.
+class _BundleScenarios extends ConsumerStatefulWidget {
+  const _BundleScenarios({required this.entries});
+
+  final List<RemoteBundleEntry> entries;
+
+  @override
+  ConsumerState<_BundleScenarios> createState() => _BundleScenariosState();
+}
+
+class _BundleScenariosState extends ConsumerState<_BundleScenarios> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final states = {
+      for (final entry in widget.entries)
+        entry.scenarioId!: ref.watch(downloadedScenarioProvider(entry.scenarioId!)),
+    };
+
+    if (states.values.any((state) => state.isLoading && !state.hasValue)) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final missing = [
+      for (final entry in widget.entries)
+        if (states[entry.scenarioId]!.value == null) entry,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (missing.isNotEmpty) ...[
+          QBButton(
+            label: _busy
+                ? 'Téléchargement…'
+                : missing.length == 1
+                    ? 'Télécharger le scénario'
+                    : 'Télécharger les ${missing.length} scénarios',
+            iconLeft: const Icon(LucideIcons.download, size: 16),
+            onPressed: _busy ? null : () => _download(missing),
+          ),
+          const SizedBox(height: QBSpace.s2),
+          Text(
+            'Une fois téléchargés, tu les retrouveras dans Scénarios, et tu '
+            'pourras les rattacher à une session. Les pions et les cartes '
+            'sont déjà dans tes assets.',
+            style: QBType.body().copyWith(
+              fontSize: QBType.xs,
+              color: QBColors.textMuted,
+            ),
+          ),
+        ] else
+          for (final entry in widget.entries) ...[
+            QBButton(
+              label: 'Ouvrir « ${entry.title} »',
+              iconLeft: const Icon(LucideIcons.bookOpen, size: 16),
+              onPressed: () => context.go('/scenarios/${entry.scenarioId}'),
+            ),
+            const SizedBox(height: QBSpace.s2),
+          ],
+      ],
+    );
+  }
+
+  /// Un par un, et le premier échec arrête tout : les suivants échoueraient
+  /// pour la même raison, et un seul message vaut mieux que trois.
+  Future<void> _download(List<RemoteBundleEntry> missing) async {
+    setState(() => _busy = true);
+    try {
+      for (final entry in missing) {
+        await downloadScenario(ref, entry.scenarioId!);
+      }
+      if (!mounted) return;
+      showQBToast(
+        context,
+        missing.length == 1 ? 'Scénario téléchargé' : 'Scénarios téléchargés',
+        tone: QBTone.success,
+      );
     } on ApiException catch (error) {
       if (!mounted) return;
       showQBToast(context, error.message, tone: QBTone.danger);

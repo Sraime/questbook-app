@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
 import 'api_client.dart';
 import 'remote_shop_item.dart';
 
@@ -30,6 +34,17 @@ class ShopApi {
       parse: (data) => RemoteShopItemDetail.fromJson(
         (data as Map).cast<String, dynamic>(),
       ),
+    );
+  }
+
+  /// L'image propre d'un article, celle d'un bundle.
+  Future<Uint8List> image(String id) {
+    return _client.send(
+      (dio) => dio.get<List<int>>(
+        '/shop/items/$id/image',
+        options: Options(responseType: ResponseType.bytes),
+      ),
+      parse: (data) => Uint8List.fromList(data as List<int>),
     );
   }
 

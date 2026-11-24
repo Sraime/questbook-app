@@ -3,18 +3,20 @@
 /// The server never says what a token looks like — that stays with the app,
 /// as `board_catalog.dart` already shows — so an article carries keys the
 /// client resolves: [imageKey] names a picture bundled with the app, and
-/// [assetKey] names the token an `asset` purchase unlocks.
+/// [assetKey] names the token an `asset` purchase unlocks. A bundle is the
+/// exception: its picture is sent from the backoffice, and [imageHash] says
+/// which version the server holds.
 library;
 
-/// The three kinds of article the catalogue can hold.
+/// The kinds of article the catalogue can hold.
 ///
-/// Decoded permissively: the server may learn a fourth kind before this app is
+/// Decoded permissively: the server may learn another kind before this app is
 /// updated, and a listing that threw on it would take the whole shop down
 /// rather than the one row it cannot name.
 enum ShopItemType {
   asset('asset', 'Asset'),
   scenario('scenario', 'Scénario'),
-  pack('pack', 'Pack'),
+  bundle('bundle', 'Bundle'),
   unknown('unknown', 'Article');
 
   const ShopItemType(this.wire, this.label);
@@ -40,6 +42,7 @@ class RemoteShopItem {
     required this.imageKey,
     required this.assetKey,
     required this.owned,
+    this.imageHash,
   });
 
   factory RemoteShopItem.fromJson(Map<String, dynamic> json) => RemoteShopItem(
@@ -52,6 +55,7 @@ class RemoteShopItem {
         description: json['description'] as String? ?? '',
         priceCents: json['priceCents'] as int,
         imageKey: json['imageKey'] as String,
+        imageHash: json['imageHash'] as String?,
         assetKey: json['assetKey'] as String?,
         owned: json['owned'] as bool? ?? false,
       );
@@ -66,6 +70,11 @@ class RemoteShopItem {
 
   final int priceCents;
   final String imageKey;
+
+  /// Présent quand le serveur héberge l'image de l'article lui-même — celle
+  /// d'un bundle. Le fichier gardé sur l'appareil porte ce hash.
+  final String? imageHash;
+
   final String? assetKey;
   final bool owned;
 
@@ -82,6 +91,37 @@ class RemoteShopItem {
   }
 }
 
+/// Ce qu'un bundle donne : un asset ou un scénario, et si le lecteur l'a déjà.
+class RemoteBundleEntry {
+  const RemoteBundleEntry({
+    required this.isScenario,
+    required this.title,
+    required this.itemId,
+    required this.assetKey,
+    required this.scenarioId,
+    required this.owned,
+  });
+
+  factory RemoteBundleEntry.fromJson(Map<String, dynamic> json) =>
+      RemoteBundleEntry(
+        isScenario: json['kind'] == 'scenario',
+        title: json['title'] as String? ?? '',
+        itemId: json['itemId'] as String?,
+        assetKey: json['assetKey'] as String?,
+        scenarioId: json['scenarioId'] as String?,
+        owned: json['owned'] as bool? ?? false,
+      );
+
+  final bool isScenario;
+  final String title;
+
+  /// L'article `asset`, pour un asset.
+  final String? itemId;
+  final String? assetKey;
+  final String? scenarioId;
+  final bool owned;
+}
+
 class RemoteShopItemDetail extends RemoteShopItem {
   const RemoteShopItemDetail({
     required super.id,
@@ -92,7 +132,9 @@ class RemoteShopItemDetail extends RemoteShopItem {
     required super.imageKey,
     required super.assetKey,
     required super.owned,
+    super.imageHash,
     required this.scenarioId,
+    this.contents = const [],
   });
 
   factory RemoteShopItemDetail.fromJson(Map<String, dynamic> json) =>
@@ -103,11 +145,20 @@ class RemoteShopItemDetail extends RemoteShopItem {
         description: json['description'] as String? ?? '',
         priceCents: json['priceCents'] as int,
         imageKey: json['imageKey'] as String,
+        imageHash: json['imageHash'] as String?,
         assetKey: json['assetKey'] as String?,
         owned: json['owned'] as bool? ?? false,
         scenarioId: json['scenarioId'] as String?,
+        contents: [
+          for (final entry
+              in (json['contents'] as List? ?? const []).whereType<Map>())
+            RemoteBundleEntry.fromJson(entry.cast<String, dynamic>()),
+        ],
       );
 
   /// Vers quelle aventure pointe un article `scenario`. Nul pour les autres.
   final String? scenarioId;
+
+  /// Ce que contient un bundle, dans l'ordre du backoffice. Vide sinon.
+  final List<RemoteBundleEntry> contents;
 }

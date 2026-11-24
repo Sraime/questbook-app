@@ -17,6 +17,8 @@ import 'package:questbook/data/remote/token_store.dart';
 import 'package:questbook/features/assets/providers/hosted_assets_provider.dart';
 import 'package:questbook/features/assets/providers/owned_assets_provider.dart';
 import 'package:questbook/features/game_master/models/board_token.dart';
+import 'package:questbook/features/shop/providers/shop_providers.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Les pions ajoutés au backoffice : leur image vient du serveur, descend une
 /// fois, et reste sur l'appareil pour les parties sans réseau.
@@ -42,6 +44,9 @@ class _FakeAssetApi extends AssetApi {
   String hash = 'aaa';
   final downloads = <String>[];
 
+  /// Ce que le backoffice ajoute pendant que l'app tourne.
+  final added = <RemoteAsset>[];
+
   @override
   Future<List<RemoteAsset>> list() async {
     if (failure case final error?) throw error;
@@ -60,6 +65,7 @@ class _FakeAssetApi extends AssetApi {
         width: 300,
         height: 200,
       ),
+      ...added,
     ];
   }
 
@@ -198,6 +204,43 @@ void main() {
           .map((asset) => asset.key),
       isNot(contains('crypte')),
     );
+  });
+
+  testWidgets(
+      'une carte ajoutée au backoffice après le lancement arrive en '
+      'tirant la boutique', (tester) async {
+    late WidgetRef captured;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: Consumer(
+          builder: (context, ref, _) {
+            captured = ref;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    await tester.runAsync(() async {
+      await container.read(hostedMapsProvider.future);
+      assets.added.add(
+        const RemoteAsset(
+          key: 'chantier',
+          name: 'Chantier de minage',
+          kind: 'map',
+          imageHash: 'ddd',
+          width: 1312,
+          height: 1199,
+        ),
+      );
+
+      await refreshShop(captured);
+      final maps = await container.read(hostedMapsProvider.future);
+
+      // Inconnue, elle se rangeait parmi les pions, sans image.
+      expect(maps['chantier']?.file, isNotNull);
+    });
   });
 
   test('une carte possédée rejoint celles de l’app, à ses proportions',

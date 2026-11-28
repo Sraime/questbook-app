@@ -46,9 +46,12 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              user == null
-                  ? 'Aucun compte connecté.'
-                  : 'Connecté avec ${user.email}.',
+              switch (user) {
+                null => 'Aucun compte connecté.',
+                AuthUser(email: final email?) => 'Connecté avec $email.',
+                // Un compte Apple qui n'a pas partagé son adresse.
+                _ => 'Connecté avec Apple.',
+              },
               style: QBType.body().copyWith(
                 fontSize: QBType.sm,
                 color: QBColors.textMuted,

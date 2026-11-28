@@ -19,7 +19,7 @@ class AuthUser {
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
         id: json['id'] as String,
-        email: json['email'] as String,
+        email: json['email'] as String?,
         displayName: json['displayName'] as String?,
         pictureUrl: json['pictureUrl'] as String?,
         termsAcceptedAt: switch (json['termsAcceptedAt']) {
@@ -29,7 +29,9 @@ class AuthUser {
       );
 
   final String id;
-  final String email;
+
+  /// Null for an Apple account that kept its address to itself.
+  final String? email;
   final String? displayName;
   final String? pictureUrl;
 
@@ -42,10 +44,14 @@ class AuthUser {
   /// pas ici : sans compte, il n'y a rien à faire accepter.
   bool get hasAcceptedTerms => termsAcceptedAt != null;
 
-  /// What the UI shows: the Google display name, falling back to the part of
-  /// the email before the `@`.
-  String get label =>
-      displayName?.trim().isNotEmpty == true ? displayName! : email.split('@').first;
+  /// What the UI shows: the display name, falling back to the part of the
+  /// email before the `@`, then to the server's own word for a nameless
+  /// player.
+  String get label {
+    if (displayName?.trim().isNotEmpty == true) return displayName!;
+    if (email case final address?) return address.split('@').first;
+    return 'Joueur';
+  }
 }
 
 class AuthSession {

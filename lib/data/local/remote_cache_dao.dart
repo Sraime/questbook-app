@@ -19,6 +19,10 @@ class RemoteCacheDao {
 
   static String detailKey(String tableId) => 'tables.detail.$tableId';
 
+  /// Le lien de projection d'une séance : le serveur ne sait pas le redonner.
+  static String projectionKey(String sessionId) =>
+      'sessions.projection.$sessionId';
+
   Future<void> write(String key, String accountId, Object payload) {
     return _db.into(_db.remoteCache).insertOnConflictUpdate(
           RemoteCacheCompanion.insert(
@@ -41,6 +45,12 @@ class RemoteCacheDao {
     if (row == null) return null;
     return CachedPayload(jsonDecode(row.payload), row.fetchedAt);
   }
+
+  Future<void> delete(String key, String accountId) =>
+      (_db.delete(_db.remoteCache)
+            ..where((entry) => entry.key.equals(key))
+            ..where((entry) => entry.accountId.equals(accountId)))
+          .go();
 
   /// Called on sign-out and on account change.
   Future<void> clear() => _db.delete(_db.remoteCache).go();

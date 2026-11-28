@@ -345,6 +345,32 @@ class SessionApi {
     );
   }
 
+  // --- Mode projection ---
+
+  /// Un nouveau lien public, qui révoque le précédent et éteint ses écrans.
+  Future<ProjectionLink> createProjection(String sessionId) {
+    return _client.send(
+      (dio) => dio.post<dynamic>('/sessions/$sessionId/projection'),
+      parse: (data) =>
+          ProjectionLink.fromJson((data as Map).cast<String, dynamic>()),
+    );
+  }
+
+  /// Si un lien est en cours, sans le redonner.
+  Future<bool> projectionActive(String sessionId) {
+    return _client.send(
+      (dio) => dio.get<dynamic>('/sessions/$sessionId/projection'),
+      parse: (data) => (data as Map)['active'] == true,
+    );
+  }
+
+  Future<void> stopProjection(String sessionId) {
+    return _client.send(
+      (dio) => dio.delete<dynamic>('/sessions/$sessionId/projection'),
+      parse: (_) {},
+    );
+  }
+
   RemoteGameSession _parseSession(Object? data) =>
       RemoteGameSession.fromJson((data as Map).cast<String, dynamic>());
 

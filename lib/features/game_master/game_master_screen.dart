@@ -26,6 +26,7 @@ import 'panels/scenario_panel.dart';
 import 'panels/shared_clues_panel.dart';
 import 'panels/watched_board_panel.dart';
 import 'providers/game_master_providers.dart';
+import 'widgets/projection_dialog.dart';
 
 export 'models/session_seat.dart' show GameMasterPanel, SessionSeat;
 
@@ -218,6 +219,9 @@ class _GameMasterScreenState extends ConsumerState<GameMasterScreen> {
           // rail pour les accueillir.
           tableName: layout.isCompact ? tableName : null,
           onExit: layout.isCompact ? _exit : null,
+          onProject: seat.isGameMaster && session != null
+              ? () => showProjectionDialog(context, session: session)
+              : null,
         ),
         if (layout.isCompact)
           _PanelTabs(
@@ -502,6 +506,7 @@ class _Header extends StatelessWidget {
     required this.seat,
     this.tableName,
     this.onExit,
+    this.onProject,
   });
 
   final RemoteGameSession? session;
@@ -511,6 +516,10 @@ class _Header extends StatelessWidget {
   /// qui dit où l'on est et par où l'on sort.
   final String? tableName;
   final VoidCallback? onExit;
+
+  /// Renseigné pour le MJ seulement : c'est lui qui montre le plateau à la
+  /// salle.
+  final VoidCallback? onProject;
 
   @override
   Widget build(BuildContext context) {
@@ -566,6 +575,20 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (onProject case final project?) ...[
+            const SizedBox(width: QBSpace.s3),
+            QBIconButton(
+              icon: const Icon(
+                LucideIcons.cast,
+                size: 16,
+                color: QBColors.paper100,
+              ),
+              label: 'Projeter le plateau',
+              size: 36,
+              variant: QBIconButtonVariant.solid,
+              onPressed: project,
+            ),
+          ],
           if (onExit case final exit?) ...[
             const SizedBox(width: QBSpace.s3),
             QBIconButton(

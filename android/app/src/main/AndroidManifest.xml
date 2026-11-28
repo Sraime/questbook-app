@@ -37,6 +37,32 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Le lien d'invitation de l'e-mail ouvre l'app plutot que le
+                 navigateur. `autoVerify` fait verifier par Android que le
+                 domaine le revendique, dans /.well-known/assetlinks.json : sans
+                 cela, le telephone proposerait un choix au lieu d'ouvrir. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="questbook.nextuscorp.com"
+                      android:pathPrefix="/invitations/"/>
+            </intent-filter>
+            <!-- Le bouton de la page web du lien, quand le navigateur l'a
+                 ouverte : un lien https vers son propre domaine n'ouvre jamais
+                 l'app depuis une page de ce domaine. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="questbook" android:host="invitations"/>
+            </intent-filter>
+            <!-- Les liens passent par `app_links`, qui sait attendre que le
+                 joueur se connecte. Laisse active, la gestion de Flutter
+                 enverrait aussi le chemin a go_router, qui n'a pas de route
+                 /invitations et afficherait une erreur. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

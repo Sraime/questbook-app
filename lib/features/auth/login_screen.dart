@@ -11,6 +11,7 @@ import '../../design_system/components/qb_page_background.dart';
 import '../../design_system/tokens/colors.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/tokens/typography.dart';
+import '../tables/invitation_link.dart';
 
 /// Shown at launch when nobody is signed in, and the only way past it.
 ///
@@ -92,9 +93,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: QBSpace.s2),
+                    // Arrive par le lien d'une invitation, le joueur doit
+                    // savoir que la table l'attend de l'autre cote.
                     Text(
-                      'Connecte-toi pour retrouver tes investigateurs sur tous '
-                      'tes appareils.',
+                      ref.watch(pendingInvitationProvider) != null
+                          ? 'Connecte-toi pour rejoindre la table à laquelle '
+                              'tu as été invité.'
+                          : 'Connecte-toi pour retrouver tes investigateurs '
+                              'sur tous tes appareils.',
                       textAlign: TextAlign.center,
                       style: QBType.body().copyWith(
                         fontSize: QBType.sm,

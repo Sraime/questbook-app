@@ -6,5 +6,13 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- Le lien d'invitation de l'e-mail ouvre l'app (lien universel). Ce droit
+	     doit aussi etre coche sur l'App ID, sans quoi la signature de l'archive
+	     echoue ; les profils, que fastlane regenere a chaque build, le
+	     prennent alors d'eux-memes. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:questbook.nextuscorp.com</string>
+	</array>
 </dict>
 </plist>

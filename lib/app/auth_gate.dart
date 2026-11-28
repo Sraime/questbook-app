@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/login_screen.dart';
 import '../features/auth/terms_screen.dart';
+import '../features/tables/invitation_link.dart';
 import 'push_providers.dart';
 import 'remote_providers.dart';
 
@@ -38,6 +39,10 @@ class AuthGate extends ConsumerWidget {
     // moment the app starts, not from the moment a screen happens to need it.
     ref.watch(pushControllerProvider.notifier);
 
+    // Listens from the first frame, so that the link the app was launched
+    // with is kept while the player signs in.
+    ref.watch(pendingInvitationProvider.notifier);
+
     return ref.watch(authControllerProvider).when(
           data: (user) => switch (user) {
             null => const LoginScreen(),
@@ -45,7 +50,7 @@ class AuthGate extends ConsumerWidget {
             // predate the terms meet this screen on their next start, since
             // nobody consented on their behalf.
             final account when !account.hasAcceptedTerms => const TermsScreen(),
-            _ => child,
+            _ => InvitationLinkHandler(child: child),
           },
           loading: () => const SplashScreen(),
           // Restoring a session never fails for want of a network — the cached

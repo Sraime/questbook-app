@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.40.0+61
+version: 1.42.0+63
 
 environment:
   sdk: ^3.12.2
@@ -81,6 +81,11 @@ dependencies:
   # l'app n'affiche aucun widget iOS.
   material_ui: ^1.11.1
   cupertino_ui: ^1.1.7
+  # Le lien d'invitation de l'e-mail ouvre l'app (App Links, liens
+  # universels, schema `questbook://`). Le paquet livre le lien du lancement a
+  # froid comme ceux qui arrivent l'app ouverte, la ou go_router ne saurait
+  # pas attendre que le joueur se connecte.
+  app_links: ^7.2.2
 
 dev_dependencies:
   flutter_test:

@@ -1178,6 +1178,33 @@ carte vierge, puisque c'est l'appareil qui sait. Le serveur détient bien la
 dernière poussée, mais la relire écraserait le cas inverse — la tablette qui a
 joué hors ligne — et il faudrait alors arbitrer entre les deux.
 
+##### Projeter le plateau sur l'écran de la salle
+
+Le bouton de projection, dans l'entête du mode MJ et pour le MJ seul, ouvre
+`showProjectionDialog` : il crée un **lien public**, qu'on copie ou qu'on
+ouvre, et qui montre le plateau en lecture seule sur une télé ou un
+vidéoprojecteur, sans compte. C'est la même poussée qui l'alimente : rien
+de plus n'est envoyé par l'app.
+
+Le lien ne vaut que pendant la séance, du début à la clôture vingt-quatre
+heures plus tard. « Nouveau lien » et « Arrêter » révoquent le précédent, et
+le serveur éteint aussitôt les écrans qu'il avait ouverts.
+
+**L'appareil garde le lien** (`projectionLinkProvider`, dans `remote_cache`,
+rattaché au compte et effacé à la déconnexion), parce que le serveur n'en a
+que l'empreinte et ne sait pas le redonner. Sans cela, rouvrir l'app en pleine
+partie obligerait à en générer un autre, et l'écran de la salle s'éteindrait.
+À l'ouverture, `GET /sessions/:id/projection` dit s'il vaut encore : un lien
+remplacé depuis un autre appareil ou arrêté disparaît plutôt que d'envoyer la
+salle sur une page morte. Hors ligne, celui de l'appareil reste affiché.
+
+La page elle-même, et ce qui la rend inoffensive, vit côté serveur : section
+« Le mode projection » du README de `questbook-back`. **Elle redessine le
+plateau sans l'app**, en recopiant `watched_board_panel.dart` et
+`board_token_view.dart` : changer la forme d'un pion, ou embarquer une carte
+ou un pion de plus, demande la même retouche dans
+`questbook-back/web/projection/`.
+
 #### Les personnages non-joueurs
 
 Sous les fiches des joueurs, dans le même volet : créatures, indicateurs,

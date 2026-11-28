@@ -381,6 +381,35 @@ class RemoteSessionBoard {
   final int revision;
 }
 
+/// Le lien public qui projette le plateau d'une séance sur l'écran de la
+/// salle.
+///
+/// Le serveur ne le redonne jamais : il n'en garde que l'empreinte. C'est
+/// l'appareil du MJ qui le conserve pour le recopier.
+class ProjectionLink {
+  const ProjectionLink({
+    required this.url,
+    required this.opensAt,
+    required this.closesAt,
+  });
+
+  factory ProjectionLink.fromJson(Map<String, dynamic> json) => ProjectionLink(
+        url: json['url'] as String,
+        opensAt: DateTime.parse(json['opensAt'] as String),
+        closesAt: DateTime.parse(json['closesAt'] as String),
+      );
+
+  final String url;
+  final DateTime opensAt;
+  final DateTime closesAt;
+
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        'opensAt': opensAt.toUtc().toIso8601String(),
+        'closesAt': closesAt.toUtc().toIso8601String(),
+      };
+}
+
 class RemoteGameSession {
   /// Non `const` : les deux bornes se calculent à partir de [startsAt] quand
   /// le serveur ne les a pas envoyées.

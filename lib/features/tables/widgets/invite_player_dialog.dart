@@ -75,8 +75,8 @@ class _InvitePlayerFormState extends ConsumerState<_InvitePlayerForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'S’il n’a pas encore Questbook, il recevra un e-mail pour installer '
-          'l’app et rejoindre la table avec cette adresse.',
+          'Il recevra un lien pour rejoindre la table avec son compte '
+          'Questbook, quel qu’il soit. Ce lien ne sert qu’une fois.',
           style: QBType.body().copyWith(
             fontSize: QBType.xs,
             color: QBColors.textMuted,

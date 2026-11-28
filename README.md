@@ -28,6 +28,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
   - [Comment la synchronisation fonctionne](#comment-la-synchronisation-fonctionne)
     - [Une fiche modifiée part tout de suite](#une-fiche-modifiée-part-tout-de-suite)
   - [Tables : le choix inverse](#tables--le-choix-inverse)
+  - [Le lien d'invitation](#le-lien-dinvitation)
   - [Consultation seule (hors ligne)](#consultation-seule-hors-ligne)
 - [Tests](#tests)
 - [Workflow git (branches)](#workflow-git-branches)
@@ -53,7 +54,7 @@ Questbook est une application Flutter de compagnon de jeu de rôle sur table : c
 - **Fiche d'un investigateur (`/perso/:id`)** : caractéristiques, compétences, ressources (PV/SAN/PM), inventaire, jets de compétence (1d100) et édition rapide des ressources.
 - **Tables (`/tables`)** : liste des tables de jeu dont on est membre, invitations reçues à accepter ou décliner, et création d'une table (un titre, rien d'autre). Le créateur en devient le maître du jeu.
 - **Scénarios (`/scenarios`, depuis le menu du burger)** : les scénarios possédés, listés par titre et description. Le contenu complet — contexte, déroulé markdown, **PNJ et indices de l'aventure** — se télécharge sur l'appareil pour la lecture hors ligne. Un utilisateur ne crée pas de scénario : le catalogue vient du serveur. Quelques-uns sont donnés à la connexion pour que la liste ne soit pas vide, les autres s'achètent à la boutique.
-- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse e-mail, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
+- **Détail d'une table (`/tables/:id`)** : joueurs, invitations en attente, sessions à venir et passées. Le MJ y invite par adresse e-mail — le joueur reçoit un lien à usage unique, valable quel que soit son compte (voir [Le lien d'invitation](#le-lien-dinvitation)) —, propose les sessions — et peut y rattacher un scénario déjà téléchargé — et peut confier la table à un joueur. Chaque joueur y confirme ou décline sa participation, et peut changer d'avis jusqu'à la fermeture des inscriptions. Voir [Ce que l'écran met en avant](#ce-que-lécran-dune-table-met-en-avant).
 - **Carte d'une session** : pour le MJ, un bouton pleine largeur mène à l'écran de la séance — **Préparer** avant l'heure, **Animer** une fois commencée ; pour un joueur qui en est, **Participer** une fois commencée. Corriger la session ou l'annuler s'y fait ensuite, dans le volet Détails. L'angle de son titre ne porte qu'une chose, et pour un joueur seulement : les trois points qui mènent à **Signaler cette séance**. C'est la révision d'une règle plus ancienne — l'angle était resté vide parce que trois cibles de 32 points côte à côte se visaient mal — et une cible seule, discrète, n'est pas ce cas-là. Le MJ, lui, a écrit cette séance : rien ne s'y affiche pour lui. Le bouton occupe la place qu'ont « Je viens » et « Je passe » chez le joueur : la carte entière y menait, mais un geste qu'aucun mot n'annonce ne se devine pas. Côté joueur, ces deux boutons tiennent jusqu'à la fermeture des inscriptions ; ils cèdent ensuite la place soit à **Participer** s'il en est, soit à un rappel de ce qu'il avait répondu — plutôt qu'à rien. Voir [Les deux bornes d'une séance](#les-deux-bornes-dune-séance).
 - **Nouvelle session (`/tables/:id/sessions/new`)** : titre, lieu, date et heure, puis description. Une page plutôt qu'une fenêtre modale — cinq champs et un clavier virtuel ne tiennent pas dans une fenêtre centrée sur un téléphone, et faire défiler à l'intérieur d'une modale est un mauvais compromis. Les mêmes champs servent à la corriger depuis le mode MJ : c'est un seul widget, `tables/widgets/session_form.dart`, que ses deux hôtes se partagent.
 - **Participer avec un investigateur** : « Je viens » ouvre la fenêtre du choix, et c'est le choix qui répond — **on ne confirme pas sans dire avec qui**. Une chaise sans fiche ne sert ni le MJ, qui ne sait pas qui il a en face, ni le joueur, qui ne pourrait pas participer à la séance. Refermer la fenêtre revient à ne pas avoir répondu ; « Je passe », lui, ne demande personne. En changer reste possible jusqu'à la fin de la séance, là où répondre ferme au début : un investigateur meurt et un autre le remplace en pleine partie. Les autres membres peuvent consulter sa fiche en lecture seule, depuis la liste des présents.
@@ -464,6 +465,11 @@ et la même personne connectée par les deux portes a deux comptes, chacun avec
 ses investigateurs. Voir le README de `questbook-back` pour le détail, et le
 `409` que renvoie une adresse déjà prise par un compte Google.
 
+Un compte Apple peut aussi **ne partager aucune adresse**. Il se crée quand
+même : une table se rejoint par le code du lien d'invitation, pas par
+l'adresse (voir [Le lien d'invitation](#le-lien-dinvitation)). L'app affiche
+alors son pseudo, ou « Joueur », là où elle aurait montré l'adresse.
+
 Un build iOS exige l'entitlement `com.apple.developer.applesignin`
 (`ios/Runner/Runner.entitlements`, référencé par `CODE_SIGN_ENTITLEMENTS` dans
 les trois configurations de la cible Runner) **et** la capability
@@ -616,6 +622,65 @@ L'entrée est volontairement opaque : elle stocke l'enveloppe JSON brute, qui
 repasse par le `fromJson` du chemin normal. Recopier la forme du serveur en
 colonnes imposerait une migration à chaque champ ajouté à l'API, pour un cache
 qu'on ne fait que relire.
+
+### Le lien d'invitation
+
+L'e-mail d'invitation porte un lien `https://questbook.nextuscorp.com/invitations/<code>`.
+**Le code est à usage unique, et c'est lui qui fait foi, pas l'adresse** : le
+compte connecté dans l'app l'échange contre une place
+(`POST /invitations/redeem`), quelle que soit son adresse. C'est ce qui permet
+à un compte Apple, dont l'adresse est un relais que le MJ ne connaît pas —
+voire aucune —, de rejoindre une table.
+
+Le lien prend l'un de trois chemins :
+
+| Situation | Ce qui se passe |
+| --- | --- |
+| L'app est installée | Android (App Links) ou iOS (lien universel) ouvre l'app directement. |
+| L'app est installée, mais le lien s'ouvre dans le navigateur | La page propose « Rejoindre la table », qui ouvre l'app par `questbook://invitations/<code>` (une URL `intent://` sur Android). |
+| L'app n'est pas installée | La même page renvoie vers le Play Store ou l'App Store. Une fois installée et le joueur connecté, il rouvre le lien. |
+
+Côté code, `lib/features/tables/invitation_link.dart` :
+
+- `pendingInvitationProvider` écoute `app_links` dès le premier écran, et garde
+  le code tant que personne n'est connecté ou n'a accepté les conditions.
+  L'écran de connexion le dit alors au joueur.
+- `InvitationLinkHandler`, posé par `AuthGate` dans la seule branche où l'app
+  s'affiche, échange le code, ouvre la table et confirme ; ou affiche le refus
+  du serveur (déjà utilisée, expirée, déjà à la table).
+
+**La gestion des liens de Flutter est coupée** (`flutter_deeplinking_enabled`
+dans le manifeste, `FlutterDeepLinkingEnabled` dans `Info.plist`). Laissée
+active, elle enverrait aussi le chemin à go_router, qui n'a pas de route
+`/invitations` et afficherait une erreur par-dessus l'échange.
+
+Pour qu'un téléphone ouvre l'app plutôt que le navigateur, il doit croire que
+le domaine la revendique. Le serveur publie pour cela
+`/.well-known/assetlinks.json` et `/.well-known/apple-app-site-association`
+(voir le README de `questbook-back`), et l'app déclare le domaine de son côté :
+
+- **Android** : un `intent-filter` `autoVerify` sur `https`, hôte
+  `questbook.nextuscorp.com`, préfixe `/invitations/`. Android vérifie
+  `assetlinks.json` à l'installation, qui doit lister l'empreinte du
+  certificat qui a signé l'app installée. **Un build de debug n'y figure
+  pas** : sur l'émulateur, on approuve le domaine à la main.
+
+  ```powershell
+  adb shell pm set-app-links-user-selection --user 0 `
+    --package com.questbook.questbook true questbook.nextuscorp.com
+  adb shell am start -a android.intent.action.VIEW `
+    -c android.intent.category.BROWSABLE `
+    -d "https://questbook.nextuscorp.com/invitations/<code>"
+  ```
+
+  L'app appelle alors l'API de son build : contre le backend local, un code
+  semé dans la base de dev suffit, le domaine du lien n'y change rien.
+
+- **iOS** : l'entitlement `com.apple.developer.associated-domains`
+  (`applinks:questbook.nextuscorp.com`), **et** la capability « Associated
+  Domains » cochée sur l'App ID `com.questbook.questbook`. Sans elle, la
+  signature échoue. Les profils n'ont rien à faire à la main : `fastlane` les
+  régénère à chaque build, et ils prennent la capability au passage.
 
 ### Consultation seule (hors ligne)
 

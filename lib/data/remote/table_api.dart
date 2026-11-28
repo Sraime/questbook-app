@@ -132,6 +132,16 @@ class TableApi {
     );
   }
 
+  /// Spends the code of an emailed invitation link for the signed-in account,
+  /// whatever its address. The server answers the table it joined, or a
+  /// French message saying why not — used, expired, already a member.
+  Future<RemoteGameTable> redeemInvitation(String code) {
+    return _client.send(
+      (dio) => dio.post<dynamic>('/invitations/redeem', data: {'code': code}),
+      parse: _parseTable,
+    );
+  }
+
   Future<void> declineInvitation(String invitationId) {
     return _client.send(
       (dio) => dio.post<dynamic>('/invitations/$invitationId/decline'),

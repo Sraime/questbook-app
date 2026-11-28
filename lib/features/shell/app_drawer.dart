@@ -107,16 +107,18 @@ class _AccountHeader extends ConsumerWidget {
                   color: QBColors.paper50,
                 ),
               ),
-              const SizedBox(height: 1),
-              Text(
-                user.email,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: QBType.body().copyWith(
-                  fontSize: QBType.xs,
-                  color: QBColors.paper300.withValues(alpha: 0.8),
+              if (user.email case final email?) ...[
+                const SizedBox(height: 1),
+                Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: QBType.body().copyWith(
+                    fontSize: QBType.xs,
+                    color: QBColors.paper300.withValues(alpha: 0.8),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

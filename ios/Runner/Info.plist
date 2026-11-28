@@ -32,7 +32,25 @@
 				<string>com.googleusercontent.apps.56734402863-oma1c0gsd0o6cfp7oefu8maej2bgb3sh</string>
 			</array>
 		</dict>
+		<!-- Le bouton de la page web du lien d'invitation, quand Safari l'a
+		     ouverte : un lien https vers son propre domaine n'ouvre jamais
+		     l'app depuis une page de ce domaine. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.questbook.questbook.invitations</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>questbook</string>
+			</array>
+		</dict>
 	</array>
+	<!-- Les liens passent par `app_links`, qui sait attendre que le joueur se
+	     connecte. Laisse active, la gestion de Flutter enverrait aussi le
+	     chemin a go_router, qui n'a pas de route /invitations. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GIDClientID</key>

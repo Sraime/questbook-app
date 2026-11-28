@@ -203,8 +203,10 @@ void main() {
       reason: 'un joueur entré par Apple lirait une consigne impossible',
     );
 
-    // Ce qui doit rester : sans la même adresse, le serveur ne rattache
-    // l'invitation à aucune connexion.
-    expect(find.textContaining('cette adresse'), findsOneWidget);
+    // L'adresse ne compte plus, c'est le lien qui fait foi : la consigne ne
+    // doit plus exiger de se connecter avec elle, et doit prevenir que le
+    // lien ne se partage pas.
+    expect(find.textContaining('cette adresse'), findsNothing);
+    expect(find.textContaining('ne sert qu’une fois'), findsOneWidget);
   });
 }
